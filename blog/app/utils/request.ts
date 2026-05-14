@@ -1,6 +1,7 @@
 import { $fetch } from 'ofetch';
 import type { FetchOptions } from 'ofetch';
 import { accessToken, setAccessToken, logout } from './auth';
+import { resolveApiBaseUrl } from './apiBaseUrl';
 import type { ApiResponse } from '@@/types/request';
 
 type HttpMethod =
@@ -15,7 +16,7 @@ type HttpMethod =
   | 'TRACE';
 
 // 获取 API baseURL
-const getBaseURL = () => useRuntimeConfig().public.apiUrl as string;
+const getBaseURL = () => resolveApiBaseUrl();
 
 // Token 刷新状态
 let isRefreshing = false;
@@ -45,7 +46,6 @@ export async function apiRequest<T = any>(
   url: string,
   options: Omit<FetchOptions, 'method'> & { method?: HttpMethod; _retry?: boolean } = {}
 ): Promise<T> {
-  const config = useRuntimeConfig();
   const headers: Record<string, string> = {
     ...((options.headers as Record<string, string>) || {}),
   };
@@ -57,7 +57,7 @@ export async function apiRequest<T = any>(
   try {
     return await $fetch<T>(url, {
       ...options,
-      baseURL: config.public.apiUrl,
+      baseURL: getBaseURL(),
       headers,
       credentials: 'include', // 发送 Cookie
     } as any);

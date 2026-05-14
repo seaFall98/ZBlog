@@ -61,6 +61,48 @@ class FoundationApiTest {
   }
 
   @Test
+  void loginTokenCanFetchCurrentUserProfile() {
+    ResponseEntity<Map> loginResponse =
+        restTemplate.postForEntity(
+            "/api/v1/auth/login",
+            Map.of("username", "admin", "password", "admin123456"),
+            Map.class);
+
+    String accessToken =
+        (String) ((Map<?, ?>) loginResponse.getBody().get("data")).get("access_token");
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(accessToken);
+    ResponseEntity<Map> profileResponse =
+        restTemplate.exchange(
+            "/api/v1/user/profile", HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+
+    assertThat(profileResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<?, ?> profileBody = profileResponse.getBody();
+    assertThat(profileBody).isNotNull();
+    assertThat(profileBody.get("code")).isEqualTo(0);
+    Map<?, ?> profile = (Map<?, ?>) profileBody.get("data");
+    assertThat(profile.get("role")).isEqualTo("super_admin");
+    assertThat(profile.get("nickname")).isEqualTo("admin");
+    assertThat(profile.get("has_password")).isEqualTo(true);
+  }
+
+  @Test
+  void loginAlsoAcceptsLegacyEmailField() {
+    ResponseEntity<Map> loginResponse =
+        restTemplate.postForEntity(
+            "/api/v1/auth/login",
+            Map.of("email", "admin", "password", "admin123456"),
+            Map.class);
+
+    assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<?, ?> loginBody = loginResponse.getBody();
+    assertThat(loginBody).isNotNull();
+    assertThat(loginBody.get("code")).isEqualTo(0);
+    assertThat(((Map<?, ?>) loginBody.get("data")).get("access_token")).isNotNull();
+  }
+
+  @Test
   void protectedPingRejectsMissingToken() {
     ResponseEntity<Map> response = restTemplate.getForEntity("/api/v1/admin/ping", Map.class);
 

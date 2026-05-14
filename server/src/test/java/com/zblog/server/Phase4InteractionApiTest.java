@@ -45,6 +45,40 @@ class Phase4InteractionApiTest {
   }
 
   @Test
+  void publicSettingsAndMenusProvideFrontendBaseline() {
+    ResponseEntity<Map> basicResponse = restTemplate.getForEntity("/api/v1/settings/basic", Map.class);
+    ResponseEntity<Map> blogResponse = restTemplate.getForEntity("/api/v1/settings/blog", Map.class);
+    ResponseEntity<Map> uploadResponse = restTemplate.getForEntity("/api/v1/settings/upload", Map.class);
+    ResponseEntity<Map> menusResponse = restTemplate.getForEntity("/api/v1/menus", Map.class);
+
+    assertThat(basicResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(blogResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(menusResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    Map<String, Object> basic = castMap(data(basicResponse));
+    Map<String, Object> blog = castMap(data(blogResponse));
+    Map<String, Object> upload = castMap(data(uploadResponse));
+    List<?> menus = (List<?>) data(menusResponse);
+
+    assertThat(basic)
+        .containsKeys("basic.author", "basic.author_avatar", "basic.blog_url", "basic.home_url");
+    assertThat(blog)
+        .containsKeys(
+            "blog.title",
+            "blog.subtitle",
+            "blog.description",
+            "blog.announcement",
+            "blog.typing_texts",
+            "blog.sidebar_social",
+            "blog.footer_social",
+            "blog.footer_links",
+            "blog.home_layout");
+    assertThat(upload).containsKey("upload.max_file_size");
+    assertThat(menus).hasSizeGreaterThanOrEqualTo(6);
+  }
+
+  @Test
   void friendsCanBeManagedAndAppliedPublicly() {
     HttpHeaders headers = authenticatedHeaders();
     ResponseEntity<Map> typeResponse =
@@ -191,5 +225,10 @@ class Phase4InteractionApiTest {
     assertThat(body).isNotNull();
     assertThat(body.get("code")).isEqualTo(0);
     return body.get("data");
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> castMap(Object value) {
+    return (Map<String, Object>) value;
   }
 }

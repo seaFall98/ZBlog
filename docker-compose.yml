@@ -40,7 +40,8 @@ services:
       context: ./blog
     container_name: zblog-blog
     environment:
-      NUXT_PUBLIC_API_URL: http://host.docker.internal:8080/api/v1
+      NUXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+      NUXT_API_SERVER_URL: http://host.docker.internal:8080/api/v1
     ports:
       - "3000:3000"
     depends_on:
@@ -51,7 +52,7 @@ services:
       context: ./admin
     container_name: zblog-admin
     environment:
-      API_URL: http://host.docker.internal:8080/api/v1
+      API_URL: http://localhost:8080/api/v1
     ports:
       - "4000:4000"
     depends_on:

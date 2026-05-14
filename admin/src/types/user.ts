@@ -20,7 +20,7 @@ export interface User {
 
 // 登录请求
 export interface LoginParams {
-  email: string;
+  username: string;
   password: string;
 }
 

@@ -102,7 +102,7 @@ export default defineNitroPlugin(async nitroApp => {
   nitroApp.hooks.hook('sitemap:resolved', async ctx => {
     try {
       const config = useRuntimeConfig();
-      const apiUrl = config.public.apiUrl;
+      const apiUrl = (config.apiServerUrl || config.public.apiUrl) as string;
       const buildTime = getBuildTime();
 
       // 从后端 API 获取文章列表

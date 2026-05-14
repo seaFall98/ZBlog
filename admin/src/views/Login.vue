@@ -10,23 +10,23 @@
           <div class="form-item">
             <i class="ri-user-line"></i>
             <input
+              v-model="formState.username"
               type="text"
-              v-model="formState.email"
-              placeholder="请输入邮箱"
+              placeholder="请输入用户名"
               @keyup.enter="handleLogin"
             />
           </div>
           <div class="form-item">
             <i class="ri-lock-line"></i>
             <input
-              type="password"
               v-model="formState.password"
+              type="password"
               placeholder="请输入密码"
               @keyup.enter="handleLogin"
             />
           </div>
           <button class="submit-btn" :disabled="loading" @click="handleLogin">
-            <span v-if="!loading">登 录</span>
+            <span v-if="!loading">登录</span>
             <span v-else class="loading-text">
               <i class="ri-loader-4-line"></i>
               登录中...
@@ -43,19 +43,19 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { login } from '@/api/user';
-import { fetchUserInfo, setAccessToken, clearAuthState } from '@/utils/auth';
+import { clearAuthState, fetchUserInfo, setAccessToken } from '@/utils/auth';
 import type { LoginParams } from '@/types/user';
 
 const router = useRouter();
 const loading = ref(false);
 const formState = reactive<LoginParams>({
-  email: '',
+  username: '',
   password: '',
 });
 
 const handleLogin = async () => {
-  if (!formState.email || !formState.password) {
-    ElMessage.warning('请输入邮箱和密码');
+  if (!formState.username || !formState.password) {
+    ElMessage.warning('请输入用户名和密码');
     return;
   }
 

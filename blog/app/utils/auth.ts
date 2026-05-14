@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import type { ApiResponse } from '@@/types/request';
+import { resolveApiBaseUrl } from './apiBaseUrl';
 
 const ACCESS_TOKEN_KEY = 'access_token';
 
@@ -55,10 +56,9 @@ export const logout = (): void => {
   clearAccessToken();
 
   if (token) {
-    const config = useRuntimeConfig();
     $fetch<ApiResponse<void>>('/auth/logout', {
       method: 'POST',
-      baseURL: config.public.apiUrl as string,
+      baseURL: resolveApiBaseUrl(),
       headers: {
         Authorization: `Bearer ${token}`,
       },
