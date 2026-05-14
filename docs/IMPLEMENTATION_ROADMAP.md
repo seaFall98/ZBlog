@@ -1,36 +1,36 @@
 # IMPLEMENTATION_ROADMAP.md
 
-> 本文职责：把 ZBlog2 从当前空项目推进到可上线博客网站的阶段计划、产物和验收标准写清楚。
+> 鏈枃鑱岃矗锛氭妸 ZBlog 浠庡綋鍓嶇┖椤圭洰鎺ㄨ繘鍒板彲涓婄嚎鍗氬缃戠珯鐨勯樁娈佃鍒掋€佷骇鐗╁拰楠屾敹鏍囧噯鍐欐竻妤氥€?
 
-## Phase 0: 文档与参考源准备
+## Phase 0: 鏂囨。涓庡弬鑰冩簮鍑嗗
 
-目标：
+鐩爣锛?
 
-- 初始化 ZBlog2；
-- 克隆 FlecBlog 到 `_reference`；
-- 完成文档包；
-- 明确 FlecBlog 前端优先复用和旧 ZBlog 资产迁移边界。
+- 鍒濆鍖?ZBlog锛?
+- 鍏嬮殕 FlecBlog 鍒?`_reference`锛?
+- 瀹屾垚鏂囨。鍖咃紱
+- 鏄庣‘ FlecBlog 鍓嶇浼樺厛澶嶇敤鍜屾棫 ZBlog 璧勪骇杩佺Щ杈圭晫銆?
 
-验收：
+楠屾敹锛?
 
 ```powershell
 git rev-parse --is-inside-work-tree
 Test-Path _reference\FlecBlog
 Test-Path docs
-Select-String -Path docs\*.md -Pattern "本文职责"
+Select-String -Path docs\*.md -Pattern "鏈枃鑱岃矗"
 ```
 
-## Phase 1: 前端源码迁入
+## Phase 1: 鍓嶇婧愮爜杩佸叆
 
-目标：
+鐩爣锛?
 
-- 将 FlecBlog `blog` 迁入 `blog/`；
-- 将 FlecBlog `admin` 迁入 `admin/`；
-- 保留 attribution；
-- 完成本地安装和构建；
-- 只做必要品牌和入口清理，不重设计。
+- 灏?FlecBlog `blog` 杩佸叆 `blog/`锛?
+- 灏?FlecBlog `admin` 杩佸叆 `admin/`锛?
+- 淇濈暀 attribution锛?
+- 瀹屾垚鏈湴瀹夎鍜屾瀯寤猴紱
+- 鍙仛蹇呰鍝佺墝鍜屽叆鍙ｆ竻鐞嗭紝涓嶉噸璁捐銆?
 
-验收：
+楠屾敹锛?
 
 ```powershell
 cd blog
@@ -44,17 +44,17 @@ npm run type-check
 npm run build
 ```
 
-## Phase 2: Java 后端基础工程
+## Phase 2: Java 鍚庣鍩虹宸ョ▼
 
-目标：
+鐩爣锛?
 
-- 创建 Spring Boot 3 + Java 21 后端；
-- 加入统一响应、异常、校验、OpenAPI；
-- PostgreSQL + Flyway；
-- 登录认证和 JWT；
-- 健康检查。
+- 鍒涘缓 Spring Boot 3 + Java 21 鍚庣锛?
+- 鍔犲叆缁熶竴鍝嶅簲銆佸紓甯搞€佹牎楠屻€丱penAPI锛?
+- PostgreSQL + Flyway锛?
+- 鐧诲綍璁よ瘉鍜?JWT锛?
+- 鍋ュ悍妫€鏌ャ€?
 
-验收：
+楠屾敹锛?
 
 ```powershell
 cd server
@@ -62,106 +62,106 @@ mvn test
 mvn package
 ```
 
-2026-05-15 执行结果：
-- `server/` Spring Boot 后端基础工程已创建。
-- 已落地统一响应、统一异常、参数校验、JWT 登录、无状态安全配置、健康检查、OpenAPI 入口。
-- `mvn test` 通过：5 tests, 0 failures, 0 errors。
-- `mvn package` 通过：生成 Spring Boot 可运行 jar。
-- 详细记录见 `docs/PHASE2_BACKEND_FOUNDATION_LOG.md`。
+2026-05-15 鎵ц缁撴灉锛?
+- `server/` Spring Boot 鍚庣鍩虹宸ョ▼宸插垱寤恒€?
+- 宸茶惤鍦扮粺涓€鍝嶅簲銆佺粺涓€寮傚父銆佸弬鏁版牎楠屻€丣WT 鐧诲綍銆佹棤鐘舵€佸畨鍏ㄩ厤缃€佸仴搴锋鏌ャ€丱penAPI 鍏ュ彛銆?
+- `mvn test` 閫氳繃锛? tests, 0 failures, 0 errors銆?
+- `mvn package` 閫氳繃锛氱敓鎴?Spring Boot 鍙繍琛?jar銆?
+- 璇︾粏璁板綍瑙?`docs/PHASE2_BACKEND_FOUNDATION_LOG.md`銆?
 
-## Phase 3: 文章系统闭环
+## Phase 3: 鏂囩珷绯荤粺闂幆
 
-目标：
+鐩爣锛?
 
-- 文章、分类、标签数据模型；
-- Markdown 真源、HTML 快照、TOC；
-- 后台文章 CRUD；
-- 前台文章列表和详情 API。
+- 鏂囩珷銆佸垎绫汇€佹爣绛炬暟鎹ā鍨嬶紱
+- Markdown 鐪熸簮銆丠TML 蹇収銆乀OC锛?
+- 鍚庡彴鏂囩珷 CRUD锛?
+- 鍓嶅彴鏂囩珷鍒楄〃鍜岃鎯?API銆?
 
-验收：
+楠屾敹锛?
 
-- 后台可保存草稿和发布文章；
-- 前台可读取文章列表和详情；
-- Markdown、代码块、目录正常。
+- 鍚庡彴鍙繚瀛樿崏绋垮拰鍙戝竷鏂囩珷锛?
+- 鍓嶅彴鍙鍙栨枃绔犲垪琛ㄥ拰璇︽儏锛?
+- Markdown銆佷唬鐮佸潡銆佺洰褰曟甯搞€?
 
-2026-05-15 执行结果：
-- `server/` 已落地文章、分类、标签、菜单数据库 baseline。
-- 已实现公开文章读取闭环：菜单、分类、标签、文章列表、文章详情、随机文章。
-- 已实现后台文章、分类、标签 CRUD 和文章发布/取消发布。
-- 已接入 Flyway + JDBC + PostgreSQL 生产配置，测试使用 H2 PostgreSQL mode。
-- 已调整统一响应为前端兼容的 `code=0` 数值码。
-- `mvn test` / `mvn package` / 前后台 `type-check` / 前后台 `build` 均通过。
-- 详细记录见 `docs/PHASE3_CONTENT_CLOSED_LOOP_LOG.md`。
+2026-05-15 鎵ц缁撴灉锛?
+- `server/` 宸茶惤鍦版枃绔犮€佸垎绫汇€佹爣绛俱€佽彍鍗曟暟鎹簱 baseline銆?
+- 宸插疄鐜板叕寮€鏂囩珷璇诲彇闂幆锛氳彍鍗曘€佸垎绫汇€佹爣绛俱€佹枃绔犲垪琛ㄣ€佹枃绔犺鎯呫€侀殢鏈烘枃绔犮€?
+- 宸插疄鐜板悗鍙版枃绔犮€佸垎绫汇€佹爣绛?CRUD 鍜屾枃绔犲彂甯?鍙栨秷鍙戝竷銆?
+- 宸叉帴鍏?Flyway + JDBC + PostgreSQL 鐢熶骇閰嶇疆锛屾祴璇曚娇鐢?H2 PostgreSQL mode銆?
+- 宸茶皟鏁寸粺涓€鍝嶅簲涓哄墠绔吋瀹圭殑 `code=0` 鏁板€肩爜銆?
+- `mvn test` / `mvn package` / 鍓嶅悗鍙?`type-check` / 鍓嶅悗鍙?`build` 鍧囬€氳繃銆?
+- 璇︾粏璁板綍瑙?`docs/PHASE3_CONTENT_CLOSED_LOOP_LOG.md`銆?
 
-## Phase 4: 评论、友链、文件、设置
+## Phase 4: 璇勮銆佸弸閾俱€佹枃浠躲€佽缃?
 
-目标：
+鐩爣锛?
 
-- 评论提交、审核、展示；
-- 友链展示和管理；
-- 文件/图片上传；
-- 站点配置；
-- 后台对应页面接入 Java API。
+- 璇勮鎻愪氦銆佸鏍搞€佸睍绀猴紱
+- 鍙嬮摼灞曠ず鍜岀鐞嗭紱
+- 鏂囦欢/鍥剧墖涓婁紶锛?
+- 绔欑偣閰嶇疆锛?
+- 鍚庡彴瀵瑰簲椤甸潰鎺ュ叆 Java API銆?
 
-验收：
+楠屾敹锛?
 
-- 后台可完成日常博客管理；
-- 前台评论、友链、站点信息可用。
+- 鍚庡彴鍙畬鎴愭棩甯稿崥瀹㈢鐞嗭紱
+- 鍓嶅彴璇勮銆佸弸閾俱€佺珯鐐逛俊鎭彲鐢ㄣ€?
 
-执行结果：
+鎵ц缁撴灉锛?
 
-- 已完成评论、友链、文件上传、站点设置的后端闭环。
-- 新增 Phase 4 集成测试，覆盖设置读取/更新、友链管理/申请、评论提交/审核/删除、文件上传/列表/删除。
-- `mvn test` / `mvn package` / 前后台 `type-check` / 前后台 `build` 均通过。
-- 详细记录见 `docs/PHASE4_INTERACTION_SITE_MEDIA_LOG.md`。
+- 宸插畬鎴愯瘎璁恒€佸弸閾俱€佹枃浠朵笂浼犮€佺珯鐐硅缃殑鍚庣闂幆銆?
+- 鏂板 Phase 4 闆嗘垚娴嬭瘯锛岃鐩栬缃鍙?鏇存柊銆佸弸閾剧鐞?鐢宠銆佽瘎璁烘彁浜?瀹℃牳/鍒犻櫎銆佹枃浠朵笂浼?鍒楄〃/鍒犻櫎銆?
+- `mvn test` / `mvn package` / 鍓嶅悗鍙?`type-check` / 鍓嶅悗鍙?`build` 鍧囬€氳繃銆?
+- 璇︾粏璁板綍瑙?`docs/PHASE4_INTERACTION_SITE_MEDIA_LOG.md`銆?
 
-## Phase 5: 统计、SEO、搜索
+## Phase 5: 缁熻銆丼EO銆佹悳绱?
 
-目标：
+鐩爣锛?
 
-- 访问统计和仪表盘；
-- sitemap、feed、Open Graph；
-- 搜索功能；
-- Redis 缓存阅读量和热门文章。
+- 璁块棶缁熻鍜屼华琛ㄧ洏锛?
+- sitemap銆乫eed銆丱pen Graph锛?
+- 鎼滅储鍔熻兘锛?
+- Redis 缂撳瓨闃呰閲忓拰鐑棬鏂囩珷銆?
 
-验收：
+楠屾敹锛?
 
-- sitemap/feed 可访问；
-- 搜索可用；
-- 热门/推荐文章数据稳定。
+- sitemap/feed 鍙闂紱
+- 鎼滅储鍙敤锛?
+- 鐑棬/鎺ㄨ崘鏂囩珷鏁版嵁绋冲畾銆?
 
-## Phase 6: 部署上线
+## Phase 6: 閮ㄧ讲涓婄嚎
 
-目标：
+鐩爣锛?
 
-- Dockerfile；
-- Docker Compose；
-- Nginx；
-- HTTPS；
-- 数据备份；
-- README 部署说明；
-- 发布 checklist。
+- Dockerfile锛?
+- Docker Compose锛?
+- Nginx锛?
+- HTTPS锛?
+- 鏁版嵁澶囦唤锛?
+- README 閮ㄧ讲璇存槑锛?
+- 鍙戝竷 checklist銆?
 
-验收：
+楠屾敹锛?
 
 ```powershell
 docker compose config
 ```
 
-并完成云服务器部署 smoke test。
+骞跺畬鎴愪簯鏈嶅姟鍣ㄩ儴缃?smoke test銆?
 
-## Phase 7: 体验打磨
+## Phase 7: 浣撻獙鎵撶（
 
-目标：
+鐩爣锛?
 
-- 前台阅读体验；
-- 移动端布局；
-- 后台表单体验；
-- loading/empty/error；
-- 视觉细节。
+- 鍓嶅彴闃呰浣撻獙锛?
+- 绉诲姩绔竷灞€锛?
+- 鍚庡彴琛ㄥ崟浣撻獙锛?
+- loading/empty/error锛?
+- 瑙嗚缁嗚妭銆?
 
-验收：
+楠屾敹锛?
 
-- 主要页面截图验收；
-- 移动端不崩；
-- 页面不粗糙、不像默认模板。
+- 涓昏椤甸潰鎴浘楠屾敹锛?
+- 绉诲姩绔笉宕╋紱
+- 椤甸潰涓嶇矖绯欍€佷笉鍍忛粯璁ゆā鏉裤€?

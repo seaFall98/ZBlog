@@ -59,36 +59,36 @@ create table if not exists menus (
 );
 
 insert into categories (name, slug, description, sort_order)
-select '默认分类', 'default', 'ZBlog2 默认文章分类', 1
+select '默认分类', 'default', 'ZBlog 默认文章分类', 1
 where not exists (select 1 from categories where slug = 'default');
 
 insert into tags (name, slug, description)
-select 'ZBlog2', 'zblog2', 'ZBlog2 项目记录'
-where not exists (select 1 from tags where slug = 'zblog2');
+select 'ZBlog', 'zblog', 'ZBlog 项目记录'
+where not exists (select 1 from tags where slug = 'zblog');
 
 insert into articles (
   slug, title, summary, content_markdown, content_html, content_text, status,
   category_id, is_top, is_essence, published_at
 )
 select
-  'hello-zblog2',
-  'Hello ZBlog2',
-  'ZBlog2 Java 后端文章系统已经启动。',
-  '# Hello ZBlog2 这是一篇由 Phase 3 baseline 创建的示例文章。',
-  '<h1>Hello ZBlog2</h1><p>这是一篇由 Phase 3 baseline 创建的示例文章。</p>',
-  'Hello ZBlog2 这是一篇由 Phase 3 baseline 创建的示例文章。',
+  'hello-zblog',
+  'Hello ZBlog',
+  'ZBlog Java 后端文章系统已经启动。',
+  '# Hello ZBlog 这是一篇由 Phase 3 baseline 创建的示例文章。',
+  '<h1>Hello ZBlog</h1><p>这是一篇由 Phase 3 baseline 创建的示例文章。</p>',
+  'Hello ZBlog 这是一篇由 Phase 3 baseline 创建的示例文章。',
   'PUBLISHED',
   (select id from categories where slug = 'default'),
   true,
   true,
   current_timestamp
-where not exists (select 1 from articles where slug = 'hello-zblog2');
+where not exists (select 1 from articles where slug = 'hello-zblog');
 
 insert into article_tags (article_id, tag_id)
 select a.id, t.id
 from articles a, tags t
-where a.slug = 'hello-zblog2'
-  and t.slug = 'zblog2'
+where a.slug = 'hello-zblog'
+  and t.slug = 'zblog'
   and not exists (
     select 1 from article_tags at where at.article_id = a.id and at.tag_id = t.id
   );

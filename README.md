@@ -1,52 +1,179 @@
-# ZBlog2
+<div align="center">
+  <h1>ZBlog</h1>
 
-> 本文职责：说明 ZBlog2 的当前目标、工作区边界、文档入口和后续执行方式。
+  <p>
+    A modern full-stack blog system for writing, publishing, and managing long-form content.
+  </p>
 
-ZBlog2 当前主线是先做一个完整、现代、可上线的博客网站。类似 `https://bugstack.cn/` 的强个人品牌网站是后续规划，不作为当前阶段的工作内容。
+  <p>
+    Clean reading experience, focused content management, and a Java backend designed for long-term evolution.
+  </p>
 
-## 工作区
+  <p>
+    <img src="https://img.shields.io/badge/Server-Java%2021-007396?style=flat-square&logo=openjdk&logoColor=white" alt="Java 21" />
+    <img src="https://img.shields.io/badge/Spring%20Boot-3.x-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot" />
+    <img src="https://img.shields.io/badge/Blog-Nuxt%204-00DC82?style=flat-square&logo=nuxt&logoColor=white" alt="Nuxt 4" />
+    <img src="https://img.shields.io/badge/Admin-Vue%203-42B883?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue 3" />
+    <img src="https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  </p>
+</div>
 
-正式工作目录：
+## About
 
-```text
-D:\MyCode\ZBlogProject\ZBlog2
+ZBlog is a three-part blog system built around content creation and daily publishing workflows.
+
+It separates the public blog, admin console, and backend service into independent modules, keeping the reading experience expressive while leaving the management and API layers clear, testable, and maintainable.
+
+| Module | Stack | Purpose |
+| --- | --- | --- |
+| `blog` | Nuxt 4 / Vue 3 / SCSS | Public blog, article pages, SSR, feeds, and SEO-friendly routes |
+| `admin` | Vue 3 / Vite / Element Plus | Content management, article editing, comments, links, files, and site settings |
+| `server` | Java 21 / Spring Boot / PostgreSQL | REST API, authentication, content, taxonomy, comments, links, files, and configuration |
+
+## Features
+
+- Article publishing with Markdown rendering, summaries, covers, pinning, and featured content.
+- Category and tag management for organizing long-form writing.
+- Public blog pages for home, articles, archives, categories, tags, friends, messages, and profile-style content.
+- Comment submission, listing, moderation, and basic status management.
+- Friend link display, grouping, and application workflow.
+- File upload management with static resource access.
+- Site settings for public information and admin-side configuration.
+- JWT-based admin authentication.
+- OpenAPI documentation through Swagger UI.
+- SSR-ready blog frontend with sitemap, RSS, Atom, and PWA-related frontend foundations.
+
+## Tech Stack
+
+### Server
+
+- Java 21
+- Spring Boot 3
+- Spring Security
+- Spring JDBC
+- Flyway
+- PostgreSQL
+- H2 for integration tests
+- springdoc-openapi
+
+### Admin
+
+- Vue 3
+- Vite
+- TypeScript
+- Element Plus
+- Vue Router
+- Axios
+- CodeMirror
+- ECharts
+
+### Blog
+
+- Nuxt 4
+- Vue 3
+- TypeScript
+- SCSS
+- markdown-it
+- Highlight.js
+- Mermaid
+- Nuxt SEO modules
+- Vite PWA
+
+## Quick Start
+
+### Prerequisites
+
+- Java 21+
+- Maven 3.9+
+- Node.js 20+
+- PostgreSQL 12+
+
+### Server
+
+```bash
+cd server
+mvn test
+mvn spring-boot:run
 ```
 
-本地参考源码：
+The default API base URL is:
 
 ```text
-D:\MyCode\ZBlogProject\ZBlog2\_reference\FlecBlog
-D:\MyCode\ZBlogProject\ZBlog
+http://localhost:8080/api/v1
 ```
 
-`_reference/FlecBlog` 是本地只读参考源。FlecBlog 前端源码允许优先复用：能直接用的先迁入，局部不符合 ZBlog2 目标的再修改。旧 ZBlog 只作为资产库，迁移已经验证过的高价值模块。
-
-## 当前策略
-
-1. 先完成文档、审计、任务节奏，不直接进入业务编码。
-2. 前端以 FlecBlog 的 `blog` 和 `admin` 源码为优先复用基线。
-3. 后端使用 Java 21 + Spring Boot 重新实现，不机械翻译 FlecBlog 的 Go 后端。
-4. 当前第一阶段只围绕博客网站闭环：前台阅读、后台 CMS、文章编辑、分类标签、评论、友链、站点配置、统计、SEO、部署。
-5. 项目展示、相册、说说、个人品牌首页、DevWiki Studio 进入后续 roadmap，不压进第一阶段主线。
-
-## 文档阅读顺序
+Swagger UI is available at:
 
 ```text
-AGENTS.md
-docs/0_PROJECT_CONTEXT.md
-docs/REFERENCE_FLECBLOG.md
-docs/REUSE_ASSET_AUDIT.md
-docs/PRODUCT_PLAN.md
-docs/FEATURE_LIST.md
-docs/FRONTEND_PLAN.md
-docs/BACKEND_PLAN.md
-docs/API_PLAN.md
-docs/DATA_MODEL_PLAN.md
-docs/TECH_STACK_PLAN.md
-docs/IMPLEMENTATION_ROADMAP.md
-docs/CODEX_WORKFLOW.md
-docs/FRONTEND_MIGRATION_LOG.md
-docs/PHASE2_BACKEND_FOUNDATION_LOG.md
-docs/PHASE3_CONTENT_CLOSED_LOOP_LOG.md
-docs/PHASE4_INTERACTION_SITE_MEDIA_LOG.md
+http://localhost:8080/swagger-ui.html
 ```
+
+For local development, configure PostgreSQL with the following defaults or override them through environment variables:
+
+```env
+ZBLOG_DATASOURCE_URL=jdbc:postgresql://localhost:5432/zblog
+ZBLOG_DATASOURCE_USERNAME=zblog
+ZBLOG_DATASOURCE_PASSWORD=zblog
+ZBLOG_JWT_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+ZBLOG_ADMIN_USERNAME=admin
+ZBLOG_ADMIN_PASSWORD=admin123456
+```
+
+### Admin
+
+```bash
+cd admin
+npm install
+npm run dev
+```
+
+The admin console runs at:
+
+```text
+http://localhost:4000
+```
+
+### Blog
+
+```bash
+cd blog
+npm install
+npm run dev
+```
+
+The public blog runs at:
+
+```text
+http://localhost:3000
+```
+
+## Scripts
+
+| Module | Command | Description |
+| --- | --- | --- |
+| `server` | `mvn test` | Run backend tests |
+| `server` | `mvn package` | Build the Spring Boot application |
+| `admin` | `npm run dev` | Start the admin dev server |
+| `admin` | `npm run type-check` | Run TypeScript checks |
+| `admin` | `npm run build` | Build the admin app |
+| `blog` | `npm run dev` | Start the blog dev server |
+| `blog` | `npm run type-check` | Run Nuxt type checks |
+| `blog` | `npm run build` | Build the blog app |
+
+## Project Structure
+
+```text
+ZBlog/
+├── admin/     # Vue admin console
+├── blog/      # Nuxt public blog
+├── server/    # Java Spring Boot API service
+└── docs/      # Project documentation
+```
+
+## Acknowledgements
+
+ZBlog's frontend foundation is based on ideas and implementation patterns from the open-source blog project FlecBlog.
+
+## License
+
+This project is intended for personal blog and content system development. License details will be completed before the first public release.

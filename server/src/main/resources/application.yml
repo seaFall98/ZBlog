@@ -3,11 +3,11 @@ server:
 
 spring:
   application:
-    name: zblog2-server
+    name: zblog-server
   datasource:
-    url: ${ZBLOG_DATASOURCE_URL:jdbc:postgresql://localhost:5432/zblog2}
-    username: ${ZBLOG_DATASOURCE_USERNAME:zblog2}
-    password: ${ZBLOG_DATASOURCE_PASSWORD:zblog2}
+    url: ${ZBLOG_DATASOURCE_URL:jdbc:postgresql://localhost:5432/zblog}
+    username: ${ZBLOG_DATASOURCE_USERNAME:zblog}
+    password: ${ZBLOG_DATASOURCE_PASSWORD:zblog}
   flyway:
     enabled: true
     locations: classpath:db/migration

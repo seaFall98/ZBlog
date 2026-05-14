@@ -70,7 +70,7 @@ select '友情链接', 1, true
 where not exists (select 1 from friend_types where name = '友情链接');
 
 insert into settings (group_name, key_name, value_text)
-select 'basic', 'site_name', 'ZBlog2'
+select 'basic', 'site_name', 'ZBlog'
 where not exists (select 1 from settings where group_name = 'basic' and key_name = 'site_name');
 
 insert into settings (group_name, key_name, value_text)

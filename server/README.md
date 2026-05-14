@@ -1,6 +1,6 @@
-# ZBlog2 Server
+# ZBlog Server
 
-Java 21 + Spring Boot backend for ZBlog2.
+Java 21 + Spring Boot backend for ZBlog.
 
 ## Run Checks
 

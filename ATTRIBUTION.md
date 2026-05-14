@@ -1,6 +1,6 @@
 # ATTRIBUTION.md
 
-> 本文职责：记录 ZBlog2 使用或参考的开源项目来源，避免后续迁移时遗漏 attribution。
+> 鏈枃鑱岃矗锛氳褰?ZBlog 浣跨敤鎴栧弬鑰冪殑寮€婧愰」鐩潵婧愶紝閬垮厤鍚庣画杩佺Щ鏃堕仐婕?attribution銆?
 
 ## FlecBlog
 
@@ -18,9 +18,9 @@ MIT License
 
 Usage plan:
 
-- Blog frontend source can be reused as ZBlog2 `blog/` baseline.
-- Admin frontend source can be reused as ZBlog2 `admin/` baseline.
-- Server source is reference only; ZBlog2 backend will be implemented in Java 21 + Spring Boot.
+- Blog frontend source can be reused as ZBlog `blog/` baseline.
+- Admin frontend source can be reused as ZBlog `admin/` baseline.
+- Server source is reference only; ZBlog backend will be implemented in Java 21 + Spring Boot.
 
 Required practice:
 

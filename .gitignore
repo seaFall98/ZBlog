@@ -15,6 +15,7 @@ dev-dist/
 target/
 /logs/
 uploads/
+temp_plan/
 *.tsbuildinfo
 *.log
 

@@ -1,14 +1,14 @@
 # AGENTS.md
 
-> 本文职责：定义 Codex 在 ZBlog2 中的工作规则、必读文档、禁止事项、验证要求和阶段推进方式。
+> 鏈枃鑱岃矗锛氬畾涔?Codex 鍦?ZBlog 涓殑宸ヤ綔瑙勫垯銆佸繀璇绘枃妗ｃ€佺姝簨椤广€侀獙璇佽姹傚拰闃舵鎺ㄨ繘鏂瑰紡銆?
 
 ## Prime Rule
 
-任何任务完成声明必须有当前会话的新鲜验证证据。没有运行验证命令，就不能说已经完成或通过。
+浠讳綍浠诲姟瀹屾垚澹版槑蹇呴』鏈夊綋鍓嶄細璇濈殑鏂伴矞楠岃瘉璇佹嵁銆傛病鏈夎繍琛岄獙璇佸懡浠わ紝灏变笉鑳借宸茬粡瀹屾垚鎴栭€氳繃銆?
 
 ## Required Reading
 
-每次 ZBlog2 任务开始前，先阅读：
+姣忔 ZBlog 浠诲姟寮€濮嬪墠锛屽厛闃呰锛?
 
 ```text
 README.md
@@ -28,14 +28,14 @@ docs/CODEX_WORKFLOW.md
 docs/FRONTEND_MIGRATION_LOG.md
 ```
 
-如果任务涉及前端迁移，还必须先检查：
+濡傛灉浠诲姟娑夊強鍓嶇杩佺Щ锛岃繕蹇呴』鍏堟鏌ワ細
 
 ```text
-D:\MyCode\ZBlogProject\ZBlog2\_reference\FlecBlog\blog
-D:\MyCode\ZBlogProject\ZBlog2\_reference\FlecBlog\admin
+D:\MyCode\ZBlogProject\ZBlog\_reference\FlecBlog\blog
+D:\MyCode\ZBlogProject\ZBlog\_reference\FlecBlog\admin
 ```
 
-如果任务涉及 Markdown、文章详情或 Java 后端文章模型，还必须检查：
+濡傛灉浠诲姟娑夊強 Markdown銆佹枃绔犺鎯呮垨 Java 鍚庣鏂囩珷妯″瀷锛岃繕蹇呴』妫€鏌ワ細
 
 ```text
 D:\MyCode\ZBlogProject\ZBlog
@@ -43,18 +43,18 @@ D:\MyCode\ZBlogProject\ZBlog
 
 ## Hard Prohibitions
 
-- 不要把当前主线改成个人品牌官网、项目集或 DevWiki Studio。
-- 不要把项目降级成简单 CRUD Demo。
-- 不要把 FlecBlog 后端 Go 代码机械翻译成 Java。
-- 不要在没有迁移任务的情况下直接大规模复制源码。
-- 不要丢弃 FlecBlog 前端可复用结构后重新发明页面。
-- 不要盲目照搬旧 ZBlog/Klee 的视觉和路线摇摆。
-- 不要把 `_reference/` 里的源码当作一方业务代码直接修改。
-- 不要提交密钥、服务器密码、域名证书、真实 `.env`。
+- 涓嶈鎶婂綋鍓嶄富绾挎敼鎴愪釜浜哄搧鐗屽畼缃戙€侀」鐩泦鎴?DevWiki Studio銆?
+- 涓嶈鎶婇」鐩檷绾ф垚绠€鍗?CRUD Demo銆?
+- 涓嶈鎶?FlecBlog 鍚庣 Go 浠ｇ爜鏈烘缈昏瘧鎴?Java銆?
+- 涓嶈鍦ㄦ病鏈夎縼绉讳换鍔＄殑鎯呭喌涓嬬洿鎺ュぇ瑙勬ā澶嶅埗婧愮爜銆?
+- 涓嶈涓㈠純 FlecBlog 鍓嶇鍙鐢ㄧ粨鏋勫悗閲嶆柊鍙戞槑椤甸潰銆?
+- 涓嶈鐩茬洰鐓ф惉鏃?ZBlog/Klee 鐨勮瑙夊拰璺嚎鎽囨憜銆?
+- 涓嶈鎶?`_reference/` 閲岀殑婧愮爜褰撲綔涓€鏂逛笟鍔′唬鐮佺洿鎺ヤ慨鏀广€?
+- 涓嶈鎻愪氦瀵嗛挜銆佹湇鍔″櫒瀵嗙爜銆佸煙鍚嶈瘉涔︺€佺湡瀹?`.env`銆?
 
 ## Feat Shape
 
-后续每个阶段任务按此格式推进：
+鍚庣画姣忎釜闃舵浠诲姟鎸夋鏍煎紡鎺ㄨ繘锛?
 
 ```text
 feat/<name>
@@ -67,26 +67,26 @@ Done definition:
 Status:
 ```
 
-`Done` 必须满足：
+`Done` 蹇呴』婊¤冻锛?
 
-- 实现完成；
-- 验证命令运行通过；
-- 文档同步更新；
-- 遗留问题明确记录；
-- 没有混入无关改动。
+- 瀹炵幇瀹屾垚锛?
+- 楠岃瘉鍛戒护杩愯閫氳繃锛?
+- 鏂囨。鍚屾鏇存柊锛?
+- 閬楃暀闂鏄庣‘璁板綍锛?
+- 娌℃湁娣峰叆鏃犲叧鏀瑰姩銆?
 
 ## Verification Rules
 
-文档任务：
+鏂囨。浠诲姟锛?
 
 ```powershell
 Test-Path docs
 Get-ChildItem docs -File
-Select-String -Path docs\*.md -Pattern "本文职责"
+Select-String -Path docs\*.md -Pattern "鏈枃鑱岃矗"
 git status --short
 ```
 
-前端任务：
+鍓嶇浠诲姟锛?
 
 ```powershell
 npm install
@@ -94,14 +94,14 @@ npm run type-check
 npm run build
 ```
 
-后端任务：
+鍚庣浠诲姟锛?
 
 ```powershell
 mvn test
 mvn package
 ```
 
-部署任务：
+閮ㄧ讲浠诲姟锛?
 
 ```powershell
 docker compose config
