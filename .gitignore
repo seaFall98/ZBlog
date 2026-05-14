@@ -1,0 +1,24 @@
+/.idea/
+/.vscode/
+/.DS_Store
+
+# Local reference source. Keep it available for inspection, but do not treat it
+# as first-party project code until an explicit migration task copies pieces out.
+/_reference/
+
+# Runtime/build output
+node_modules/
+.nuxt/
+.output/
+dist/
+dev-dist/
+target/
+/logs/
+uploads/
+*.tsbuildinfo
+*.log
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
