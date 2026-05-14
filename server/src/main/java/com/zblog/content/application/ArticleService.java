@@ -32,6 +32,10 @@ public class ArticleService {
     return articleRepository.randomPublishedSlug();
   }
 
+  public PageResponse<Map<String, Object>> searchPublic(String keyword, int page, int pageSize) {
+    return articleRepository.searchPublic(keyword, page, pageSize);
+  }
+
   public PageResponse<Map<String, Object>> listAdmin(
       int page, int pageSize, String keyword, Boolean published) {
     return articleRepository.listAdmin(page, pageSize, keyword, published);

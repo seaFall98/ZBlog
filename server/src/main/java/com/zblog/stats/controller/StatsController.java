@@ -1,0 +1,68 @@
+package com.zblog.stats.controller;
+
+import com.zblog.common.api.ApiResponse;
+import com.zblog.common.api.PageResponse;
+import com.zblog.stats.application.StatsService;
+import java.util.List;
+import java.util.Map;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1")
+public class StatsController {
+
+  private final StatsService statsService;
+
+  public StatsController(StatsService statsService) {
+    this.statsService = statsService;
+  }
+
+  @GetMapping("/stats/site")
+  public ApiResponse<Map<String, Object>> siteStats() {
+    return ApiResponse.ok(statsService.siteStats());
+  }
+
+  @GetMapping("/stats/archives")
+  public ApiResponse<Map<String, Object>> archiveStats() {
+    return ApiResponse.ok(statsService.archiveStats());
+  }
+
+  @GetMapping("/admin/stats/dashboard")
+  public ApiResponse<Map<String, Object>> dashboard() {
+    return ApiResponse.ok(statsService.dashboard());
+  }
+
+  @GetMapping("/admin/stats/trend")
+  public ApiResponse<List<Map<String, Object>>> trend(
+      @RequestParam(name = "start_date", required = false) String startDate,
+      @RequestParam(name = "end_date", required = false) String endDate,
+      @RequestParam(defaultValue = "daily") String type) {
+    return ApiResponse.ok(statsService.trend(startDate, endDate, type));
+  }
+
+  @GetMapping("/admin/stats/category")
+  public ApiResponse<List<Map<String, Object>>> categoryStats() {
+    return ApiResponse.ok(statsService.categoryStats());
+  }
+
+  @GetMapping("/admin/stats/tag")
+  public ApiResponse<List<Map<String, Object>>> tagStats() {
+    return ApiResponse.ok(statsService.tagStats());
+  }
+
+  @GetMapping("/admin/stats/contribution")
+  public ApiResponse<List<Map<String, Object>>> contribution(
+      @RequestParam(required = false) Integer year, @RequestParam(required = false) Integer month) {
+    return ApiResponse.ok(statsService.contribution(year, month));
+  }
+
+  @GetMapping("/admin/stats/visits")
+  public ApiResponse<PageResponse<Map<String, Object>>> visits(
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(name = "page_size", defaultValue = "20") int pageSize) {
+    return ApiResponse.ok(statsService.visits(page, pageSize));
+  }
+}

@@ -32,6 +32,14 @@ public class ArticleController {
     return ApiResponse.ok(articleService.randomPublishedSlug());
   }
 
+  @GetMapping("/articles/search")
+  public ApiResponse<PageResponse<Map<String, Object>>> search(
+      @RequestParam(defaultValue = "") String keyword,
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(name = "page_size", defaultValue = "10") int pageSize) {
+    return ApiResponse.ok(articleService.searchPublic(keyword, page, pageSize));
+  }
+
   @GetMapping("/articles/{slug}")
   public ApiResponse<Map<String, Object>> getPublic(@PathVariable String slug) {
     return ApiResponse.ok(articleService.getPublicBySlug(slug));

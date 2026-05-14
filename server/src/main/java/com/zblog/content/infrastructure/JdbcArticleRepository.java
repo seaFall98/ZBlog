@@ -78,6 +78,38 @@ public class JdbcArticleRepository {
     return slugs.getFirst();
   }
 
+  public PageResponse<Map<String, Object>> searchPublic(String keyword, int page, int pageSize) {
+    int offset = (page - 1) * pageSize;
+    String normalized = keyword == null ? "" : keyword.trim().toLowerCase();
+    List<Object> args = new ArrayList<>();
+    StringBuilder where = new StringBuilder(" where a.status = 'PUBLISHED'");
+    if (!normalized.isBlank()) {
+      where.append(
+          " and (lower(a.title) like ? or lower(a.summary) like ? or lower(a.content_text) like ?)");
+      String like = "%" + normalized + "%";
+      args.add(like);
+      args.add(like);
+      args.add(like);
+    }
+    Long total =
+        jdbcTemplate.queryForObject(
+            "select count(*) from articles a left join categories c on c.id = a.category_id"
+                + where,
+            Long.class,
+            args.toArray());
+    args.add(pageSize);
+    args.add(offset);
+    List<Map<String, Object>> articles =
+        jdbcTemplate
+            .queryForList(
+                baseSelect() + where + " order by a.published_at desc, a.id desc limit ? offset ?",
+                args.toArray())
+            .stream()
+            .map(this::withRelations)
+            .toList();
+    return new PageResponse<>(articles, total == null ? 0 : total, page, pageSize);
+  }
+
   public PageResponse<Map<String, Object>> listAdmin(
       int page, int pageSize, String keyword, Boolean published) {
     int offset = (page - 1) * pageSize;
