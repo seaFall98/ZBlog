@@ -9,6 +9,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安装依赖
+RUN npm install -g npm@11.9.0
 RUN npm ci
 
 # 复制源代码

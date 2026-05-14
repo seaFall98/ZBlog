@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zblog-postgres
+    environment:
+      POSTGRES_DB: zblog
+      POSTGRES_USER: zblog
+      POSTGRES_PASSWORD: zblog
+    ports:
+      - "5432:5432"
+    volumes:
+      - zblog_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zblog -d zblog"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build:
+      context: ./server
+    container_name: zblog-server
+    environment:
+      ZBLOG_DATASOURCE_URL: jdbc:postgresql://postgres:5432/zblog
+      ZBLOG_DATASOURCE_USERNAME: zblog
+      ZBLOG_DATASOURCE_PASSWORD: zblog
+      ZBLOG_JWT_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      ZBLOG_ADMIN_USERNAME: admin
+      ZBLOG_ADMIN_PASSWORD: admin123456
+    ports:
+      - "8080:8080"
+    volumes:
+      - zblog_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  blog:
+    build:
+      context: ./blog
+    container_name: zblog-blog
+    environment:
+      NUXT_PUBLIC_API_URL: http://host.docker.internal:8080/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+
+  admin:
+    build:
+      context: ./admin
+    container_name: zblog-admin
+    environment:
+      API_URL: http://host.docker.internal:8080/api/v1
+    ports:
+      - "4000:4000"
+    depends_on:
+      - server
+
+volumes:
+  zblog_postgres_data:
+  zblog_uploads:

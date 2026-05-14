@@ -69,4 +69,14 @@ class FoundationApiTest {
     assertThat(body).isNotNull();
     assertThat(body.get("code")).isEqualTo(401);
   }
+
+  @Test
+  void publicMomentsPlaceholderReturnsEmptyPage() {
+    ResponseEntity<Map> response = restTemplate.getForEntity("/api/v1/moments", Map.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<?, ?> page = (Map<?, ?>) response.getBody().get("data");
+    assertThat(page.get("list")).asList().isEmpty();
+    assertThat(((Number) page.get("total")).longValue()).isZero();
+  }
 }
