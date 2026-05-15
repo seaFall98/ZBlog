@@ -6,10 +6,13 @@ import com.zblog.content.application.MarkdownRenderer.RenderedContent;
 import com.zblog.content.infrastructure.JdbcArticleRepository;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -21,9 +24,12 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class ArticleService {
 
+  private static final Pattern MARKDOWN_IMAGE_PATTERN = Pattern.compile("!\\[[^]]*]\\(([^)]+)\\)");
+
   private final JdbcArticleRepository articleRepository;
   private final MarkdownRenderer markdownRenderer;
   private final JdbcTemplate jdbcTemplate;
+  private final Path uploadRoot = Path.of("uploads").toAbsolutePath().normalize();
 
   public ArticleService(
       JdbcArticleRepository articleRepository,
@@ -87,21 +93,26 @@ public class ArticleService {
     String slug = textOrDefault(request, "slug", existing.get("slug").toString());
     String markdown = textOrDefault(request, "content", value(existing, "content_markdown"));
     RenderedContent rendered = markdownRenderer.render(markdown);
-    return articleRepository.update(
-        id,
-        title,
-        slug,
-        markdown,
-        rendered.html(),
-        rendered.text(),
-        textOrDefault(request, "summary", value(existing, "summary")),
-        nullableTextOrDefault(request, "cover", value(existing, "cover")),
-        nullableLong(request, "category_id"),
-        tagIds(request),
-        nullableTextOrDefault(request, "location", value(existing, "location")),
-        boolOrDefault(request, "is_top", (Boolean) existing.get("is_top")),
-        boolOrDefault(request, "is_essence", (Boolean) existing.get("is_essence")),
-        boolOrDefault(request, "is_outdated", (Boolean) existing.get("is_outdated")));
+    Map<String, Object> updated =
+        articleRepository.update(
+            id,
+            title,
+            slug,
+            markdown,
+            rendered.html(),
+            rendered.text(),
+            textOrDefault(request, "summary", value(existing, "summary")),
+            nullableTextOrDefault(request, "cover", value(existing, "cover")),
+            nullableLong(request, "category_id"),
+            tagIds(request),
+            nullableTextOrDefault(request, "location", value(existing, "location")),
+            boolOrDefault(request, "is_top", (Boolean) existing.get("is_top")),
+            boolOrDefault(request, "is_essence", (Boolean) existing.get("is_essence")),
+            boolOrDefault(request, "is_outdated", (Boolean) existing.get("is_outdated")));
+    if (request.containsKey("is_publish")) {
+      return bool(request, "is_publish") ? articleRepository.publish(id) : articleRepository.unpublish(id);
+    }
+    return updated;
   }
 
   public Map<String, Object> publish(long id) {
@@ -126,6 +137,7 @@ public class ArticleService {
       String filename = file.getOriginalFilename() == null ? "article.md" : file.getOriginalFilename();
       try {
         String markdown = new String(file.getBytes(), StandardCharsets.UTF_8);
+        validateMarkdownAssets(markdown);
         ParsedArticle parsed = parseArticle(filename, markdown, sourceType);
         InsertResult category = ensureCategory(parsed.category());
         List<InsertResult> tagResults = parsed.tags().stream().map(this::ensureTag).toList();
@@ -179,15 +191,56 @@ public class ArticleService {
     try {
       java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
       try (ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
+        String markdown = markdownForZip(value(article, "content_markdown"), zip);
         String filename = article.get("slug") + ".md";
         zip.putNextEntry(new ZipEntry(filename));
-        zip.write(value(article, "content_markdown").getBytes(StandardCharsets.UTF_8));
+        zip.write(markdown.getBytes(StandardCharsets.UTF_8));
         zip.closeEntry();
       }
       return output.toByteArray();
     } catch (IOException exception) {
       throw new IllegalStateException("Failed to export article", exception);
     }
+  }
+
+  private String markdownForZip(String markdown, ZipOutputStream zip) throws IOException {
+    Matcher matcher = MARKDOWN_IMAGE_PATTERN.matcher(markdown == null ? "" : markdown);
+    StringBuilder rewritten = new StringBuilder();
+    while (matcher.find()) {
+      String url = matcher.group(1).trim();
+      if (url.startsWith("/uploads/")) {
+        String filename = url.substring("/uploads/".length());
+        Path asset = uploadRoot.resolve(filename).normalize();
+        if (asset.startsWith(uploadRoot) && Files.exists(asset)) {
+          String entryName = "assets/" + filename;
+          zip.putNextEntry(new ZipEntry(entryName));
+          Files.copy(asset, zip);
+          zip.closeEntry();
+          matcher.appendReplacement(rewritten, Matcher.quoteReplacement(matcher.group().replace(url, entryName)));
+        }
+      }
+    }
+    matcher.appendTail(rewritten);
+    return rewritten.toString();
+  }
+
+  private void validateMarkdownAssets(String markdown) {
+    Matcher matcher = MARKDOWN_IMAGE_PATTERN.matcher(markdown == null ? "" : markdown);
+    while (matcher.find()) {
+      String url = matcher.group(1).trim();
+      if (!isSupportedMarkdownImage(url)) {
+        throw new IllegalArgumentException("unsupported markdown image: " + url);
+      }
+    }
+  }
+
+  private boolean isSupportedMarkdownImage(String url) {
+    if (url.startsWith("/uploads/")) {
+      String filename = url.substring("/uploads/".length());
+      Path asset = uploadRoot.resolve(filename).normalize();
+      return asset.startsWith(uploadRoot) && Files.exists(asset);
+    }
+    return false;
   }
 
   private ParsedArticle parseArticle(String filename, String raw, String sourceType) {

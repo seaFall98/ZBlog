@@ -27,6 +27,7 @@ These areas have been brought to a real closed loop in the current repo state:
 - User/account baseline: database-backed login/register/profile/password/admin user CRUD.
 - Feedback/subscription/RSS baseline: public feedback tickets, email subscribers, and admin RSS read-state management.
 - Import/export baseline: admin article import, WeChat export, Markdown ZIP download, and comment import.
+- Batch 2 content assets: upload/public asset delivery and supported imported Markdown image links are automated-verified and Docker-verified; user browser re-acceptance is pending.
 - Compatibility endpoints for system admin and notifications that the current frontend expects.
 - Admin tools and AI utility endpoints: link metadata, video parsing, remote image download, AI config test, summary, AI summary, and title generation.
 - Batch 1 backend truth data: visit collection/stat derivation, persisted notifications/read-state, and honest system info are automated-verified and user-accepted in the local running stack.
@@ -37,10 +38,12 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ### Upload and public asset delivery
 
-- Admin upload exists at `POST /api/v1/admin/files`, stores file rows, and returns `/uploads/<filename>`.
-- Static serving for `/uploads/**` exists, but the full rendered-page closed loop still needs proof.
-- The public blog upload utility calls `POST /api/v1/upload`; Java currently has no matching public upload controller.
-- This is the next recommended closed loop because it directly affects editor images, comment images, imported assets, and visible blog rendering.
+- Status: automated verified and Docker verified; user browser re-acceptance pending.
+- Admin upload at `POST /api/v1/admin/files` and public upload at `POST /api/v1/upload` both write real files under `uploads/`, create `files` rows, and return `/uploads/<filename>` URLs with `original_name` for frontend callers.
+- Static serving for `/uploads/**` is covered by integration tests that fetch the returned URL over HTTP and verify the uploaded bytes.
+- Docker verification confirms the same returned `/uploads/<filename>` URL is reachable through backend `localhost:8080`, admin nginx `localhost:4000`, and blog Nuxt `localhost:3000`.
+- Admin delete removes the file from the list and deletes the physical asset so the old `/uploads/**` URL returns 404.
+- Public upload accepts only the known frontend upload types: `用户头像`, `评论贴图`, and `反馈投诉`; unknown types fail instead of being silently relabeled.
 
 ### Visit collection and real statistics
 
@@ -87,6 +90,7 @@ These are the highest-priority mismatches between frontend calls and backend rea
 These areas exist, but still rely too much on placeholders, hardcoded values, or deferred product decisions.
 
 - System data: CPU usage percentage, swap total/usage, DB size, DB connection count, and remote update source are explicitly deferred as `unsupported`; email and Feishu integrations are `disabled` until configured.
+- Import/export assets: Markdown import now supports already-uploaded `/uploads/**` image references; local relative images, remote image downloads during import, HTML `<img>` rewriting, and bundled ZIP media files remain deferred and must fail/report rather than silently importing broken paths.
 - Article AI summary persistence: the AI endpoint returns text to the editor, but a separate persisted `ai_summary` article field is not yet implemented.
 - Search and SEO: the main public endpoints exist, but some deeper analytics and ranking pieces still need follow-up if the product expects them.
 - Test coverage: too many tests only assert that the envelope exists; too few assert the business effect.
@@ -98,6 +102,23 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - PASS: `npm --prefix admin run type-check`.
 - OBSERVED: `npm --prefix blog run type-check` emitted a local `vue-router/volar/sfc-route-blocks` dependency-resolution warning for `@vue/language-core`; no Batch 1 blog code was changed.
 - ACCEPTED: user manually verified Batch 1 against the local running stack on 2026-05-15.
+
+## Batch 2 verification notes
+
+- PASS: `mvn -f server/pom.xml -Dtest=Batch2ContentAssetBatchTest test` - 7 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=P2ImportExportApiTest test` - 2 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=Phase4InteractionApiTest test` - 7 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 45 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix admin run type-check`.
+- OBSERVED: `npm --prefix blog run type-check` completed with the existing local `vue-router/volar/sfc-route-blocks` warning for missing `@vue/language-core`.
+- PASS: `npm --prefix admin run build`.
+- PASS: `npm --prefix blog run build`.
+- PASS: `docker compose up --build -d server admin blog`.
+- PASS: Docker upload proxy check uploaded `/uploads/1778865616634_docker-proxy-check.png`; `localhost:8080`, `localhost:4000`, and `localhost:3000` all returned 200 with the same 31-byte file.
+- PASS: Docker publish check created `docker-publish-check`, saved `is_publish=true` through `PUT /api/v1/admin/articles/{id}`, and public article lookup returned 200.
+- PASS: `问题清单2.md` avatar follow-up verified homepage and about-page owner images render direct `/uploads/...` URLs instead of Nuxt IPX `/_ipx/_/uploads/...`, and the real avatar/photo files return 200 from `localhost:3000`, `localhost:4000`, and `localhost:8080`.
+- PASS: `问题清单2.md` Markdown ZIP follow-up added a RED/GREEN export test; ZIP download now rewrites `/uploads/<file>` Markdown links to `assets/<file>` and includes the image bytes in the ZIP.
+- Pending: user browser re-acceptance on the checklist screens.
 
 ## What to do next
 

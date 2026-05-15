@@ -23,68 +23,77 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
-ID: BACKEND-TRUTH-DATA-BATCH-001
+ID: CONTENT-ASSET-CLOSED-LOOP-BATCH-002
 
-Status: closed
+Status: automated_and_docker_verified_user_acceptance_pending
 
 Scope:
-- Batch 1 only: backend-truth-data-batch.
-- VISIT-STATS-CLOSED-LOOP: implement `POST /api/v1/collect` and derive `/stats/site`, `/admin/stats/dashboard`, `/admin/stats/trend`, and `/admin/stats/visits` from persisted visit data.
-- NOTIFICATIONS-CLOSED-LOOP: replace notification stubs with persisted notifications, unread counts, and read-state mutations; connect at least one real business event.
-- SYSTEM-INFO-HONESTY-CLOSED-LOOP: replace fake system info values with real runtime/DB/disk data where practical and explicit unsupported/disabled values where not.
+- Batch 2 only: content-asset-closed-loop.
+- UPLOAD-ASSET-CLOSED-LOOP: prove admin/public uploads write real files, create `files` rows, return publicly served URLs, and behave consistently after deletion.
+- IMPORT-EXPORT-DEEP-COMPLETION: prove imported/exported article content does not silently keep broken image paths, and comment import either binds to a target article or reports failed items.
 
 Frontend/admin entry pages:
-- Public blog client tracker: `blog/app/plugins/tracker.client.ts` posts pageview/duration/event payloads to `/api/v1/collect`.
-- Public stats page and site widgets call `/api/v1/stats/site` and `/api/v1/stats/archives`.
-- Admin dashboard and visit list call `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits`.
-- Admin notification bell/list calls `/api/v1/admin/notifications`, `/api/v1/admin/notifications/{id}/read`, and `/api/v1/admin/notifications/read-all`.
-- Public notification page calls `/api/v1/notifications`, `/api/v1/notifications/{id}/read`, and `/api/v1/notifications/read-all`.
-- Admin system page calls `/api/v1/admin/system/static`, `/api/v1/admin/system/dynamic`, and `/api/v1/admin/system/check-update`.
+- Admin file page uses `POST /api/v1/admin/files`, `GET /api/v1/admin/files`, and `DELETE /api/v1/admin/files/{id}`.
+- Admin article editor inserts uploaded media URLs into Markdown through `/api/v1/admin/files`.
+- Public blog comment, feedback, and avatar upload utilities post to `/api/v1/upload` and then use returned `file_url` in public content.
+- Admin import/export page calls `POST /api/v1/admin/articles/import`, `POST /api/v1/admin/articles/{id}/wechat/export`, `GET /api/v1/admin/articles/{id}/download/zip`, and `POST /api/v1/admin/comments/import`.
 
 Exact API calls:
-- `POST /api/v1/collect`
-- `GET /api/v1/stats/site`
-- `GET /api/v1/admin/stats/dashboard`
-- `GET /api/v1/admin/stats/trend`
-- `GET /api/v1/admin/stats/visits`
-- `GET /api/v1/admin/notifications`
-- `PUT /api/v1/admin/notifications/{id}/read`
-- `PUT /api/v1/admin/notifications/read-all`
-- `GET /api/v1/notifications`
-- `PUT /api/v1/notifications/{id}/read`
-- `PUT /api/v1/notifications/read-all`
-- `GET /api/v1/admin/system/static`
-- `GET /api/v1/admin/system/dynamic`
-- `POST /api/v1/admin/system/check-update`
+- `POST /api/v1/upload`
+- `POST /api/v1/admin/files`
+- `GET /api/v1/admin/files`
+- `DELETE /api/v1/admin/files/{id}`
+- `GET /uploads/{filename}`
+- `POST /api/v1/admin/articles/import`
+- `GET /api/v1/admin/articles/{id}`
+- `POST /api/v1/admin/articles/{id}/wechat/export`
+- `GET /api/v1/admin/articles/{id}/download/zip`
+- `POST /api/v1/admin/comments/import`
+- `GET /api/v1/comments?target_type=article&target_key={slug}`
 
 Current backend implementation:
-- `POST /api/v1/collect` persists tracker payloads into `visit_events`.
-- `/api/v1/stats/site`, `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits` derive visit-related values from `visit_events`.
-- Admin and public notification APIs read and mutate the shared `notifications` table.
-- Feedback submission creates a persisted `feedback_new` notification.
-- `SystemAdminController` returns real runtime, DB, table-count, disk, host, and timezone data where practical, and explicit `unsupported`/`disabled` states where not.
+- Admin upload and public upload both write under local `uploads/` and store rows in `files`.
+- Static resource mapping exposes `/uploads/**` from the local upload directory.
+- File deletion currently soft-deletes the DB row.
+- Article import stores Markdown and renders a basic HTML snapshot.
+- Markdown ZIP download currently exports the Markdown entry only.
+- Comment import accepts Artalk-like JSON and inserts comments.
 
 Missing persistence or derived data:
-- Closed for this batch: visit/event persistence, notification persistence/read state, and system-info honesty baseline are implemented.
-- Deferred fields remain explicit: CPU usage percentage, swap totals/usage, DB size, DB connection count, remote version source, and visit-log geo/browser/OS parsing.
+- Tests must prove uploaded files are actually served over HTTP and that delete behavior does not leave a misleading listed/served state.
+- Public upload type and response shape must match frontend expectations for comment/avatar/feedback upload callers.
+- Imported Markdown image handling must support a real, accessible Markdown image link path and reject or report unsupported local/relative image paths instead of silently importing broken references.
+- Comment import must not silently attach comments to a fake default article when the import item lacks a target.
 
 User-visible expected behavior:
-- Visiting the blog changes site/admin visit statistics and admin visit logs.
-- Submitting a real event such as feedback creates a notification and unread count decreases after marking read.
-- System page no longer claims fake operational values.
+- Uploaded images can be inserted into an article/comment and opened through the returned URL after reload.
+- Deleted media no longer appears in the admin file list and its public availability is consistent with the delete semantics.
+- Importing Markdown with a supported public image URL preserves a usable image reference in the article and ZIP export.
+- Importing Markdown with unsupported local image paths reports failure instead of pretending success.
+- Comment import binds to the intended article target or reports a failed item.
 
 Automated RED test:
-- Add a backend integration test class for Batch 1 before production code, then run targeted test and observe failure from missing/stubbed behavior.
+- Add or extend backend integration tests before production code, then run targeted tests and observe failures for unproven asset delivery/delete/import semantics.
 
 Automated GREEN verification:
-- PASS: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` - 3 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml test` - 38 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch2ContentAssetBatchTest test` - 7 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=P2ImportExportApiTest test` - 2 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=Phase4InteractionApiTest test` - 7 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 45 tests, 0 failures, 0 errors.
 - PASS: `npm --prefix admin run type-check`.
-- OBSERVED: `npm --prefix blog run type-check` emitted a local `vue-router/volar/sfc-route-blocks` dependency-resolution warning for `@vue/language-core`; no Batch 1 blog code was changed.
+- OBSERVED: `npm --prefix blog run type-check` completed with the existing local `vue-router/volar/sfc-route-blocks` warning for missing `@vue/language-core`.
+- PASS: `npm --prefix admin run build`.
+- PASS: `npm --prefix blog run build`.
+- PASS: `docker compose up --build -d server admin blog`.
+- PASS: Docker upload proxy check uploaded `/uploads/1778865616634_docker-proxy-check.png`; `http://localhost:8080`, `http://localhost:4000`, and `http://localhost:3000` all returned 200 with the same 31-byte file.
+- PASS: Docker publish check created article `docker-publish-check`, updated it through `PUT /api/v1/admin/articles/{id}` with `is_publish=true`, and `GET /api/v1/articles/docker-publish-check` returned 200.
+- PASS: `问题清单2.md` avatar follow-up verified that homepage and about-page owner images render direct `/uploads/...` URLs instead of Nuxt IPX `/_ipx/_/uploads/...`, and the actual avatar/photo files return 200 from `localhost:3000`, `localhost:4000`, and `localhost:8080`.
+- PASS: `问题清单2.md` Markdown ZIP follow-up added a RED/GREEN export test; ZIP download now rewrites `/uploads/<file>` Markdown links to `assets/<file>` and includes the image bytes in the ZIP.
 
 Manual browser verification:
-- ACCEPTED: user manually verified Batch 1 against the local running stack on 2026-05-15.
-- ACCEPTED: visit collection/stat pages, notifications, system information honesty, service-worker/admin white-screen fix, menu cleanup, feedback entry, and `/api/v1/upload` 200 behavior were checked during manual acceptance.
+- Local Docker verification confirms the previously broken relative `/uploads/**` URLs now work from backend, admin nginx, and blog Nuxt origins.
+- Local Docker verification confirms article edit-page publish persistence through the same `PUT /api/v1/admin/articles/{id}` path used by the admin UI.
+- User re-acceptance is still pending in the browser for the exact checklist screens.
 
 ## Closed Implementation Loops
 
@@ -119,14 +128,14 @@ This backlog is the current missing-feature source of truth. It is based on the 
 
 ### 1. Upload and Public Asset Delivery
 
-Status: open, highest visible priority
+Status: closed, user re-acceptance pending
 
 Current facts:
 - Admin upload exists at `POST /api/v1/admin/files`.
+- Public upload exists at `POST /api/v1/upload` for the known frontend public upload types.
 - Uploaded DB rows store URLs like `/uploads/<filename>`.
-- Spring static mapping exists for `/uploads/**`.
-- FlecBlog also exposes public upload at `POST /api/v1/upload`.
-- Blog comment/editor utilities call `/upload`, but Java backend has no public `/api/v1/upload` controller.
+- Spring static mapping exposes `/uploads/**` from the backend origin.
+- Admin Docker nginx and blog Nuxt now proxy `/uploads/**` so relative upload URLs resolve from `localhost:4000` and `localhost:3000` as well as `localhost:8080`.
 
 Done means:
 - Admin-uploaded files render through the public blog URL after reload.

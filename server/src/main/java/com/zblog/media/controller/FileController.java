@@ -2,9 +2,11 @@ package com.zblog.media.controller;
 
 import com.zblog.common.api.ApiResponse;
 import com.zblog.common.api.PageResponse;
+import com.zblog.common.exception.BusinessException;
 import com.zblog.media.application.FileService;
 import java.io.IOException;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,9 +29,18 @@ public class FileController {
   }
 
   @PostMapping("/upload")
-  public ApiResponse<Map<String, Object>> uploadFeedbackAttachment(@RequestPart("file") MultipartFile file)
+  public ApiResponse<Map<String, Object>> uploadPublic(
+      @RequestPart("file") MultipartFile file,
+      @RequestParam(name = "type", defaultValue = "评论贴图") String type)
       throws IOException {
-    return ApiResponse.ok(fileService.upload(file, "反馈投诉"));
+    return ApiResponse.ok(fileService.upload(file, publicUploadType(type)));
+  }
+
+  private String publicUploadType(String type) {
+    return switch (type) {
+      case "用户头像", "评论贴图", "反馈投诉" -> type;
+      default -> throw new BusinessException(40001, "不支持的上传类型", HttpStatus.BAD_REQUEST);
+    };
   }
 
   @GetMapping("/admin/files")

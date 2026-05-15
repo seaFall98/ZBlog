@@ -25,7 +25,7 @@ onMounted(async () => {
 <template>
   <div class="card-widget card-info">
     <div class="author-avatar">
-      <NuxtImg :src="avatarUrl" alt="头像" loading="lazy" />
+      <img :src="avatarUrl" alt="头像" loading="lazy" />
     </div>
     <div class="author-name">{{ basicConfig.author }}</div>
     <div class="author-desc">{{ basicConfig.author_desc }}</div>

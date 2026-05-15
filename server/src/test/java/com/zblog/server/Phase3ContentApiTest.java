@@ -121,14 +121,14 @@ class Phase3ContentApiTest {
     assertThat(adminDetail.get("content_markdown")).isEqualTo("# Phase 3\n\nJava backend content.");
     assertThat(adminDetail.get("content")).asString().contains("<h1>Phase 3</h1>");
 
-    ResponseEntity<Map> publishResponse =
+    ResponseEntity<Map> publishByUpdateResponse =
         restTemplate.exchange(
-            "/api/v1/admin/articles/" + articleId + "/publish",
-            HttpMethod.POST,
-            new HttpEntity<>(headers),
+            "/api/v1/admin/articles/" + articleId,
+            HttpMethod.PUT,
+            new HttpEntity<>(Map.of("is_publish", true), headers),
             Map.class);
-    assertThat(publishResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(((Map<?, ?>) data(publishResponse)).get("is_publish")).isEqualTo(true);
+    assertThat(publishByUpdateResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(((Map<?, ?>) data(publishByUpdateResponse)).get("is_publish")).isEqualTo(true);
 
     ResponseEntity<Map> publicArticleResponse =
         restTemplate.getForEntity("/api/v1/articles/phase-3-article", Map.class);

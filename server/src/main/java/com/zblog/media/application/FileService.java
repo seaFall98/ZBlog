@@ -3,6 +3,7 @@ package com.zblog.media.application;
 import com.zblog.common.api.PageResponse;
 import com.zblog.common.exception.BusinessException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -66,6 +67,7 @@ public class FileService {
         "id", id,
         "file_url", url,
         "file_name", filename,
+        "original_name", original,
         "file_size", file.getSize());
   }
 
@@ -92,12 +94,31 @@ public class FileService {
             where deleted_at is null
             order by upload_time desc, id desc
             """);
-    list.forEach(row -> row.put("upload_time", row.get("upload_time").toString()));
+    list.forEach(
+        row -> {
+          row.put("upload_time", row.get("upload_time").toString());
+          row.put("file_name", row.get("filename"));
+        });
     return new PageResponse<>(list, list.size(), page, pageSize);
   }
 
   public void delete(long id) {
+    List<String> filenames =
+        jdbcTemplate.query(
+            "select filename from files where id = ? and deleted_at is null",
+            (rs, rowNum) -> rs.getString("filename"),
+            id);
     jdbcTemplate.update("update files set deleted_at = current_timestamp where id = ?", id);
+    if (!filenames.isEmpty()) {
+      try {
+        Path target = uploadRoot.resolve(filenames.getFirst()).normalize();
+        if (target.startsWith(uploadRoot)) {
+          Files.deleteIfExists(target);
+        }
+      } catch (IOException exception) {
+        throw new UncheckedIOException(exception);
+      }
+    }
   }
 
   long insertAndReturnId(String sql, Object... args) {

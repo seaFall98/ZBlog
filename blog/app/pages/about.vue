@@ -133,7 +133,7 @@ const formatWords = (words: string) => {
         </div>
       </div>
       <div class="PI-box-right">
-        <NuxtImg :src="info.photo" alt="个人照片" loading="lazy" />
+        <img :src="info.photo" alt="个人照片" loading="lazy" />
       </div>
     </div>
 

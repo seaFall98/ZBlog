@@ -113,6 +113,10 @@ public class CommentService {
         if (content.isBlank()) {
           throw new IllegalArgumentException("Comment content is required");
         }
+        String targetKey = firstText(comment, "target_key", "page_key", "path", "url");
+        if (targetKey.isBlank()) {
+          throw new IllegalArgumentException("target_key is required");
+        }
         insertAndReturnId(
             """
             insert into comments (
@@ -121,7 +125,7 @@ public class CommentService {
             ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             textOrDefault(comment, "target_type", "article"),
-            firstTextOrDefault(comment, "target_key", "hello-zblog", "page_key", "path", "url"),
+            targetKey,
             nullableNumber(comment, "parent_id"),
             content,
             firstTextOrDefault(comment, "nickname", "Guest", "nick", "name"),
