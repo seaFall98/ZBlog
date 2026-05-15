@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getArticleBySlug } from '@/composables/api/article';
+import type { Article } from '@@/types/article';
 import type { TocItem } from '@/utils/markdown';
 
 interface Props {
@@ -10,14 +12,30 @@ const emit = defineEmits<{
   close: [];
 }>();
 
+const route = useRoute();
 const { currentArticle } = useCurrentArticle();
 const activeId = ref<string>('');
 const tocListRef = ref<HTMLElement | null>(null);
 const tocPopoverRef = ref<HTMLElement | null>(null);
 
+const { data: mobileArticle } = await useAsyncData<Article | null>(
+  () => `mobile-toc-${String(route.params.slug || '')}`,
+  async () => {
+    const slug = route.params.slug;
+    if (typeof slug !== 'string') return null;
+    return await getArticleBySlug(slug);
+  },
+  { watch: [() => route.params.slug] }
+);
+
+const articleSource = computed(() => {
+  const article = currentArticle.value || mobileArticle.value;
+  return article?.content_markdown || article?.content || '';
+});
+
 const toc = computed<TocItem[]>(() => {
-  if (!currentArticle.value?.content) return [];
-  return extractToc(currentArticle.value.content);
+  if (!articleSource.value) return [];
+  return extractToc(articleSource.value);
 });
 
 const hasToc = computed(() => toc.value.length > 0);

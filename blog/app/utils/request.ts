@@ -25,9 +25,14 @@ let refreshPromise: Promise<boolean> | null = null;
 // 刷新 Token
 const doRefreshToken = async (): Promise<boolean> => {
   try {
+    const headers: Record<string, string> = {};
+    if (accessToken.value) {
+      headers.Authorization = `Bearer ${accessToken.value}`;
+    }
     const res = await $fetch<ApiResponse<{ access_token: string }>>('/auth/refresh', {
       method: 'POST',
       baseURL: getBaseURL(),
+      headers,
       credentials: 'include', // 发送 Cookie
     });
     if (res.code === 0 && res.data) {
@@ -50,7 +55,7 @@ export async function apiRequest<T = any>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  if (accessToken.value && url !== '/auth/refresh') {
+  if (accessToken.value) {
     headers['Authorization'] = `Bearer ${accessToken.value}`;
   }
 

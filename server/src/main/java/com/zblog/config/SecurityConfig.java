@@ -13,6 +13,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -46,6 +48,9 @@ public class SecurityConfig {
                     .requestMatchers(
                         "/api/v1/health",
                         "/api/v1/auth/login",
+                        "/api/v1/auth/register",
+                        "/api/v1/feedback/**",
+                        "/api/v1/subscribe/**",
                         "/api/v1/menus",
                         "/api/v1/categories/**",
                         "/api/v1/tags/**",
@@ -75,6 +80,11 @@ public class SecurityConfig {
     return username -> {
       throw new UsernameNotFoundException(username);
     };
+  }
+
+  @Bean
+  PasswordEncoder passwordEncoder() {
+    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
   }
 
   @Bean

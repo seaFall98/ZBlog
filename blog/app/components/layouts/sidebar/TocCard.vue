@@ -1,12 +1,31 @@
 <script setup lang="ts">
+import { getArticleBySlug } from '@/composables/api/article';
+import type { Article } from '@@/types/article';
+
+const route = useRoute();
 const { currentArticle } = useCurrentArticle();
 const activeId = ref<string>('');
 const tocListRef = ref<HTMLElement | null>(null);
 
+const { data: sidebarArticle } = await useAsyncData<Article | null>(
+  () => `sidebar-toc-${String(route.params.slug || '')}`,
+  async () => {
+    const slug = route.params.slug;
+    if (typeof slug !== 'string') return null;
+    return await getArticleBySlug(slug);
+  },
+  { watch: [() => route.params.slug] }
+);
+
+const articleSource = computed(() => {
+  const article = currentArticle.value || sidebarArticle.value;
+  return article?.content_markdown || article?.content || '';
+});
+
 // 从当前文章中提取目录
 const toc = computed<TocItem[]>(() => {
-  if (!currentArticle.value?.content) return [];
-  return extractToc(currentArticle.value.content);
+  if (!articleSource.value) return [];
+  return extractToc(articleSource.value);
 });
 
 // 判断是否有目录项

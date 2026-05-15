@@ -31,6 +31,11 @@ const { data: initialData } = await useAsyncData(`post-${route.params.slug}`, as
 
 // 初始化本地 article ref
 article.value = initialData.value?.article ?? null;
+if (article.value) {
+  setCurrentArticle(article.value);
+} else {
+  clearCurrentArticle();
+}
 
 // 动态页面标题和 SEO
 useHead({

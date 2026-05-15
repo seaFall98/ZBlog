@@ -1,11 +1,11 @@
 # REUSE_ASSET_AUDIT.md
 
-> 本文职责：盘点旧 `D:\MyCode\ZBlogProject\ZBlog` 的可迁移资产，明确直接复用、重构复用、仅参考和丢弃范围。
+> 本文职责：盘点旧 `D:\MyCode\ZBlogProject\ZBlog`_1 的可迁移资产，明确直接复用、重构复用、仅参考和丢弃范围。
 
 ## 旧项目来源
 
 ```text
-D:\MyCode\ZBlogProject\ZBlog
+D:\MyCode\ZBlogProject\ZBlog_1
 ```
 
 旧项目不是新主线，但有若干已经验证过的高价值成果，不能因为重启就全部丢掉。

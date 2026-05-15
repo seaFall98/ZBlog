@@ -4,7 +4,9 @@ import com.zblog.comment.application.CommentService;
 import com.zblog.common.api.ApiResponse;
 import com.zblog.common.api.PageResponse;
 import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -46,6 +48,13 @@ public class CommentController {
   @PutMapping("/admin/comments/{id}/toggle-status")
   public ApiResponse<Map<String, Object>> toggleStatus(@PathVariable long id) {
     return ApiResponse.ok(commentService.toggleStatus(id));
+  }
+
+  @PostMapping(value = "/admin/comments/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ApiResponse<Map<String, Object>> importComments(
+      @RequestParam(name = "source_type", defaultValue = "artalk") String sourceType,
+      @RequestParam("file") MultipartFile file) {
+    return ApiResponse.ok(commentService.importComments(sourceType, file));
   }
 
   @DeleteMapping("/admin/comments/{id}")

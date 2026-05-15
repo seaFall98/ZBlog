@@ -4,7 +4,12 @@ import com.zblog.common.api.ApiResponse;
 import com.zblog.common.api.PageResponse;
 import com.zblog.content.application.ArticleService;
 import java.util.Map;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -62,6 +67,29 @@ public class ArticleController {
   @PostMapping("/admin/articles")
   public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, Object> request) {
     return ApiResponse.ok(articleService.create(request));
+  }
+
+  @PostMapping(value = "/admin/articles/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ApiResponse<Map<String, Object>> importArticles(
+      @RequestParam(name = "source_type", defaultValue = "markdown") String sourceType,
+      @RequestParam(name = "files") MultipartFile[] files) {
+    return ApiResponse.ok(articleService.importArticles(sourceType, files));
+  }
+
+  @PostMapping("/admin/articles/{id}/wechat/export")
+  public ApiResponse<Map<String, Object>> exportToWeChat(@PathVariable long id) {
+    return ApiResponse.ok(articleService.exportToWeChat(id));
+  }
+
+  @GetMapping("/admin/articles/{id}/download/zip")
+  public ResponseEntity<byte[]> downloadZip(@PathVariable long id) {
+    byte[] zip = articleService.downloadMarkdownZip(id);
+    return ResponseEntity.ok()
+        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition.attachment().filename("article-" + id + ".zip").build().toString())
+        .body(zip);
   }
 
   @PutMapping("/admin/articles/{id}")

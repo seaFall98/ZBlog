@@ -25,7 +25,7 @@ The current direction is to reuse the FlecBlog frontend baseline where it alread
 
 ## Reference sources
 
-- `docs/` contains the active product and implementation direction.
+- Read `docs/README.md` first, then `docs/EXECUTION_LOCK.md`. The root `docs/` files contain active direction; `docs/archive/` is historical reference only.
 - `_reference/FlecBlog/` is the frontend reference baseline. Compare against it before changing `blog/` or `admin/`.
 - FlecBlog’s `server/` is Go-based and should be treated as a reference for behavior and contracts, not as code to port mechanically.
 
@@ -51,13 +51,13 @@ mvn -f server/pom.xml package
 Run a single test class:
 
 ```powershell
-mvn -f server/pom.xml -Dtest=Phase4InteractionApiTest test
+mvn -f server/pom.xml -Dtest=UserAccountApiTest test
 ```
 
 Run a single test method:
 
 ```powershell
-mvn -f server/pom.xml -Dtest=Phase4InteractionApiTest#adminMenusCanBeCreatedUpdatedAndDeleted test
+mvn -f server/pom.xml -Dtest=UserAccountApiTest#profileCanBeUpdatedAndReadBack test
 ```
 
 ### Admin frontend
@@ -80,6 +80,7 @@ npm --prefix blog run build
 
 ## Practical repo-specific reminders
 
+- Continue approved multi-step remediation work proactively instead of waiting to be nudged; at the end of each turn, state the next concrete step.
 - If you change article editing or admin article APIs, keep the Markdown editor bound to Markdown input, not rendered HTML.
 - If you change menu code, keep the tree shape intact and verify both public and admin menu consumers.
 - If you change frontend API wiring, check the running docker-compose stack as well as type-check/build output; SSR/base-URL issues can pass type-check but still fail at runtime.

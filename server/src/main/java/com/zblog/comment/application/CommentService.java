@@ -1,11 +1,17 @@
 package com.zblog.comment.application;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zblog.common.api.PageResponse;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommentService {
 
   private final JdbcTemplate jdbcTemplate;
+  private final ObjectMapper objectMapper;
 
-  public CommentService(JdbcTemplate jdbcTemplate) {
+  public CommentService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
     this.jdbcTemplate = jdbcTemplate;
+    this.objectMapper = objectMapper;
   }
 
   public PageResponse<Map<String, Object>> listPublic(
@@ -75,6 +83,70 @@ public class CommentService {
   public void delete(long id) {
     jdbcTemplate.update(
         "update comments set is_deleted = true, deleted_at = current_timestamp where id = ?", id);
+  }
+
+  public Map<String, Object> importComments(String sourceType, MultipartFile file) {
+    List<Map<String, Object>> errors = new ArrayList<>();
+    int success = 0;
+    List<Map<String, Object>> comments;
+    try {
+      String raw = new String(file.getBytes(), StandardCharsets.UTF_8);
+      comments = parseCommentItems(raw);
+    } catch (IOException | RuntimeException exception) {
+      return Map.of(
+          "total",
+          0,
+          "success",
+          0,
+          "failed",
+          1,
+          "user_created",
+          0,
+          "errors",
+          List.of(Map.of("index", 0, "content", "", "error", exception.getMessage())));
+    }
+
+    for (int i = 0; i < comments.size(); i++) {
+      Map<String, Object> comment = comments.get(i);
+      String content = firstText(comment, "content", "body", "text");
+      try {
+        if (content.isBlank()) {
+          throw new IllegalArgumentException("Comment content is required");
+        }
+        insertAndReturnId(
+            """
+            insert into comments (
+              target_type, target_key, parent_id, content, nickname, email, website, avatar,
+              location, browser, os
+            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            textOrDefault(comment, "target_type", "article"),
+            firstTextOrDefault(comment, "target_key", "hello-zblog", "page_key", "path", "url"),
+            nullableNumber(comment, "parent_id"),
+            content,
+            firstTextOrDefault(comment, "nickname", "Guest", "nick", "name"),
+            text(comment, "email"),
+            firstText(comment, "website", "link"),
+            text(comment, "avatar"),
+            text(comment, "location"),
+            text(comment, "browser"),
+            text(comment, "os"));
+        success++;
+      } catch (RuntimeException exception) {
+        errors.add(Map.of("index", i, "content", content, "error", exception.getMessage()));
+      }
+    }
+    return Map.of(
+        "total",
+        comments.size(),
+        "success",
+        success,
+        "failed",
+        errors.size(),
+        "user_created",
+        0,
+        "errors",
+        errors);
   }
 
   private List<Map<String, Object>> nest(List<Map<String, Object>> flat) {
@@ -181,5 +253,50 @@ public class CommentService {
   private Long nullableNumber(Map<String, Object> request, String key) {
     Object value = request.get(key);
     return value instanceof Number number ? number.longValue() : null;
+  }
+
+  private String firstText(Map<String, Object> request, String key, String... aliases) {
+    String value = text(request, key);
+    if (!value.isBlank()) {
+      return value;
+    }
+    for (String alias : aliases) {
+      value = text(request, alias);
+      if (!value.isBlank()) {
+        return value;
+      }
+    }
+    return "";
+  }
+
+  private String firstTextOrDefault(
+      Map<String, Object> request, String key, String fallback, String... aliases) {
+    String value = firstText(request, key, aliases);
+    return value.isBlank() ? fallback : value;
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> parseCommentItems(String raw) throws IOException {
+    Object parsed = objectMapper.readValue(raw, new TypeReference<Object>() {});
+    Object list = parsed;
+    if (parsed instanceof Map<?, ?> map) {
+      if (map.containsKey("comments")) {
+        list = map.get("comments");
+      } else if (map.containsKey("data")) {
+        list = map.get("data");
+      } else {
+        list = List.of();
+      }
+    }
+    if (!(list instanceof List<?> items)) {
+      throw new IllegalArgumentException("Comment import file must contain an array");
+    }
+    List<Map<String, Object>> comments = new ArrayList<>();
+    for (Object item : items) {
+      if (item instanceof Map<?, ?> map) {
+        comments.add((Map<String, Object>) map);
+      }
+    }
+    return comments;
   }
 }

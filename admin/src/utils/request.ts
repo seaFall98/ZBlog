@@ -50,12 +50,6 @@ const processQueue = (error: any = null) => {
 
 // 请求拦截器
 request.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  // refresh 接口不需要带 Authorization header
-  if (config.url === '/auth/refresh') {
-    return config;
-  }
-
-  // 其他接口带上 access token（从内存中获取）
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -87,6 +81,11 @@ request.interceptors.response.use(
       } catch {
         return Promise.reject(error);
       }
+    }
+
+    if (error.response?.status === 401 && originalRequest.url === '/auth/refresh') {
+      redirectToLogin();
+      return Promise.reject(error);
     }
 
     // 处理401未授权 - 尝试刷新token
