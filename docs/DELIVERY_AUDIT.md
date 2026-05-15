@@ -29,7 +29,7 @@ These areas have been brought to a real closed loop in the current repo state:
 - Import/export baseline: admin article import, WeChat export, Markdown ZIP download, and comment import.
 - Compatibility endpoints for system admin and notifications that the current frontend expects.
 - Admin tools and AI utility endpoints: link metadata, video parsing, remote image download, AI config test, summary, AI summary, and title generation.
-- Batch 1 backend truth data: visit collection/stat derivation, persisted notifications/read-state, and honest system info are automated-verified; manual browser acceptance is still pending.
+- Batch 1 backend truth data: visit collection/stat derivation, persisted notifications/read-state, and honest system info are automated-verified and user-accepted in the local running stack.
 
 ## Critical gaps
 
@@ -44,7 +44,7 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ### Visit collection and real statistics
 
-- Status: automated verified; manual browser acceptance pending.
+- Status: automated verified and manually accepted.
 - The blog tracker posts to `POST /api/v1/collect`, and Java now persists tracker payloads into `visit_events`.
 - `/api/v1/stats/site`, `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits` now derive visit-related values from persisted visit events.
 - Evidence: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` passes and proves a collect call changes site/dashboard/trend/visit-log output.
@@ -52,7 +52,7 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ### Notifications
 
-- Status: automated verified; manual browser acceptance pending.
+- Status: automated verified and manually accepted.
 - Admin and public notification endpoints now share persisted `notifications` rows with pagination, `unread_count`, single-read, and read-all mutations.
 - Feedback submission now creates a real `feedback_new` notification.
 - Evidence: `BackendTruthDataBatchTest#feedbackCreatesNotificationAndReadOperationsUpdateUnreadCount` proves unread count changes after read operations.
@@ -93,20 +93,19 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 
 ## Batch 1 verification notes
 
-- PASS: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` — 3 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml test` — 36 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` - 3 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 38 tests, 0 failures, 0 errors.
 - PASS: `npm --prefix admin run type-check`.
 - OBSERVED: `npm --prefix blog run type-check` emitted a local `vue-router/volar/sfc-route-blocks` dependency-resolution warning for `@vue/language-core`; no Batch 1 blog code was changed.
-- Pending: manual browser acceptance against the running stack.
+- ACCEPTED: user manually verified Batch 1 against the local running stack on 2026-05-15.
 
 ## What to do next
 
-1. Complete the Batch 1 manual browser acceptance steps in `docs/EXECUTION_LOCK.md`.
-2. Work only from the `Feature Completion Backlog` in `docs/EXECUTION_LOCK.md`.
-3. Lock exactly one feature as the Active Work Slot.
-4. Write and run the failing backend test before production code.
-5. Implement the smallest Java backend slice needed to pass.
-6. Verify the real UI manually before marking the loop closed.
+1. Start the next batch from the `Feature Completion Backlog` in `docs/EXECUTION_LOCK.md`.
+2. Lock exactly one batch or feature group as the Active Work Slot.
+3. Write and run failing backend tests before production code.
+4. Implement the smallest backend/frontend slice needed to pass.
+5. Verify the real UI manually before marking the batch closed.
 
 ## Acceptance rule for future work
 

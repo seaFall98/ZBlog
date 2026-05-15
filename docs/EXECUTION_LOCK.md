@@ -25,7 +25,7 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ID: BACKEND-TRUTH-DATA-BATCH-001
 
-Status: automated_verified_manual_acceptance_pending
+Status: closed
 
 Scope:
 - Batch 1 only: backend-truth-data-batch.
@@ -77,16 +77,14 @@ Automated RED test:
 - Add a backend integration test class for Batch 1 before production code, then run targeted test and observe failure from missing/stubbed behavior.
 
 Automated GREEN verification:
-- PASS: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` — 3 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml test` — 36 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` - 3 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 38 tests, 0 failures, 0 errors.
 - PASS: `npm --prefix admin run type-check`.
 - OBSERVED: `npm --prefix blog run type-check` emitted a local `vue-router/volar/sfc-route-blocks` dependency-resolution warning for `@vue/language-core`; no Batch 1 blog code was changed.
 
 Manual browser verification:
-- Pending user/local-stack acceptance: open the public blog to trigger tracker collection.
-- Pending user/local-stack acceptance: open admin dashboard/visit list to confirm real count/log changes.
-- Pending user/local-stack acceptance: submit feedback and open admin/public notification list; mark read and confirm unread count changes.
-- Pending user/local-stack acceptance: open admin system page and confirm unsupported fields are explicit while DB/runtime/disk fields are real.
+- ACCEPTED: user manually verified Batch 1 against the local running stack on 2026-05-15.
+- ACCEPTED: visit collection/stat pages, notifications, system information honesty, service-worker/admin white-screen fix, menu cleanup, feedback entry, and `/api/v1/upload` 200 behavior were checked during manual acceptance.
 
 ## Closed Implementation Loops
 
@@ -138,7 +136,7 @@ Done means:
 
 ### 2. Visit Collection and Real Statistics
 
-Status: automated verified, manual acceptance pending
+Status: closed
 
 Current facts:
 - Blog tracker posts to `POST /api/v1/collect`.
@@ -154,7 +152,7 @@ Done means:
 
 ### 3. Notifications
 
-Status: automated verified, manual acceptance pending
+Status: closed
 
 Current facts:
 - Admin notification controller currently returns an empty list and `ok(null)` for read operations.
@@ -184,7 +182,7 @@ Done means:
 
 ### 5. System Information
 
-Status: automated verified, manual acceptance pending
+Status: closed
 
 Current facts:
 - `/admin/system/static`, `/admin/system/dynamic`, and `/admin/system/check-update` exist.
@@ -295,12 +293,12 @@ These remain subject to regression tests. If a future audit finds fake behavior,
 ### Open Roadmap
 
 1. VISIT-STATS-CLOSED-LOOP
-   - Automated verified, manual acceptance pending.
+   - Automated verified and manually accepted.
    - `POST /api/v1/collect` writes `visit_events` rows, and site/admin stats, trend, and visit logs derive from those rows.
    - Evidence: `BackendTruthDataBatchTest#collectPageviewChangesStatsTrendAndVisitLog` proves a collect call changes stats and visit-log output.
 
 2. NOTIFICATIONS-CLOSED-LOOP
-   - Automated verified, manual acceptance pending.
+   - Automated verified and manually accepted.
    - Admin/public notification APIs share persisted notifications with unread counts and read-state mutations.
    - Evidence: `BackendTruthDataBatchTest#feedbackCreatesNotificationAndReadOperationsUpdateUnreadCount` proves feedback creates a notification and read operations change unread count.
 
@@ -309,7 +307,7 @@ These remain subject to regression tests. If a future audit finds fake behavior,
    - Done when uploaded assets are stored, listed, served, deleted consistently, and render in the real UI after reload.
 
 4. SYSTEM-INFO-HONESTY-CLOSED-LOOP
-   - Automated verified, manual acceptance pending.
+   - Automated verified and manually accepted.
    - System info now returns real runtime/DB/table/disk values where practical and explicit `unsupported`/`disabled` values where not.
    - Evidence: `BackendTruthDataBatchTest#systemInfoReturnsRealDbRuntimeAndHonestUnsupportedFields` covers non-placeholder DB/runtime fields and unsupported/disabled states.
 
