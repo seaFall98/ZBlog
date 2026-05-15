@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zblog.common.api.PageResponse;
 import com.zblog.common.exception.BusinessException;
+import com.zblog.notification.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,10 +32,13 @@ public class FeedbackService {
 
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
+  private final NotificationService notificationService;
 
-  public FeedbackService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+  public FeedbackService(
+      JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, NotificationService notificationService) {
     this.jdbcTemplate = jdbcTemplate;
     this.objectMapper = objectMapper;
+    this.notificationService = notificationService;
   }
 
   @Transactional
@@ -66,7 +70,9 @@ public class FeedbackService {
             text(request, "email", ""),
             servletRequest.getHeader("User-Agent") == null ? "" : servletRequest.getHeader("User-Agent"),
             clientIp(servletRequest));
-    return get(id);
+    Map<String, Object> feedback = get(id);
+    notificationService.createFeedbackNotification(feedback);
+    return feedback;
   }
 
   public Map<String, Object> getByTicket(String ticketNo) {

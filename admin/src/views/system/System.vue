@@ -90,9 +90,9 @@
               <div class="info-item">
                 <span class="label">使用率</span>
                 <el-progress
-                  :percentage="Math.round(dynamicInfo.cpu_usage || 0)"
+                  :percentage="metricPercent(dynamicInfo.cpu_usage)"
                   :stroke-width="6"
-                  :color="getProgressColor(Math.round(dynamicInfo.cpu_usage || 0))"
+                  :color="getProgressColor(metricPercent(dynamicInfo.cpu_usage))"
                   style="width: 120px"
                 />
               </div>
@@ -107,9 +107,9 @@
               <div class="info-item">
                 <span class="label">系统负载</span>
                 <span class="value"
-                  >{{ dynamicInfo.load_1?.toFixed(2) || 'N/A' }} /
-                  {{ dynamicInfo.load_5?.toFixed(2) || 'N/A' }} /
-                  {{ dynamicInfo.load_15?.toFixed(2) || 'N/A' }}</span
+                  >{{ formatNumber(dynamicInfo.load_1) }} /
+                  {{ formatNumber(dynamicInfo.load_5) }} /
+                  {{ formatNumber(dynamicInfo.load_15) }}</span
                 >
               </div>
             </div>
@@ -149,8 +149,8 @@
               <div class="info-item">
                 <span class="label">Swap</span>
                 <span class="value"
-                  >{{ formatBytes(dynamicInfo.swap_used) }} /
-                  {{ formatBytes(staticInfo.swap_total) }}</span
+                  >{{ formatMetricBytes(dynamicInfo.swap_used) }} /
+                  {{ formatMetricBytes(staticInfo.swap_total) }}</span
                 >
               </div>
             </div>
@@ -207,7 +207,7 @@
               <div class="info-item">
                 <span class="label">状态</span>
                 <el-tag
-                  :type="dynamicInfo.db_status === '正常' ? 'success' : 'danger'"
+                  :type="dynamicInfo.db_status === 'UP' ? 'success' : 'danger'"
                   size="small"
                 >
                   {{ dynamicInfo.db_status }}
@@ -215,7 +215,7 @@
               </div>
               <div class="info-item">
                 <span class="label">大小</span>
-                <span class="value">{{ formatBytes(dynamicInfo.db_size) }}</span>
+                <span class="value">{{ formatMetricBytes(dynamicInfo.db_size) }}</span>
               </div>
               <div class="info-item">
                 <span class="label">表数量</span>
@@ -240,7 +240,7 @@
               <div class="info-item">
                 <span class="label">文件存储</span>
                 <el-tag
-                  :type="staticInfo.storage_status === '正常' ? 'success' : 'danger'"
+                  :type="staticInfo.storage_status === 'local' ? 'success' : 'danger'"
                   size="small"
                 >
                   {{ staticInfo.storage_status }}
@@ -252,7 +252,7 @@
                   :type="
                     staticInfo.email_status === '正常'
                       ? 'success'
-                      : staticInfo.email_status === '未配置'
+                      : staticInfo.email_status === 'disabled'
                         ? 'info'
                         : 'danger'
                   "
@@ -267,7 +267,7 @@
                   :type="
                     staticInfo.feishu_status === '正常'
                       ? 'success'
-                      : staticInfo.feishu_status === '未配置'
+                      : staticInfo.feishu_status === 'disabled'
                         ? 'info'
                         : 'danger'
                   "
@@ -312,7 +312,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Monitor, Cpu, Coin, DataLine, FolderOpened, Connection } from '@element-plus/icons-vue';
 import { getSystemStatic, getSystemDynamic, checkUpdate } from '@/api/system';
-import type { SystemStatic, SystemDynamic } from '@/types/system';
+import type { SystemStatic, SystemDynamic, SystemMetric } from '@/types/system';
 import type { VersionInfo } from '@/api/system';
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -446,6 +446,18 @@ const formatBytes = (bytes: number): string => {
   const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
   const i = Math.floor(Math.log(bytes) / Math.log(unit));
   return (bytes / Math.pow(unit, i)).toFixed(1) + ' ' + units[i];
+};
+
+const formatMetricBytes = (value: SystemMetric): string => {
+  return value === 'unsupported' ? '不支持' : formatBytes(value);
+};
+
+const formatNumber = (value: SystemMetric): string => {
+  return value === 'unsupported' ? '不支持' : value.toFixed(2);
+};
+
+const metricPercent = (value: SystemMetric): number => {
+  return value === 'unsupported' ? 0 : Math.round(value || 0);
 };
 
 const calcPercent = (used: number, total: number): number => {

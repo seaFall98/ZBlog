@@ -29,6 +29,7 @@ These areas have been brought to a real closed loop in the current repo state:
 - Import/export baseline: admin article import, WeChat export, Markdown ZIP download, and comment import.
 - Compatibility endpoints for system admin and notifications that the current frontend expects.
 - Admin tools and AI utility endpoints: link metadata, video parsing, remote image download, AI config test, summary, AI summary, and title generation.
+- Batch 1 backend truth data: visit collection/stat derivation, persisted notifications/read-state, and honest system info are automated-verified; manual browser acceptance is still pending.
 
 ## Critical gaps
 
@@ -43,16 +44,18 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ### Visit collection and real statistics
 
-- The blog tracker posts to `POST /api/v1/collect`.
-- Java currently has no `/collect` endpoint.
-- Several stats values are still zero, empty, or only partially derived: visitors, trend, visit logs, online users, daily/monthly pageviews.
-- Completion requires a real persisted visit/event model and tests proving a collect call changes stats output.
+- Status: automated verified; manual browser acceptance pending.
+- The blog tracker posts to `POST /api/v1/collect`, and Java now persists tracker payloads into `visit_events`.
+- `/api/v1/stats/site`, `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits` now derive visit-related values from persisted visit events.
+- Evidence: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` passes and proves a collect call changes site/dashboard/trend/visit-log output.
+- Deferred: visit-log geo location, browser parsing, and OS parsing return explicit `unsupported`.
 
 ### Notifications
 
-- Admin notification endpoints exist but currently return an empty list and `ok(null)` read operations.
-- Blog code also expects public notification endpoints.
-- Completion requires real notification persistence, unread counts, read-state mutation, and at least one business event that creates a notification.
+- Status: automated verified; manual browser acceptance pending.
+- Admin and public notification endpoints now share persisted `notifications` rows with pagination, `unread_count`, single-read, and read-all mutations.
+- Feedback submission now creates a real `feedback_new` notification.
+- Evidence: `BackendTruthDataBatchTest#feedbackCreatesNotificationAndReadOperationsUpdateUnreadCount` proves unread count changes after read operations.
 
 ### Public auth/account/OAuth flows
 
@@ -63,7 +66,8 @@ These are the highest-priority mismatches between frontend calls and backend rea
 ### Feedback and subscription flows
 
 - Public feedback tickets, ticket lookup, admin feedback handling, email subscription, unsubscribe state, and admin subscriber management are now database-backed and tested.
-- Mail delivery and feedback notification fan-out remain follow-up work; the current closure is the persistence and admin-observability baseline.
+- Feedback notification fan-out into the in-app notification table is now covered by Batch 1.
+- Mail delivery remains follow-up work; the current closure is persistence, admin observability, and in-app notification fan-out.
 
 ### Admin tools and AI utilities
 
@@ -80,22 +84,29 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ## Medium gaps
 
-These areas exist, but still rely too much on placeholders or hardcoded values.
+These areas exist, but still rely too much on placeholders, hardcoded values, or deferred product decisions.
 
-- Notifications: the current behavior is compatible enough for some UI flows, but it needs stronger proof of real data handling.
-- Visits and stats: several metrics are still hardcoded, derived only partially, or not backed by a real analytics pipeline.
-- System data: some endpoints are compatibility shims rather than full implementations.
+- System data: CPU usage percentage, swap total/usage, DB size, DB connection count, and remote update source are explicitly deferred as `unsupported`; email and Feishu integrations are `disabled` until configured.
 - Article AI summary persistence: the AI endpoint returns text to the editor, but a separate persisted `ai_summary` article field is not yet implemented.
 - Search and SEO: the main public endpoints exist, but some deeper analytics and ranking pieces still need follow-up if the product expects them.
 - Test coverage: too many tests only assert that the envelope exists; too few assert the business effect.
 
+## Batch 1 verification notes
+
+- PASS: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` — 3 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` — 36 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix admin run type-check`.
+- OBSERVED: `npm --prefix blog run type-check` emitted a local `vue-router/volar/sfc-route-blocks` dependency-resolution warning for `@vue/language-core`; no Batch 1 blog code was changed.
+- Pending: manual browser acceptance against the running stack.
+
 ## What to do next
 
-1. Work only from the `Feature Completion Backlog` in `docs/EXECUTION_LOCK.md`.
-2. Lock exactly one feature as the Active Work Slot.
-3. Write and run the failing backend test before production code.
-4. Implement the smallest Java backend slice needed to pass.
-5. Verify the real UI manually before marking the loop closed.
+1. Complete the Batch 1 manual browser acceptance steps in `docs/EXECUTION_LOCK.md`.
+2. Work only from the `Feature Completion Backlog` in `docs/EXECUTION_LOCK.md`.
+3. Lock exactly one feature as the Active Work Slot.
+4. Write and run the failing backend test before production code.
+5. Implement the smallest Java backend slice needed to pass.
+6. Verify the real UI manually before marking the loop closed.
 
 ## Acceptance rule for future work
 

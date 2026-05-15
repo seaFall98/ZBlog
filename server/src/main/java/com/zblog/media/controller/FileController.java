@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/v1/admin/files")
+@RequestMapping("/api/v1")
 public class FileController {
 
   private final FileService fileService;
@@ -18,7 +18,7 @@ public class FileController {
     this.fileService = fileService;
   }
 
-  @PostMapping
+  @PostMapping("/admin/files")
   public ApiResponse<Map<String, Object>> upload(
       @RequestPart("file") MultipartFile file,
       @RequestParam(name = "type", defaultValue = "image") String type)
@@ -26,14 +26,20 @@ public class FileController {
     return ApiResponse.ok(fileService.upload(file, type));
   }
 
-  @GetMapping
+  @PostMapping("/upload")
+  public ApiResponse<Map<String, Object>> uploadFeedbackAttachment(@RequestPart("file") MultipartFile file)
+      throws IOException {
+    return ApiResponse.ok(fileService.upload(file, "反馈投诉"));
+  }
+
+  @GetMapping("/admin/files")
   public ApiResponse<PageResponse<Map<String, Object>>> list(
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(name = "page_size", defaultValue = "50") int pageSize) {
     return ApiResponse.ok(fileService.list(page, pageSize));
   }
 
-  @DeleteMapping("/{id}")
+  @DeleteMapping("/admin/files/{id}")
   public ApiResponse<Void> delete(@PathVariable long id) {
     fileService.delete(id);
     return ApiResponse.ok(null);

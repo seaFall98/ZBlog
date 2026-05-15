@@ -123,6 +123,16 @@ class FoundationApiTest {
     assertThat(keys).containsAll(List.of("list", "total", "page", "page_size"));
   }
 
+  @Test
+  void publicMenusDoNotExposeSmokeAndFooterContainsFeedback() {
+    ResponseEntity<Map> response = restTemplate.getForEntity("/api/v1/menus", Map.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    String menus = data(response).toString();
+    assertThat(menus).doesNotContain("Smoke", "/smoke");
+    assertThat(menus).contains("反馈投诉", "/feedback");
+  }
+
   private Object data(ResponseEntity<Map> response) {
     Map<?, ?> body = response.getBody();
     assertThat(body).isNotNull();

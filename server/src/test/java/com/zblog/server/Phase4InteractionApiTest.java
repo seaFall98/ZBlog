@@ -251,6 +251,30 @@ class Phase4InteractionApiTest {
   }
 
   @Test
+  void publicFeedbackAttachmentCanBeUploadedWithoutLogin() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    body.add(
+        "file",
+        new ByteArrayResource("feedback image".getBytes()) {
+          @Override
+          public String getFilename() {
+            return "feedback.png";
+          }
+        });
+    body.add("type", "反馈投诉");
+
+    ResponseEntity<Map> uploadResponse =
+        restTemplate.exchange("/api/v1/upload", HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
+
+    assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<?, ?> upload = (Map<?, ?>) data(uploadResponse);
+    assertThat(upload.get("file_url")).asString().contains("/uploads/");
+  }
+
+  @Test
   void filesCanBeUploadedListedAndDeleted() {
     HttpHeaders headers = authenticatedHeaders();
     headers.setContentType(MediaType.MULTIPART_FORM_DATA);

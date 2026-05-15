@@ -3,9 +3,13 @@ package com.zblog.stats.controller;
 import com.zblog.common.api.ApiResponse;
 import com.zblog.common.api.PageResponse;
 import com.zblog.stats.application.StatsService;
+import com.zblog.stats.application.VisitCollectionService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,9 +19,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class StatsController {
 
   private final StatsService statsService;
+  private final VisitCollectionService visitCollectionService;
 
-  public StatsController(StatsService statsService) {
+  public StatsController(StatsService statsService, VisitCollectionService visitCollectionService) {
     this.statsService = statsService;
+    this.visitCollectionService = visitCollectionService;
+  }
+
+  @PostMapping("/collect")
+  public ApiResponse<Map<String, Object>> collect(
+      @RequestBody Map<String, Object> payload, HttpServletRequest request) {
+    return ApiResponse.ok(visitCollectionService.collect(payload, request));
   }
 
   @GetMapping("/stats/site")

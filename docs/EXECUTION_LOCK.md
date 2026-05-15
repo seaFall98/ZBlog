@@ -23,19 +23,70 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
-ID: DOCS-LOCK-001
+ID: BACKEND-TRUTH-DATA-BATCH-001
 
-Status: closed
+Status: automated_verified_manual_acceptance_pending
 
 Scope:
-- Slim root `docs` directory.
-- Archive stale phase/planning documents.
-- Add a single execution lock for future agents.
-- Replace the old remediation-plan authority with this file.
+- Batch 1 only: backend-truth-data-batch.
+- VISIT-STATS-CLOSED-LOOP: implement `POST /api/v1/collect` and derive `/stats/site`, `/admin/stats/dashboard`, `/admin/stats/trend`, and `/admin/stats/visits` from persisted visit data.
+- NOTIFICATIONS-CLOSED-LOOP: replace notification stubs with persisted notifications, unread counts, and read-state mutations; connect at least one real business event.
+- SYSTEM-INFO-HONESTY-CLOSED-LOOP: replace fake system info values with real runtime/DB/disk data where practical and explicit unsupported/disabled values where not.
 
-Evidence:
-- Root `docs` now contains the project context, delivery audit, retrospective, attribution, this execution lock, and a compatibility pointer from the old remediation plan.
-- Historical documents live under `docs/archive/`.
+Frontend/admin entry pages:
+- Public blog client tracker: `blog/app/plugins/tracker.client.ts` posts pageview/duration/event payloads to `/api/v1/collect`.
+- Public stats page and site widgets call `/api/v1/stats/site` and `/api/v1/stats/archives`.
+- Admin dashboard and visit list call `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits`.
+- Admin notification bell/list calls `/api/v1/admin/notifications`, `/api/v1/admin/notifications/{id}/read`, and `/api/v1/admin/notifications/read-all`.
+- Public notification page calls `/api/v1/notifications`, `/api/v1/notifications/{id}/read`, and `/api/v1/notifications/read-all`.
+- Admin system page calls `/api/v1/admin/system/static`, `/api/v1/admin/system/dynamic`, and `/api/v1/admin/system/check-update`.
+
+Exact API calls:
+- `POST /api/v1/collect`
+- `GET /api/v1/stats/site`
+- `GET /api/v1/admin/stats/dashboard`
+- `GET /api/v1/admin/stats/trend`
+- `GET /api/v1/admin/stats/visits`
+- `GET /api/v1/admin/notifications`
+- `PUT /api/v1/admin/notifications/{id}/read`
+- `PUT /api/v1/admin/notifications/read-all`
+- `GET /api/v1/notifications`
+- `PUT /api/v1/notifications/{id}/read`
+- `PUT /api/v1/notifications/read-all`
+- `GET /api/v1/admin/system/static`
+- `GET /api/v1/admin/system/dynamic`
+- `POST /api/v1/admin/system/check-update`
+
+Current backend implementation:
+- `POST /api/v1/collect` persists tracker payloads into `visit_events`.
+- `/api/v1/stats/site`, `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits` derive visit-related values from `visit_events`.
+- Admin and public notification APIs read and mutate the shared `notifications` table.
+- Feedback submission creates a persisted `feedback_new` notification.
+- `SystemAdminController` returns real runtime, DB, table-count, disk, host, and timezone data where practical, and explicit `unsupported`/`disabled` states where not.
+
+Missing persistence or derived data:
+- Closed for this batch: visit/event persistence, notification persistence/read state, and system-info honesty baseline are implemented.
+- Deferred fields remain explicit: CPU usage percentage, swap totals/usage, DB size, DB connection count, remote version source, and visit-log geo/browser/OS parsing.
+
+User-visible expected behavior:
+- Visiting the blog changes site/admin visit statistics and admin visit logs.
+- Submitting a real event such as feedback creates a notification and unread count decreases after marking read.
+- System page no longer claims fake operational values.
+
+Automated RED test:
+- Add a backend integration test class for Batch 1 before production code, then run targeted test and observe failure from missing/stubbed behavior.
+
+Automated GREEN verification:
+- PASS: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` — 3 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` — 36 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix admin run type-check`.
+- OBSERVED: `npm --prefix blog run type-check` emitted a local `vue-router/volar/sfc-route-blocks` dependency-resolution warning for `@vue/language-core`; no Batch 1 blog code was changed.
+
+Manual browser verification:
+- Pending user/local-stack acceptance: open the public blog to trigger tracker collection.
+- Pending user/local-stack acceptance: open admin dashboard/visit list to confirm real count/log changes.
+- Pending user/local-stack acceptance: submit feedback and open admin/public notification list; mark read and confirm unread count changes.
+- Pending user/local-stack acceptance: open admin system page and confirm unsupported fields are explicit while DB/runtime/disk fields are real.
 
 ## Closed Implementation Loops
 
@@ -87,7 +138,7 @@ Done means:
 
 ### 2. Visit Collection and Real Statistics
 
-Status: open, confirmed incomplete
+Status: automated verified, manual acceptance pending
 
 Current facts:
 - Blog tracker posts to `POST /api/v1/collect`.
@@ -103,7 +154,7 @@ Done means:
 
 ### 3. Notifications
 
-Status: open, confirmed stub
+Status: automated verified, manual acceptance pending
 
 Current facts:
 - Admin notification controller currently returns an empty list and `ok(null)` for read operations.
@@ -133,7 +184,7 @@ Done means:
 
 ### 5. System Information
 
-Status: open, compatibility shim
+Status: automated verified, manual acceptance pending
 
 Current facts:
 - `/admin/system/static`, `/admin/system/dynamic`, and `/admin/system/check-update` exist.
@@ -244,22 +295,23 @@ These remain subject to regression tests. If a future audit finds fake behavior,
 ### Open Roadmap
 
 1. VISIT-STATS-CLOSED-LOOP
-   - `POST /api/v1/collect` is missing while the blog tracker calls it.
-   - Site/admin stats still contain zeros, empty visit logs, or partial derivations.
-   - Done when collect writes real visit data and stats/dashboard/trend/visit-log APIs change because of it.
+   - Automated verified, manual acceptance pending.
+   - `POST /api/v1/collect` writes `visit_events` rows, and site/admin stats, trend, and visit logs derive from those rows.
+   - Evidence: `BackendTruthDataBatchTest#collectPageviewChangesStatsTrendAndVisitLog` proves a collect call changes stats and visit-log output.
 
 2. NOTIFICATIONS-CLOSED-LOOP
-   - Admin notifications are currently empty-list/`ok(null)` stubs.
-   - Blog notification APIs are expected by frontend code.
-   - Done when notifications have persistence, unread counts, read state, and at least one real event source.
+   - Automated verified, manual acceptance pending.
+   - Admin/public notification APIs share persisted notifications with unread counts and read-state mutations.
+   - Evidence: `BackendTruthDataBatchTest#feedbackCreatesNotificationAndReadOperationsUpdateUnreadCount` proves feedback creates a notification and read operations change unread count.
 
 3. UPLOAD-ASSET-CLOSED-LOOP
    - Admin upload exists, but public `/api/v1/upload` is missing while blog comment/editor utilities call it.
    - Done when uploaded assets are stored, listed, served, deleted consistently, and render in the real UI after reload.
 
 4. SYSTEM-INFO-HONESTY-CLOSED-LOOP
-   - System info endpoints exist but include hardcoded or placeholder operational values.
-   - Done when real values are real, unsupported values are explicitly marked unsupported/disabled, and the UI does not imply fake health.
+   - Automated verified, manual acceptance pending.
+   - System info now returns real runtime/DB/table/disk values where practical and explicit `unsupported`/`disabled` values where not.
+   - Evidence: `BackendTruthDataBatchTest#systemInfoReturnsRealDbRuntimeAndHonestUnsupportedFields` covers non-placeholder DB/runtime fields and unsupported/disabled states.
 
 5. PASSWORD-RESET-OAUTH-DECISION
    - Frontend exposes forgot/reset password and OAuth UI paths.

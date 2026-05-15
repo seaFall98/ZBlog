@@ -1,3 +1,5 @@
+export type SystemMetric = number | 'unsupported';
+
 export interface SystemStatic {
   cpu_core: number;
   cpu_model: string;
@@ -8,7 +10,7 @@ export interface SystemStatic {
   timezone: string;
   db_type: string;
   memory_total: number;
-  swap_total: number;
+  swap_total: SystemMetric;
   disk_total: number;
   db_tables: number;
   storage_status: string;
@@ -18,19 +20,20 @@ export interface SystemStatic {
 }
 
 export interface SystemDynamic {
-  cpu_usage: number;
-  load_1: number;
-  load_5: number;
-  load_15: number;
+  cpu_usage: SystemMetric;
+  cpu_usage_status?: string;
+  load_1: SystemMetric;
+  load_5: SystemMetric;
+  load_15: SystemMetric;
   memory_used: number;
   memory_available: number;
-  swap_used: number;
+  swap_used: SystemMetric;
   host_uptime: number;
   disk_used: number;
   disk_free: number;
   db_status: string;
-  db_size: number;
-  db_conn_count: number;
+  db_size: SystemMetric;
+  db_conn_count: SystemMetric;
   version_latest_version: string;
   version_last_check_error: string;
 }

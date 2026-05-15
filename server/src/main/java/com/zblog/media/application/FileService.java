@@ -1,12 +1,15 @@
 package com.zblog.media.application;
 
 import com.zblog.common.api.PageResponse;
+import com.zblog.common.exception.BusinessException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -16,6 +19,19 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class FileService {
 
+  private static final Set<String> ALLOWED_CONTENT_TYPES =
+      Set.of(
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "text/plain");
+  private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
+
   private final JdbcTemplate jdbcTemplate;
   private final Path uploadRoot = Path.of("uploads").toAbsolutePath().normalize();
 
@@ -24,6 +40,7 @@ public class FileService {
   }
 
   public Map<String, Object> upload(MultipartFile file, String type) throws IOException {
+    validate(file);
     Files.createDirectories(uploadRoot);
     String original = file.getOriginalFilename() == null ? "file" : file.getOriginalFilename();
     String safeOriginal = original.replaceAll("[^a-zA-Z0-9._-]", "_");
@@ -50,6 +67,19 @@ public class FileService {
         "file_url", url,
         "file_name", filename,
         "file_size", file.getSize());
+  }
+
+  private void validate(MultipartFile file) {
+    if (file.isEmpty()) {
+      throw new BusinessException(40001, "文件不能为空", HttpStatus.BAD_REQUEST);
+    }
+    if (file.getSize() > MAX_FILE_SIZE) {
+      throw new BusinessException(40001, "文件大小不能超过10MB", HttpStatus.BAD_REQUEST);
+    }
+    String contentType = file.getContentType();
+    if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
+      throw new BusinessException(40001, "不支持的文件类型", HttpStatus.BAD_REQUEST);
+    }
   }
 
   public PageResponse<Map<String, Object>> list(int page, int pageSize) {
