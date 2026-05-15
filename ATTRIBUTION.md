@@ -1,30 +1,29 @@
 # ATTRIBUTION.md
 
-> 鏈枃鑱岃矗锛氳褰?ZBlog 浣跨敤鎴栧弬鑰冪殑寮€婧愰」鐩潵婧愶紝閬垮厤鍚庣画杩佺Щ鏃堕仐婕?attribution銆?
+> 本文职责：记录 ZBlog 使用或参考过的开源项目来源，避免后续迁移时遗漏 attribution。
 
 ## FlecBlog
 
-Repository:
+仓库地址：
 
 ```text
 https://github.com/talen8/FlecBlog
 ```
 
-License:
+许可证：
 
 ```text
 MIT License
 ```
 
-Usage plan:
+使用计划：
 
-- Blog frontend source can be reused as ZBlog `blog/` baseline.
-- Admin frontend source can be reused as ZBlog `admin/` baseline.
-- Server source is reference only; ZBlog backend will be implemented in Java 21 + Spring Boot.
+- 博客前台源码可作为 ZBlog `blog/` 的基础；
+- 管理后台源码可作为 ZBlog `admin/` 的基础；
+- 后端源码只作为参考，ZBlog 后端将使用 Java 21 + Spring Boot 实现。
 
-Required practice:
+必要实践：
 
-- Preserve MIT license notice where copied source requires it.
-- Record major copied directories and later local modifications.
-- Do not present FlecBlog-derived code as original first-party code without attribution.
-
+- 如果复制了需要保留许可证说明的代码，必须保留 MIT license notice；
+- 记录哪些目录做过迁移和本地修改；
+- 不要把 FlecBlog 派生代码直接当作 ZBlog 原创代码对外宣称。

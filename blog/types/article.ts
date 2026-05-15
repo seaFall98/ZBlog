@@ -9,6 +9,8 @@ export interface Article {
   slug?: string;
   url: string;
   content?: string;
+  content_markdown?: string;
+  content_html?: string;
   summary: string;
   ai_summary?: string;
   excerpt?: string;

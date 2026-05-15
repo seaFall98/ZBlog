@@ -5,6 +5,7 @@ import com.zblog.common.exception.BusinessException;
 import com.zblog.config.SecurityProperties;
 import com.zblog.security.JwtService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,9 +33,23 @@ public class AuthController {
           401, "Invalid username or password", HttpStatus.UNAUTHORIZED);
     }
 
+    return tokenResponse(request.username());
+  }
+
+  @PostMapping("/refresh")
+  public ApiResponse<LoginResponse> refresh(Principal principal) {
+    return tokenResponse(principal.getName());
+  }
+
+  @PostMapping("/logout")
+  public ApiResponse<Void> logout() {
+    return ApiResponse.ok(null);
+  }
+
+  private ApiResponse<LoginResponse> tokenResponse(String username) {
     return ApiResponse.ok(
         new LoginResponse(
-            jwtService.createAdminToken(request.username()),
+            jwtService.createAdminToken(username),
             "Bearer",
             securityProperties.getTokenTtlMinutes() * 60));
   }

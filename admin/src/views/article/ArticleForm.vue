@@ -488,7 +488,7 @@ const fetchArticle = async (id: number) => {
     const data = {
       title: article.title,
       slug: article.slug || '',
-      content: article.content,
+      content: article.content_markdown || article.content || '',
       summary: article.summary,
       ai_summary: article.ai_summary || '',
       cover: article.cover || '',

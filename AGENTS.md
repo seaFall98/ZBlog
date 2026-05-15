@@ -1,14 +1,14 @@
 # AGENTS.md
 
-> 鏈枃鑱岃矗锛氬畾涔?Codex 鍦?ZBlog 涓殑宸ヤ綔瑙勫垯銆佸繀璇绘枃妗ｃ€佺姝簨椤广€侀獙璇佽姹傚拰闃舵鎺ㄨ繘鏂瑰紡銆?
+> This file defines how Claude Code should work in ZBlog.
 
-## Prime Rule
+## Prime rule
 
-浠讳綍浠诲姟瀹屾垚澹版槑蹇呴』鏈夊綋鍓嶄細璇濈殑鏂伴矞楠岃瘉璇佹嵁銆傛病鏈夎繍琛岄獙璇佸懡浠わ紝灏变笉鑳借宸茬粡瀹屾垚鎴栭€氳繃銆?
+A task is complete only when the current conversation has fresh verification evidence. If no verification command or live UI check was run, do not say the work is done.
 
-## Required Reading
+## Required reading
 
-姣忔 ZBlog 浠诲姟寮€濮嬪墠锛屽厛闃呰锛?
+Before starting any ZBlog task, read:
 
 ```text
 README.md
@@ -28,33 +28,33 @@ docs/CODEX_WORKFLOW.md
 docs/FRONTEND_MIGRATION_LOG.md
 ```
 
-濡傛灉浠诲姟娑夊強鍓嶇杩佺Щ锛岃繕蹇呴』鍏堟鏌ワ細
+If the task touches frontend migration, also inspect:
 
 ```text
 D:\MyCode\ZBlogProject\ZBlog\_reference\FlecBlog\blog
 D:\MyCode\ZBlogProject\ZBlog\_reference\FlecBlog\admin
 ```
 
-濡傛灉浠诲姟娑夊強 Markdown銆佹枃绔犺鎯呮垨 Java 鍚庣鏂囩珷妯″瀷锛岃繕蹇呴』妫€鏌ワ細
+If the task touches Markdown articles or Java backend content models, also inspect:
 
 ```text
 D:\MyCode\ZBlogProject\ZBlog
 ```
 
-## Hard Prohibitions
+## Hard prohibitions
 
-- 涓嶈鎶婂綋鍓嶄富绾挎敼鎴愪釜浜哄搧鐗屽畼缃戙€侀」鐩泦鎴?DevWiki Studio銆?
-- 涓嶈鎶婇」鐩檷绾ф垚绠€鍗?CRUD Demo銆?
-- 涓嶈鎶?FlecBlog 鍚庣 Go 浠ｇ爜鏈烘缈昏瘧鎴?Java銆?
-- 涓嶈鍦ㄦ病鏈夎縼绉讳换鍔＄殑鎯呭喌涓嬬洿鎺ュぇ瑙勬ā澶嶅埗婧愮爜銆?
-- 涓嶈涓㈠純 FlecBlog 鍓嶇鍙鐢ㄧ粨鏋勫悗閲嶆柊鍙戞槑椤甸潰銆?
-- 涓嶈鐩茬洰鐓ф惉鏃?ZBlog/Klee 鐨勮瑙夊拰璺嚎鎽囨憜銆?
-- 涓嶈鎶?`_reference/` 閲岀殑婧愮爜褰撲綔涓€鏂逛笟鍔′唬鐮佺洿鎺ヤ慨鏀广€?
-- 涓嶈鎻愪氦瀵嗛挜銆佹湇鍔″櫒瀵嗙爜銆佸煙鍚嶈瘉涔︺€佺湡瀹?`.env`銆?
+- Do not treat a phase label, roadmap item, or controller existence as proof of delivery.
+- Do not report a feature complete if the live frontend page or admin screen cannot finish the flow against the backend.
+- Do not count placeholder arrays, hardcoded totals, empty acknowledgments, or `ok(null)`-style stubs as shippable behavior.
+- Do not replace FlecBlog behavior with a new design when the existing reference baseline can be reused.
+- Do not mechanically port FlecBlog Go internals into Java.
+- Do not drop existing reusable frontend structure just to rebuild the same page from scratch.
+- Do not modify `_reference/` source as if it were product code.
+- Do not submit secrets, tokens, certificates, or `.env` values.
 
-## Feat Shape
+## Working shape
 
-鍚庣画姣忎釜闃舵浠诲姟鎸夋鏍煎紡鎺ㄨ繘锛?
+Use this structure for any non-trivial task:
 
 ```text
 feat/<name>
@@ -67,26 +67,28 @@ Done definition:
 Status:
 ```
 
-`Done` 蹇呴』婊¤冻锛?
+## Done definition
 
-- 瀹炵幇瀹屾垚锛?
-- 楠岃瘉鍛戒护杩愯閫氳繃锛?
-- 鏂囨。鍚屾鏇存柊锛?
-- 閬楃暀闂鏄庣‘璁板綍锛?
-- 娌℃湁娣峰叆鏃犲叧鏀瑰姩銆?
+A task may be marked done only when all of these are true:
 
-## Verification Rules
+- the implementation is complete;
+- the verification command or live UI check succeeded;
+- docs are updated if the behavior changed;
+- any remaining issue is explicitly recorded;
+- no unrelated changes were introduced.
 
-鏂囨。浠诲姟锛?
+## Verification rules
+
+Document task:
 
 ```powershell
 Test-Path docs
 Get-ChildItem docs -File
-Select-String -Path docs\*.md -Pattern "鏈枃鑱岃矗"
+Select-String -Path docs\*.md -Pattern "delivery|retro|acceptance"
 git status --short
 ```
 
-鍓嶇浠诲姟锛?
+Frontend task:
 
 ```powershell
 npm install
@@ -94,15 +96,27 @@ npm run type-check
 npm run build
 ```
 
-鍚庣浠诲姟锛?
+Backend task:
 
 ```powershell
 mvn test
 mvn package
 ```
 
-閮ㄧ讲浠诲姟锛?
+Deployment task:
 
 ```powershell
 docker compose config
 ```
+
+## Reporting rule
+
+When reporting progress, split the result into:
+
+- closed loops
+- partially implemented flows
+- missing backend routes
+- stubbed behavior
+- UI pages that still cannot finish their work
+
+If something is still open, say so directly.

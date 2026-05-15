@@ -108,6 +108,18 @@ class Phase3ContentApiTest {
     Map<?, ?> article = (Map<?, ?>) data(articleResponse);
     Number articleId = (Number) article.get("id");
     assertThat(article.get("is_publish")).isEqualTo(false);
+    assertThat(article.get("content_markdown")).isEqualTo("# Phase 3\n\nJava backend content.");
+    assertThat(article.get("content")).asString().contains("<h1>Phase 3</h1>");
+
+    ResponseEntity<Map> adminDetailResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/articles/" + articleId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            Map.class);
+    Map<?, ?> adminDetail = (Map<?, ?>) data(adminDetailResponse);
+    assertThat(adminDetail.get("content_markdown")).isEqualTo("# Phase 3\n\nJava backend content.");
+    assertThat(adminDetail.get("content")).asString().contains("<h1>Phase 3</h1>");
 
     ResponseEntity<Map> publishResponse =
         restTemplate.exchange(
@@ -122,6 +134,17 @@ class Phase3ContentApiTest {
         restTemplate.getForEntity("/api/v1/articles/phase-3-article", Map.class);
     assertThat(publicArticleResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(((Map<?, ?>) data(publicArticleResponse)).get("title")).isEqualTo("Phase 3 Article");
+
+    ResponseEntity<Map> metadataOnlyUpdateResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/articles/" + articleId,
+            HttpMethod.PUT,
+            new HttpEntity<>(Map.of("title", "Phase 3 Article Updated"), headers),
+            Map.class);
+    Map<?, ?> metadataOnlyUpdate = (Map<?, ?>) data(metadataOnlyUpdateResponse);
+    assertThat(metadataOnlyUpdate.get("content_markdown")).isEqualTo("# Phase 3\n\nJava backend content.");
+    assertThat(metadataOnlyUpdate.get("content")).asString().contains("<h1>Phase 3</h1>");
+    assertThat(metadataOnlyUpdate.get("content")).asString().doesNotContain("&lt;h1&gt;");
   }
 
   private HttpHeaders authenticatedHeaders() {

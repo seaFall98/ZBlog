@@ -116,7 +116,7 @@ onUnmounted(() => {
 
     <FeaturesArticleOutdatedNotice v-if="article.is_outdated" />
 
-    <FeaturesArticleContent :content="article.content!" />
+    <FeaturesArticleContent :content="article.content_markdown || article.content || ''" />
 
     <FeaturesArticleCopyright :article="article" />
 

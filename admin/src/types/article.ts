@@ -4,6 +4,8 @@ export interface Article {
   title: string;
   slug: string;
   content: string;
+  content_markdown?: string;
+  content_html?: string;
   summary?: string;
   ai_summary?: string;
   cover?: string;

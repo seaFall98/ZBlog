@@ -1,45 +1,44 @@
 # FEATURE_LIST.md
 
-> 鏈枃鑱岃矗锛氬垪鍑?ZBlog 绗竴闃舵鍗氬缃戠珯鍔熻兘娓呭崟锛屽苟鏍囨敞鏉ユ簮銆侀〉闈€佹帴鍙ｅ拰鏁版嵁妯″瀷鏂瑰悜銆?
+> 本文职责：列出 ZBlog 第一阶段功能清单，并标注来源、页面、接口和数据模型方向。
 
-## 鍓嶅彴鍔熻兘
+## 前台功能
 
-| 鍔熻兘 | 椤甸潰 | 鎺ュ彛鏂瑰悜 | 鏁版嵁妯″瀷 | 鏉ユ簮 |
+| 功能 | 页面 | 接口方向 | 数据模型 | 来源 |
 | --- | --- | --- | --- | --- |
-| 棣栭〉 | `/` | 鏂囩珷鍒嗛〉銆佹帹鑽愩€佺珯鐐归厤缃€佺粺璁?| article, setting, stats | FlecBlog 澶嶇敤 |
-| 鏂囩珷璇︽儏 | `/posts/:slug` | 鏂囩珷璇︽儏銆佽瘎璁哄垪琛ㄣ€佺浉鍏虫枃绔?| article, comment, tag | FlecBlog + 鏃?ZBlog 澧炲己 |
-| 鍒嗙被 | `/categories`, `/category/:slug` | 鍒嗙被鍒楄〃銆佸垎绫绘枃绔?| category, article | FlecBlog 澶嶇敤 |
-| 鏍囩 | `/tags`, `/tag/:slug` | 鏍囩鍒楄〃銆佹爣绛炬枃绔?| tag, article_tag | FlecBlog 澶嶇敤 |
-| 褰掓。 | `/archive` | 鎸夊勾鏈堝綊妗?| article | FlecBlog 澶嶇敤 |
-| 鎼滅储 | 鎼滅储寮圭獥/椤?| 鏂囩珷鎼滅储 | article/search_index | FlecBlog 澶嶇敤鍚庢墿灞?|
-| 璇勮 | 鏂囩珷璇︽儏 | 璇勮鍒楄〃銆佹彁浜ゃ€佸洖澶?| comment | FlecBlog 澶嶇敤 |
-| 鍙嬮摼 | `/friend` | 鍙嬮摼鍒楄〃銆佺敵璇?| friend | FlecBlog 澶嶇敤 |
-| 鍏充簬 | `/about` | 椤甸潰閰嶇疆 | setting/page | FlecBlog 澶嶇敤 |
-| SEO | 鍏ㄧ珯 | sitemap/feed/meta | article, setting | FlecBlog 澶嶇敤 |
+| 首页 | `/` | 文章分页、推荐、站点配置、统计 | article, setting, stats | FlecBlog 复用 |
+| 文章详情 | `/posts/:slug` | 文章详情、评论列表、相关文章 | article, comment, tag | FlecBlog + ZBlog 增强 |
+| 分类 | `/categories`, `/category/:slug` | 分类列表、分类文章 | category, article | FlecBlog 复用 |
+| 标签 | `/tags`, `/tag/:slug` | 标签列表、标签文章 | tag, article_tag | FlecBlog 复用 |
+| 归档 | `/archive` | 按年月归档 | article | FlecBlog 复用 |
+| 搜索 | 搜索弹窗/页面 | 文章搜索 | article/search_index | FlecBlog 复用后扩展 |
+| 评论 | 文章详情页 | 评论列表、提交、回复 | comment | FlecBlog 复用 |
+| 友链 | `/friend` | 友链列表、申请 | friend | FlecBlog 复用 |
+| 关于 | `/about` | 页面配置 | setting/page | FlecBlog 复用 |
+| SEO | 全站 | sitemap/feed/meta | article, setting | FlecBlog 复用 |
 
-## 鍚庡彴鍔熻兘
+## 后台功能
 
-| 鍔熻兘 | 椤甸潰 | 鎺ュ彛鏂瑰悜 | 鏁版嵁妯″瀷 | 鏉ユ簮 |
+| 功能 | 页面 | 接口方向 | 数据模型 | 来源 |
 | --- | --- | --- | --- | --- |
-| 鐧诲綍璁よ瘉 | `/login` | 鐧诲綍銆佸埛鏂般€侀€€鍑?| user/session | FlecBlog 鍙傝€冿紝Java 瀹炵幇 |
-| 浠〃鐩?| `/dashboard` | 缁熻姒傝 | stats | FlecBlog 澶嶇敤 |
-| 鏂囩珷绠＄悊 | `/articles` | CRUD銆佸彂甯冦€佽崏绋?| article | FlecBlog 澶嶇敤 |
-| Markdown 缂栬緫鍣?| `/articles/new`, `/articles/:id/edit` | 淇濆瓨 Markdown | article | FlecBlog + 鏃?ZBlog |
-| 鍒嗙被绠＄悊 | `/categories` | CRUD | category | FlecBlog 澶嶇敤 |
-| 鏍囩绠＄悊 | `/tags` | CRUD | tag | FlecBlog 澶嶇敤 |
-| 璇勮绠＄悊 | `/comments` | 瀹℃牳銆佸垹闄ゃ€佸洖澶?| comment | FlecBlog 澶嶇敤 |
-| 鍙嬮摼绠＄悊 | `/friends` | CRUD銆佸鏍?| friend | FlecBlog 澶嶇敤 |
-| 鏂囦欢绠＄悊 | `/files` | 涓婁紶銆佸垪琛ㄣ€佸垹闄?| file_asset | FlecBlog 澶嶇敤 |
-| 绔欑偣閰嶇疆 | `/settings` | 閰嶇疆璇诲啓 | setting | FlecBlog 澶嶇敤 |
-| 璁块棶缁熻 | `/visits` | 璁块棶鍒楄〃銆佽秼鍔?| visit_log/stats | FlecBlog 鍙傝€?|
+| 登录认证 | `/login` | 登录、刷新、退出 | user/session | FlecBlog 参考，Java 实现 |
+| 仪表盘 | `/dashboard` | 统计总览 | stats | FlecBlog 复用 |
+| 文章管理 | `/articles` | CRUD、发布、草稿 | article | FlecBlog 复用 |
+| Markdown 编辑器 | `/articles/new`, `/articles/:id/edit` | 保存 Markdown | article | FlecBlog + ZBlog |
+| 分类管理 | `/categories` | CRUD | category | FlecBlog 复用 |
+| 标签管理 | `/tags` | CRUD | tag | FlecBlog 复用 |
+| 评论管理 | `/comments` | 审核、删除、回复 | comment | FlecBlog 复用 |
+| 友链管理 | `/friends` | CRUD、审核 | friend | FlecBlog 复用 |
+| 文件管理 | `/files` | 上传、列表、删除 | file_asset | FlecBlog 复用 |
+| 站点设置 | `/settings` | 配置读写 | setting | FlecBlog 复用 |
+| 访问统计 | `/visits` | 访问列表、趋势 | visit_log/stats | FlecBlog 参考 |
 
-## 鍚庣画鍔熻兘
+## 后续功能
 
-- 椤圭洰灞曠ず锛?
-- 鐩稿唽锛?
-- 璇磋 / moment锛?
-- 璁㈤槄锛?
-- AI 鎽樿锛?
-- 涓€閿畨瑁呭櫒锛?
-- 涓汉鍝佺墝棣栭〉銆?
-
+- 项目展示；
+- 相册；
+- 说说 / moment；
+- 订阅；
+- AI 摘要；
+- 一键安装器；
+- 个人品牌首页。

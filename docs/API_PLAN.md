@@ -1,14 +1,14 @@
 # API_PLAN.md
 
-> 鏈枃鑱岃矗锛氬畾涔?ZBlog Java 鍚庣 API 鑽夋锛岀‘淇?FlecBlog 鍓嶇杩佺Щ鏃舵湁鏄庣‘濂戠害鏂瑰悜銆?
+> 本文职责：定义 ZBlog Java 后端 API 草案，确保 FlecBlog 前端迁移时有清晰契约方向。
 
-## API 鍓嶇紑
+## API 前缀
 
 ```text
 /api/v1
 ```
 
-## 鍏紑 API
+## 公共 API
 
 ```text
 GET    /site/config
@@ -29,7 +29,7 @@ GET    /sitemap.xml
 GET    /feed.xml
 ```
 
-## 绠＄悊 API
+## 管理 API
 
 ```text
 POST   /auth/login
@@ -76,9 +76,9 @@ GET    /admin/stats/overview
 GET    /admin/stats/visits
 ```
 
-## 鍝嶅簲绾﹀畾
+## 响应约定
 
-缁熶竴鍝嶅簲锛?
+统一响应：
 
 ```json
 {
@@ -88,7 +88,7 @@ GET    /admin/stats/visits
 }
 ```
 
-鍒嗛〉鍝嶅簲锛?
+分页响应：
 
 ```json
 {
@@ -99,9 +99,8 @@ GET    /admin/stats/visits
 }
 ```
 
-## 閫傞厤鍘熷垯
+## 适配原则
 
-- 鍏堝榻?FlecBlog 鍓嶇瀹為檯闇€瑕佺殑瀛楁锛?
-- Java API 鍙互淇濈暀鏇存竻鏅扮殑鍛藉悕锛屼絾杩佺Щ鏈熷厑璁稿湪鍓嶇 adapter 涓仛瀛楁杞崲锛?
-- 涓嶄负鍏煎 Go 鍚庣鍐呴儴瀹炵幇鐗虹壊 Java 鍚庣妯″瀷娓呮櫚搴︺€?
-
+- 先对齐 FlecBlog 前端真正需要的字段；
+- Java API 可以保留更清晰的命名，但迁移期允许在前端 adapter 中做字段转换；
+- 不为了兼容 Go 后端内部实现而牺牲 Java 后端模型清晰度。

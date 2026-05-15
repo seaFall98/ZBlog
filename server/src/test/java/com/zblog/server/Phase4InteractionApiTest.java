@@ -74,8 +74,90 @@ class Phase4InteractionApiTest {
             "blog.footer_social",
             "blog.footer_links",
             "blog.home_layout");
+    assertThat(blog.get("blog.about_personality")).isEqualTo("INFJ-A");
     assertThat(upload).containsKey("upload.max_file_size");
     assertThat(menus).hasSizeGreaterThanOrEqualTo(6);
+    assertThat(menus)
+        .anySatisfy(
+            menu -> {
+              Map<?, ?> item = (Map<?, ?>) menu;
+              assertThat(item.get("type")).isEqualTo("footer");
+              assertThat((List<?>) item.get("children")).isNotEmpty();
+            });
+    assertThat(menus)
+        .anySatisfy(
+            menu -> {
+              Map<?, ?> item = (Map<?, ?>) menu;
+              assertThat(item.get("type")).isEqualTo("aggregate");
+              assertThat((List<?>) item.get("children")).isNotEmpty();
+            });
+  }
+
+  @Test
+  void adminMenusCanBeCreatedUpdatedAndDeleted() {
+    HttpHeaders headers = authenticatedHeaders();
+    ResponseEntity<Map> createResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/menus",
+            HttpMethod.POST,
+            new HttpEntity<>(
+                Map.of(
+                    "type", "aggregate",
+                    "title", "测试菜单",
+                    "url", "/test-menu",
+                    "icon", "ri-test-tube-line",
+                    "sort", 9,
+                    "is_enabled", true),
+                headers),
+            Map.class);
+    assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Number parentId = (Number) ((Map<?, ?>) data(createResponse)).get("id");
+
+    ResponseEntity<Map> childResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/menus",
+            HttpMethod.POST,
+            new HttpEntity<>(
+                Map.of(
+                    "type", "aggregate",
+                    "parent_id", parentId,
+                    "title", "测试子菜单",
+                    "url", "/test-child-menu",
+                    "icon", "",
+                    "sort", 10,
+                    "is_enabled", true),
+                headers),
+            Map.class);
+    assertThat(childResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    ResponseEntity<Map> updateResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/menus/" + parentId,
+            HttpMethod.PUT,
+            new HttpEntity<>(Map.of("title", "测试菜单更新"), headers),
+            Map.class);
+    assertThat(updateResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(((Map<?, ?>) data(updateResponse)).get("title")).isEqualTo("测试菜单更新");
+
+    ResponseEntity<Map> listResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/menus?type=aggregate", HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+    List<?> menus = (List<?>) data(listResponse);
+    assertThat(menus)
+        .anySatisfy(
+            menu -> {
+              Map<?, ?> item = (Map<?, ?>) menu;
+              assertThat(item.get("id")).isEqualTo(parentId);
+              assertThat((List<?>) item.get("children")).hasSize(1);
+            });
+
+    ResponseEntity<Map> deleteResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/menus/" + parentId,
+            HttpMethod.DELETE,
+            new HttpEntity<>(Map.of("children_action", "delete"), headers),
+            Map.class);
+    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
   }
 
   @Test

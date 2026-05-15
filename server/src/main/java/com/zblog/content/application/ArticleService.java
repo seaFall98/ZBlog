@@ -70,7 +70,7 @@ public class ArticleService {
     Map<String, Object> existing = articleRepository.getAdmin(id);
     String title = textOrDefault(request, "title", existing.get("title").toString());
     String slug = textOrDefault(request, "slug", existing.get("slug").toString());
-    String markdown = textOrDefault(request, "content", existing.get("content").toString());
+    String markdown = textOrDefault(request, "content", value(existing, "content_markdown"));
     RenderedContent rendered = markdownRenderer.render(markdown);
     return articleRepository.update(
         id,

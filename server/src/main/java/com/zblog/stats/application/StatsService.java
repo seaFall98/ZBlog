@@ -58,7 +58,7 @@ public class StatsService {
     stats.put("total_articles", totalArticles);
     stats.put("total_comments", totalComments);
     stats.put("total_friends", totalFriends);
-    stats.put("total_moments", 0);
+    stats.put("total_moments", count("select count(*) from moments"));
     stats.put("total_categories", totalCategories);
     stats.put("total_tags", totalTags);
     stats.put("today_visitors", 0);
@@ -103,7 +103,7 @@ public class StatsService {
     Map<String, Object> dashboard = new LinkedHashMap<>();
     dashboard.put("total_articles", site.get("total_articles"));
     dashboard.put("total_friends", site.get("total_friends"));
-    dashboard.put("total_moments", 0);
+    dashboard.put("total_moments", count("select count(*) from moments"));
     dashboard.put("total_views", site.get("total_page_views"));
     dashboard.put("total_visitors", 0);
     dashboard.put("total_comments", site.get("total_comments"));

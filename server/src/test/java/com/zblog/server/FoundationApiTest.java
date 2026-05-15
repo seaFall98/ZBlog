@@ -2,6 +2,7 @@ package com.zblog.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -113,12 +114,19 @@ class FoundationApiTest {
   }
 
   @Test
-  void publicMomentsPlaceholderReturnsEmptyPage() {
+  void publicMomentsEndpointReturnsPageEnvelope() {
     ResponseEntity<Map> response = restTemplate.getForEntity("/api/v1/moments", Map.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    Map<?, ?> page = (Map<?, ?>) response.getBody().get("data");
-    assertThat(page.get("list")).asList().isEmpty();
-    assertThat(((Number) page.get("total")).longValue()).isZero();
+    Map<?, ?> page = (Map<?, ?>) data(response);
+    List<String> keys = page.keySet().stream().map(String::valueOf).toList();
+    assertThat(keys).containsAll(List.of("list", "total", "page", "page_size"));
+  }
+
+  private Object data(ResponseEntity<Map> response) {
+    Map<?, ?> body = response.getBody();
+    assertThat(body).isNotNull();
+    assertThat(body.get("code")).isEqualTo(0);
+    return body.get("data");
   }
 }

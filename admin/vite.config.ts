@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 
 export default defineConfig(({ mode }) => {
@@ -14,42 +13,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       vue(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        manifest: {
-          name: 'Flec 管理系统',
-          short_name: 'Flec Admin',
-          description: '后台管理系统',
-          theme_color: '#f7f7f7',
-          background_color: '#ffffff',
-          display: 'standalone',
-          icons: [
-            {
-              src: '/pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: '/pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
-          ]
-        },
-        includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
-        devOptions: {
-          enabled: true
-        },
-        workbox: {
-          // 只缓存静态资源
-          globPatterns: ['**/*.{js,css,html,ico,png,woff,woff2}'],
-          // 排除大文件
-          globIgnores: ['**/remixicon*.svg'],
-          // 不缓存 API 请求
-          navigateFallbackDenylist: [/^\/api/]
-        }
-      })
     ],
     resolve: {
       alias: {

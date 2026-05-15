@@ -1,24 +1,26 @@
 # PHASE3_CONTENT_CLOSED_LOOP_LOG.md
 
-> 鏈枃鑱岃矗锛氳褰?Phase 3 鏂囩珷绯荤粺闂幆鐨勫疄闄呰惤鍦扮粨鏋溿€侀獙璇佸懡浠ゃ€佸綋鍓嶈竟鐣屽拰涓嬩竴闃舵寤鸿銆?
+> 本文职责：记录 Phase 3 文章系统闭环的实际落地结果、验证命令、当前边界和下一阶段建议。
 
-## 鏈钀藉湴
+## 本次落地
 
-鏃堕棿锛?026-05-15 鏈湴鎵ц璁板綍銆?
+时间：2026-05-15 本地执行记录。
 
-宸插畬鎴愶細
+已完成：
 
-- 鍚庣缁熶竴鍝嶅簲浠庡瓧绗︿覆鐮佽皟鏁翠负 FlecBlog 鍓嶇鍏煎鐨勬暟鍊肩爜锛氭垚鍔?`code=0`銆?
-- 鐧诲綍鍝嶅簲鏀逛负 `access_token`銆乣token_type`銆乣expires_in`锛屽吋瀹瑰悗鍙扮櫥褰曢〉銆?
-- 寮曞叆 `spring-boot-starter-jdbc`銆丗lyway PostgreSQL 鏀寔鍜屾祴璇曠敤 H2 PostgreSQL mode銆?
-- 鍒涘缓 Flyway baseline锛歚categories`銆乣tags`銆乣articles`銆乣article_tags`銆乣menus`銆?
-- 鍔犲叆 baseline 绉嶅瓙鏁版嵁锛氶粯璁ゅ垎绫汇€侀粯璁ゆ爣绛俱€佺ず渚嬫枃绔犮€侀《閮?搴曢儴鑿滃崟銆?
-- 鎸夎交閲?DDD 缁撴瀯钀藉湴 `site`銆乣taxonomy`銆乣content` 妯″潡銆?
-- 瀹炵幇鍏紑 API锛氳彍鍗曘€佸垎绫汇€佹爣绛俱€佹枃绔犲垪琛ㄣ€佹枃绔犺鎯呫€侀殢鏈烘枃绔?slug銆?
-- 瀹炵幇鍚庡彴 API锛氬垎绫?CRUD銆佹爣绛?CRUD銆佹枃绔犲垪琛?璇︽儏/鍒涘缓/鏇存柊/鍒犻櫎/鍙戝竷/鍙栨秷鍙戝竷銆?
-- 瀹炵幇鍩虹 Markdown 娓叉煋蹇収锛歚content_markdown`銆乣content_html`銆乣content_text`銆?
+- 后端统一响应从字符串码调整为 FlecBlog 前端兼容的数值码：成功为 `code=0`；
+- 登录响应改为 `access_token`、`token_type`、`expires_in`，兼容后台登录页；
+- 引入 `spring-boot-starter-jdbc`、Flyway PostgreSQL 支持和测试用 H2 PostgreSQL mode；
+- 创建 Flyway baseline：`categories`、`tags`、`articles`、`article_tags`、`menus`；
+- 加入 baseline 种子数据：默认分类、默认标签、示例文章、顶部和底部菜单；
+- 按轻量 DDD 结构落地 `site`、`taxonomy`、`content` 模块；
+- 实现公共 API：菜单、分类、标签、文章列表、文章详情、随机文章 slug；
+- 实现后台 API：分类 CRUD、标签 CRUD、文章列表、详情、创建、更新、删除、发布、取消发布；
+- 实现基础 Markdown 渲染快照：`content_markdown`、`content_html`、`content_text`。
 
-## 宸查獙璇?
+## 已验证
+
+已执行：
 
 ```powershell
 cd D:\MyCode\ZBlogProject\ZBlog\server
@@ -34,30 +36,30 @@ npm run type-check
 npm run build
 ```
 
-缁撴灉锛?
+结果：
 
-- 鍚庣 `mvn test` 閫氳繃锛? tests, 0 failures, 0 errors銆?
-- 鍚庣 `mvn package` 閫氳繃锛岀敓鎴?Spring Boot jar銆?
-- 鍓嶅彴 `type-check` 鍜?`build` 閫氳繃銆?
-- 鍚庡彴 `type-check` 鍜?`build` 閫氳繃銆?
+- 后端 `mvn test` 通过：15 tests, 0 failures, 0 errors；
+- 后端 `mvn package` 通过，生成 Spring Boot jar；
+- 前台 `type-check` 和 `build` 通过；
+- 后台 `type-check` 和 `build` 通过。
 
-## 褰撳墠杈圭晫
+## 当前边界
 
-- Markdown 娓叉煋鐩墠鏄熀纭€瀹炵幇锛屽彧瑕嗙洊鏍囬鍜屾钀斤紱鍚庣画闇€瑕佸寮轰唬鐮佸潡銆佺洰褰曘€丮ermaid銆佸浘鐗囪祫婧愬鐞嗐€?
-- 鏂囩珷瀵煎叆銆佸井淇″叕浼楀彿瀵煎嚭銆亃ip 涓嬭浇鎺ュ彛灏氭湭瀹炵幇锛屽綋鍓嶅悗鍙板搴旀寜閽琚偣鍑讳細闇€瑕佸悗缁ˉ榻愩€?
-- 鐢ㄦ埛浣撶郴浠嶆槸 bootstrap admin锛屽皻鏈浛鎹㈡垚鏁版嵁搴撶敤鎴峰拰瀵嗙爜鍝堝笇銆?
-- 璇勮銆佸弸閾俱€佹枃浠朵笂浼犮€佺珯鐐归厤缃粛灞炰簬涓嬩竴闃舵銆?
-- PostgreSQL 鐢熶骇杩炴帴宸查厤缃负鐜鍙橀噺椹卞姩锛屾湰鍦版祴璇曚娇鐢?H2 PostgreSQL mode銆?
+- Markdown 渲染目前只是基础实现，只覆盖标题和段落；后续还需要增强代码块、目录、Mermaid、图片资源处理；
+- 文章导入、微信公众号导出、zip 下载接口尚未实现，后台对应按钮如果被点击，后续仍需补齐；
+- 用户体系仍是 bootstrap admin，尚未替换成数据库用户名和密码哈希；
+- 评论、友链、文件上传、站点配置仍属于下一阶段；
+- PostgreSQL 生产连接已经按环境变量驱动配置，本地测试仍使用 H2 PostgreSQL mode。
 
-## 涓嬩竴闃舵寤鸿
+## 下一阶段建议
 
-鎺ㄨ崘杩涘叆 Phase 4锛氳瘎璁恒€佸弸閾俱€佹枃浠朵笂浼犮€佺珯鐐归厤缃€?
+推荐进入 Phase 4：评论、友链、文件上传、站点配置。
 
-浼樺厛椤哄簭寤鸿锛?
+优先顺序建议：
 
-- `site/settings`锛氳绔欑偣鍚嶇О銆佸ご鍍忋€佺ぞ浜ら摼鎺ャ€丼EO銆佽彍鍗曞彲鍚庡彴閰嶇疆銆?
-- `friend`锛氳ˉ榻愬墠鍙板簳閮ㄥ弸閾惧拰鍙嬮摼椤甸潰锛岃В鍐?footer 鏁版嵁鏇村畬鏁寸殑闂銆?
-- `comment`锛氭枃绔犺瘎璁烘彁浜ゃ€佸鏍搞€佸睍绀恒€?
-- `media`锛氬浘鐗囦笂浼狅紝涓烘枃绔犲皝闈㈠拰姝ｆ枃鍥剧墖鏈嶅姟銆?
+- `site/settings`：让站点名称、头像、社交链接、SEO、菜单可后台配置；
+- `friend`：补齐前台底部友链和友链页面，解决 footer 数据不完整的问题；
+- `comment`：文章评论提交、审核、展示；
+- `media`：图片上传，为文章封面和正文图片服务。
 
-杩欐瘮鍏堝仛缁熻/鎼滅储鏇撮€傚悎褰撳墠闃舵锛屽洜涓哄畠鐩存帴琛ラ綈鍗氬缃戠珯鏃ュ父杩愯惀闂幆銆?
+这个顺序比先做统计/搜索更合适，因为它直接补齐博客网站日常运营闭环。
