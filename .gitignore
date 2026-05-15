@@ -1,6 +1,7 @@
 /.idea/
 /.vscode/
 /.DS_Store
+/.claude/
 
 # Local reference source. Keep it available for inspection, but do not treat it
 # as first-party project code until an explicit migration task copies pieces out.
@@ -13,8 +14,11 @@ node_modules/
 dist/
 dev-dist/
 target/
+docs/articles
 /logs/
 uploads/
+!blog/server/routes/uploads/
+!blog/server/routes/uploads/[...path].ts
 temp_plan/
 *.tsbuildinfo
 *.log

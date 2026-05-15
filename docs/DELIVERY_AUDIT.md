@@ -27,7 +27,7 @@ These areas have been brought to a real closed loop in the current repo state:
 - User/account baseline: database-backed login/register/profile/password/admin user CRUD.
 - Feedback/subscription/RSS baseline: public feedback tickets, email subscribers, and admin RSS read-state management.
 - Import/export baseline: admin article import, WeChat export, Markdown ZIP download, and comment import.
-- Batch 2 content assets: upload/public asset delivery and supported imported Markdown image links are automated-verified and Docker-verified; user browser re-acceptance is pending.
+- Batch 2 content assets: upload/public asset delivery and supported imported Markdown image links are automated-verified, Docker-verified, and user-accepted in the local running stack.
 - Compatibility endpoints for system admin and notifications that the current frontend expects.
 - Admin tools and AI utility endpoints: link metadata, video parsing, remote image download, AI config test, summary, AI summary, and title generation.
 - Batch 1 backend truth data: visit collection/stat derivation, persisted notifications/read-state, and honest system info are automated-verified and user-accepted in the local running stack.
@@ -38,7 +38,7 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ### Upload and public asset delivery
 
-- Status: automated verified and Docker verified; user browser re-acceptance pending.
+- Status: automated verified, Docker verified, and manually accepted.
 - Admin upload at `POST /api/v1/admin/files` and public upload at `POST /api/v1/upload` both write real files under `uploads/`, create `files` rows, and return `/uploads/<filename>` URLs with `original_name` for frontend callers.
 - Static serving for `/uploads/**` is covered by integration tests that fetch the returned URL over HTTP and verify the uploaded bytes.
 - Docker verification confirms the same returned `/uploads/<filename>` URL is reachable through backend `localhost:8080`, admin nginx `localhost:4000`, and blog Nuxt `localhost:3000`.
@@ -118,7 +118,7 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - PASS: Docker publish check created `docker-publish-check`, saved `is_publish=true` through `PUT /api/v1/admin/articles/{id}`, and public article lookup returned 200.
 - PASS: `问题清单2.md` avatar follow-up verified homepage and about-page owner images render direct `/uploads/...` URLs instead of Nuxt IPX `/_ipx/_/uploads/...`, and the real avatar/photo files return 200 from `localhost:3000`, `localhost:4000`, and `localhost:8080`.
 - PASS: `问题清单2.md` Markdown ZIP follow-up added a RED/GREEN export test; ZIP download now rewrites `/uploads/<file>` Markdown links to `assets/<file>` and includes the image bytes in the ZIP.
-- Pending: user browser re-acceptance on the checklist screens.
+- ACCEPTED: user manually verified Batch 2 remediation fixes and checklist screens against the local running stack on 2026-05-16.
 
 ## What to do next
 

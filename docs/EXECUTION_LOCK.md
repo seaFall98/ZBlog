@@ -25,7 +25,7 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ID: CONTENT-ASSET-CLOSED-LOOP-BATCH-002
 
-Status: automated_and_docker_verified_user_acceptance_pending
+Status: closed
 
 Scope:
 - Batch 2 only: content-asset-closed-loop.
@@ -93,7 +93,8 @@ Automated GREEN verification:
 Manual browser verification:
 - Local Docker verification confirms the previously broken relative `/uploads/**` URLs now work from backend, admin nginx, and blog Nuxt origins.
 - Local Docker verification confirms article edit-page publish persistence through the same `PUT /api/v1/admin/articles/{id}` path used by the admin UI.
-- User re-acceptance is still pending in the browser for the exact checklist screens.
+- ACCEPTED: user manually verified Batch 2 remediation fixes against the local running stack on 2026-05-16.
+- ACCEPTED: exact browser checklist screens were re-accepted by the user after remediation.
 
 ## Closed Implementation Loops
 
@@ -128,7 +129,7 @@ This backlog is the current missing-feature source of truth. It is based on the 
 
 ### 1. Upload and Public Asset Delivery
 
-Status: closed, user re-acceptance pending
+Status: closed, user accepted
 
 Current facts:
 - Admin upload exists at `POST /api/v1/admin/files`.
