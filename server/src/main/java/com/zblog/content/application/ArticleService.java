@@ -71,20 +71,25 @@ public class ArticleService {
     String slug = textOrDefault(request, "slug", Slugify.from(title));
     String markdown = text(request, "content");
     RenderedContent rendered = markdownRenderer.render(markdown);
-    return articleRepository.create(
-        title,
-        slug,
-        markdown,
-        rendered.html(),
-        rendered.text(),
-        textOrDefault(request, "summary", ""),
-        nullableText(request, "cover"),
-        nullableLong(request, "category_id"),
-        tagIds(request),
-        nullableText(request, "location"),
-        bool(request, "is_top"),
-        bool(request, "is_essence"),
-        bool(request, "is_outdated"));
+    Map<String, Object> created =
+        articleRepository.create(
+            title,
+            slug,
+            markdown,
+            rendered.html(),
+            rendered.text(),
+            textOrDefault(request, "summary", ""),
+            nullableText(request, "cover"),
+            nullableLong(request, "category_id"),
+            tagIds(request),
+            nullableText(request, "location"),
+            bool(request, "is_top"),
+            bool(request, "is_essence"),
+            bool(request, "is_outdated"));
+    if (bool(request, "is_publish")) {
+      return articleRepository.publish(((Number) created.get("id")).longValue());
+    }
+    return created;
   }
 
   public Map<String, Object> update(long id, Map<String, Object> request) {

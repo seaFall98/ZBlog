@@ -103,7 +103,7 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - RSS reader: manual refresh is verified; scheduled refresh and detailed friend-list source status display remain deferred.
 - Import/export assets: Markdown import now supports already-uploaded `/uploads/**` image references; local relative images, remote image downloads during import, HTML `<img>` rewriting, and bundled ZIP media files remain deferred and must fail/report rather than silently importing broken paths.
 - Article AI summary persistence: automated verified and awaiting manual acceptance; generated summary/title text is saved through real article `summary`/`title` fields, with no fake `ai_summary` article field.
-- Search and SEO: the main public endpoints exist, but some deeper analytics and ranking pieces still need follow-up if the product expects them.
+- Search and SEO: DB-backed search is accepted for v1, with Elasticsearch deferred as a later product enhancement. Search and SEO XML now have automated coverage for real published article lifecycle changes; deeper analytics/ranking remain future product scope if needed.
 - Test coverage: too many tests only assert that the envelope exists; too few assert the business effect.
 
 ## Batch 1 verification notes
@@ -158,6 +158,16 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - OBSERVED: `npm --prefix blog run type-check` completed with the existing local `vue-router/volar/sfc-route-blocks` warning for missing `@vue/language-core`.
 - PASS: Docker running-stack AI title endpoint returned a real generated title using the saved DeepSeek-compatible AI settings; no API key was written to code, docs, tests, or logs.
 - ACCEPTED: user manually verified DeepSeek AI config, AI title generation, summary generation, save/reopen persistence, and public article summary behavior in the running stack on 2026-05-17.
+
+## Batch 6 verification notes
+
+- DECISION: DB-backed search is accepted for v1; Elasticsearch is deferred as a later product enhancement and must not be fake-configured or fake-indexed.
+- RED observed: `mvn -f server/pom.xml -Dtest=Batch6SearchSeoDepthTest test` failed after adding direct create-and-publish coverage because `POST /api/v1/admin/articles` with `is_publish=true` created a draft, leaving public search and SEO XML without the new article.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch6SearchSeoDepthTest test` - 2 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 55 tests, 0 failures, 0 errors.
+- PASS: Docker running-stack verification against `localhost:8080` proved direct create-and-publish, public search, RSS, Atom, sitemap, update, draft exclusion, unpublish exclusion, republish, delete exclusion, and cleanup.
+- ACCEPTED: user manually verified Batch 6 search and SEO behavior in the running stack on 2026-05-17.
+- FOLLOW-UP: AI summary length prompt guidance and optional future search strategy design are deferred outside Batch 6.
 
 ## What to do next
 

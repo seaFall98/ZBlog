@@ -23,55 +23,63 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
-ID: AI-ARTICLE-METADATA-BATCH-005
+ID: SEARCH-SEO-DEPTH-BATCH-006
 
 Status: closed, user accepted
 
 Scope:
-- Batch 5 only: AI article metadata decision and persistence closed loop.
-- Product decision: reuse existing `articles.summary` / article `summary` as the AI-generated summary persistence target; do not add a separate `ai_summary` column or fake article field.
-- Keep `/api/v1/admin/ai/summary`, `/api/v1/admin/ai/ai-summary`, and `/api/v1/admin/ai/title` as generation tools; generated text must be saved through the real article create/update summary/title fields.
-- Do not include Search/SEO, deployment, FlecBlog parity, or unrelated AI feature work.
+- Batch 6 only: Search and SEO depth closed loop for real article data.
+- Product decision: DB-backed search is accepted for v1; Elasticsearch is deferred as a later enhancement and must not be fake-configured or fake-indexed.
+- Search derives from real published articles and reacts to create, update, publish, unpublish, and delete.
+- SEO XML outputs (`rss.xml`, `atom.xml`, `sitemap.xml`) derive from real published articles and react to article state/content changes.
+- Do not include Deployment Hardening, FlecBlog Parity Recheck, or unrelated Batch 1-5 changes.
 
 Frontend/admin entry pages:
-- Admin article editor page uses AI title/summary generation controls and saves through admin article create/update APIs.
-- Public article page consumes the persisted article `summary` for SEO/metadata and any summary display required by the current UI.
+- Admin article editor/list creates, updates, publishes, unpublishes, and deletes articles through admin article APIs.
+- Public blog search page consumes `GET /api/v1/articles/search`.
+- Browser-accessible SEO outputs consume `/rss.xml`, `/atom.xml`, and `/sitemap.xml`.
 
 Exact API calls:
-- `POST /api/v1/admin/ai/summary`
-- `POST /api/v1/admin/ai/ai-summary`
-- `POST /api/v1/admin/ai/title`
 - `POST /api/v1/admin/articles`
 - `PUT /api/v1/admin/articles/{id}`
-- `GET /api/v1/admin/articles/{id}`
-- `GET /api/v1/articles/{slug}`
+- `POST /api/v1/admin/articles/{id}/publish`
+- `POST /api/v1/admin/articles/{id}/unpublish`
+- `DELETE /api/v1/admin/articles/{id}`
+- `GET /api/v1/articles/search?keyword=...`
+- `GET /rss.xml`
+- `GET /atom.xml`
+- `GET /sitemap.xml`
 
 Current backend implementation:
-- AI utility endpoints call an OpenAI-compatible chat-completions provider using saved AI settings.
-- Article create/update/detail already persists and returns `summary` and `title`.
-- There is no backend `ai_summary` persistence field, and Batch 5 keeps that as an explicit product decision.
+- Public search currently uses DB queries over `articles` and filters `status = 'PUBLISHED'`.
+- SEO XML outputs currently query published articles directly from the DB for each request.
+- No Elasticsearch implementation is currently proven in Java backend code.
 
 Missing persistence or derived data:
-- No separate AI metadata persistence remains in Batch 5 scope; `summary` is the accepted persistence field for AI-generated summary text.
-- The AI settings prompt key `ai_summary_prompt` remains as a generation prompt setting for the `/admin/ai/ai-summary` tool, not as an article data field.
+- Batch 6 must prove search and SEO outputs react correctly to article create/update/delete/publish-state changes.
+- Any cache behavior must be explicit; this batch should not introduce long-lived stale search/SEO caches.
 
 User-visible expected behavior:
-- Admin can generate a title or summary using AI, save the article, reopen or refresh the editor, and see the generated title/summary still present.
-- Article responses expose the real persisted `summary`; no fake `ai_summary` article field is required.
-- If AI provider config is missing or invalid, generation fails explicitly rather than pretending to save metadata.
+- A newly published article with a unique keyword appears in public search and SEO XML outputs.
+- Draft articles do not appear in public search or SEO XML outputs.
+- Updating title, summary, or body changes search and SEO output.
+- Unpublishing or deleting removes the article from public search and SEO XML outputs.
 
 Automated RED test:
-- PASS: `mvn -f server/pom.xml -Dtest=Batch5AiArticleMetadataClosedLoopTest test` first failed after the test compiled because admin/blog frontend contracts still referenced the fake `ai_summary` article field.
+- Observed: `mvn -f server/pom.xml -Dtest=Batch6SearchSeoDepthTest test` failed after adding `adminCreateWithPublishFlagImmediatelyEntersSearchAndSeoOutputs` because direct article creation with `is_publish=true` still created a draft; public search returned an empty result for the unique keyword and SEO XML did not include the article.
 
 Automated GREEN verification:
-- PASS: `mvn -f server/pom.xml -Dtest=Batch5AiArticleMetadataClosedLoopTest test` - 3 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml test` - 53 tests, 0 failures, 0 errors.
-- PASS: `npm --prefix admin run type-check`.
-- OBSERVED: `npm --prefix blog run type-check` completed with the existing local `vue-router/volar/sfc-route-blocks` warning for missing `@vue/language-core`.
-- PASS: Docker running-stack AI title endpoint returned a real generated title using the saved DeepSeek-compatible AI settings; no API key was written to code, docs, tests, or logs.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch6SearchSeoDepthTest test` - 2 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 55 tests, 0 failures, 0 errors.
+- Frontend type-check was not required because Batch 6 changed backend service behavior, backend tests, and docs only.
+
+Docker running-stack verification:
+- PASS: rebuilt `server` with `docker compose up --build -d server`, then verified create-and-publish, search, RSS, Atom, sitemap, update, draft exclusion, unpublish exclusion, republish, delete exclusion, and cleanup through real `localhost:8080` APIs.
+- Evidence keywords: `batch6-docker-initial-1778959750`, `batch6-docker-updated-1778959750`, `batch6-docker-draft-1778959750`.
 
 Manual browser verification:
-- ACCEPTED: user manually verified DeepSeek AI config, AI title generation, summary generation, save/reopen persistence, and public article summary behavior in the running stack on 2026-05-17.
+- ACCEPTED: user manually verified Batch 6 search and SEO behavior against the running stack on 2026-05-17.
+- Follow-up suggestions: tighten AI summary length guidance in a future AI utilities batch; consider a future strategy-style search design where DB-backed search remains default and Elasticsearch can be enabled by configuration only when intentionally adopted.
 
 ## Closed Implementation Loops
 
