@@ -10,6 +10,18 @@
   </p>
 
   <p>
+    <a href="#快速启动">在线预览</a> /
+    <a href="./docs/README.md">使用文档</a> /
+    <a href="https://github.com/seaFall98/ZBlog/issues">问题反馈</a> /
+    <a href="https://github.com/seaFall98/ZBlog/discussions">社群交流</a>
+  </p>
+
+  <p>
+    <a href="#中文介绍">简体中文</a> /
+    <a href="#english">English</a>
+  </p>
+
+  <p>
     <img src="https://img.shields.io/badge/Server-Java%2021-007396?style=flat-square&logo=openjdk&logoColor=white" alt="Java 21" />
     <img src="https://img.shields.io/badge/Spring%20Boot-3.x-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot" />
     <img src="https://img.shields.io/badge/Blog-Nuxt%204-00DC82?style=flat-square&logo=nuxt&logoColor=white" alt="Nuxt 4" />
