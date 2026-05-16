@@ -42,8 +42,9 @@ The real DeepSeek API key was used only through local/user-provided configuratio
 
 Pending at the time this file was written. Fill in after commit/push:
 
-- Commit: TBD
-- Push target: TBD
+- Commit: `1e2c840 fix: close ai metadata batch`
+- Commit: `0596064 docs: mark ai metadata batch accepted`
+- Push target: `origin/main`
 
 ## Deferred items
 
