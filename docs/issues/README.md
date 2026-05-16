@@ -30,6 +30,8 @@ docs/issues/batchN/
 
 Existing older files may keep their original names, but new batches should use the numbered layout.
 
+Older exploratory reports may have been written before this layout existed. If they describe acceptance failures or remediation history, preserve the relevant content here as an issue or fix record. If the original report also belongs to a human-facing article draft area such as `docs/article/`, do not delete that local draft merely because it is ignored by Git.
+
 ## Workflow
 
 ### 1. Plan

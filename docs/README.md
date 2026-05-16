@@ -15,4 +15,5 @@ Rules for future agents:
 - Keep execution state in `EXECUTION_LOCK.md`.
 - Keep verified status in `DELIVERY_AUDIT.md`.
 - Treat `archive/` as historical reference only.
+- Treat `docs/article/` as local human-facing article drafts and retrospectives. Do not commit or delete those files unless the user explicitly asks.
 - If old documents conflict with the execution lock or delivery audit, the execution lock and delivery audit win.

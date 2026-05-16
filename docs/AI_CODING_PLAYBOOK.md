@@ -167,6 +167,20 @@ docs/issues/batchN/
 
 This keeps AI work legible to humans. It also lets humans correct the agent's engineering approach before the project becomes a black box.
 
+### Article Drafts Directory
+
+`docs/article/` is a human-facing knowledge and article draft area.
+
+It is different from `docs/issues/`:
+
+- `docs/issues/` records execution evidence for the project;
+- `docs/article/` preserves reusable reflections, technical sharing drafts, and exploratory write-ups for the human owner;
+- article drafts may be ignored by Git and intentionally kept local;
+- "do not commit this file" does not mean "delete this file";
+- never remove ignored human-facing drafts unless the user explicitly asks for deletion.
+
+Some early reports may have been written before the issue record format existed. If they contain acceptance failures or remediation history, copy or normalize the relevant content into `docs/issues/batchN/` as a proper issue/fix record. The original article-style draft may still remain in `docs/article/` for human reading.
+
 ## 5. Suggested Batch Workflow
 
 Use this as the default loop:
@@ -333,6 +347,7 @@ Recommended:
 - commit after a batch is accepted;
 - include tests and docs that prove the batch;
 - keep local scratch files out of commits;
+- preserve ignored human-facing drafts unless the user explicitly asks to delete them;
 - push only after human acceptance if the project uses that flow.
 
 Never commit:
@@ -411,4 +426,3 @@ The current lesson from ZBlog is:
 ```text
 AI coding works best when humans design a visible, testable, batchable work system around the agent.
 ```
-
