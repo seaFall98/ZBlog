@@ -87,7 +87,7 @@ These are the highest-priority mismatches between frontend calls and backend rea
 - Admin tools now have backend routes for link metadata fetch, Bilibili/YouTube video URL parsing, and remote image download, with authenticated access and business-effect tests.
 - AI utilities now have backend routes for config testing, article summary, AI summary, and title generation via an OpenAI-compatible chat completions API using saved AI settings.
 - Production defaults reject private-network URLs for remote fetches and AI base URLs; tests explicitly enable loopback for local fake-provider verification.
-- AI-generated article summaries can be returned to the editor, but persisting a distinct `ai_summary` article field still needs schema/API work if the product requires it beyond the current article `summary` field.
+- Batch 5 decision: AI-generated article summaries reuse the existing persisted article `summary` field; no separate `ai_summary` article field is added. The admin article editor writes both summary-generation variants into `summary`, and article reload/public detail read the same persisted field.
 
 ### Public upload path consistency
 
@@ -102,7 +102,7 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - System data: CPU usage percentage, swap total/usage, DB size, DB connection count, and remote update source are explicitly deferred as `unsupported`; email and Feishu integrations are `disabled` until configured.
 - RSS reader: manual refresh is verified; scheduled refresh and detailed friend-list source status display remain deferred.
 - Import/export assets: Markdown import now supports already-uploaded `/uploads/**` image references; local relative images, remote image downloads during import, HTML `<img>` rewriting, and bundled ZIP media files remain deferred and must fail/report rather than silently importing broken paths.
-- Article AI summary persistence: the AI endpoint returns text to the editor, but a separate persisted `ai_summary` article field is not yet implemented.
+- Article AI summary persistence: automated verified and awaiting manual acceptance; generated summary/title text is saved through real article `summary`/`title` fields, with no fake `ai_summary` article field.
 - Search and SEO: the main public endpoints exist, but some deeper analytics and ranking pieces still need follow-up if the product expects them.
 - Test coverage: too many tests only assert that the envelope exists; too few assert the business effect.
 
@@ -147,6 +147,17 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - PASS: `npm --prefix admin run type-check`.
 - ACCEPTED: user manually verified Batch 4 against the local running stack on 2026-05-17.
 - DEFERRED: scheduled RSS refresh and detailed source status display in friend management.
+
+## Batch 5 verification notes
+
+- DECISION: reuse existing article `summary` for AI-generated summary text; do not add a separate `ai_summary` article field.
+- RED observed: `mvn -f server/pom.xml -Dtest=Batch5AiArticleMetadataClosedLoopTest test` first failed after the test compiled because admin/blog frontend contracts still referenced the fake `ai_summary` article field.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch5AiArticleMetadataClosedLoopTest test` - 3 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 53 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix admin run type-check`.
+- OBSERVED: `npm --prefix blog run type-check` completed with the existing local `vue-router/volar/sfc-route-blocks` warning for missing `@vue/language-core`.
+- PASS: Docker running-stack AI title endpoint returned a real generated title using the saved DeepSeek-compatible AI settings; no API key was written to code, docs, tests, or logs.
+- ACCEPTED: user manually verified DeepSeek AI config, AI title generation, summary generation, save/reopen persistence, and public article summary behavior in the running stack on 2026-05-17.
 
 ## What to do next
 

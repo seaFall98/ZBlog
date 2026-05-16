@@ -23,54 +23,55 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
-ID: RSS-READER-CLOSED-LOOP-BATCH-004
+ID: AI-ARTICLE-METADATA-BATCH-005
 
 Status: closed, user accepted
 
 Scope:
-- Batch 4 only: RSS reader closed loop.
-- Add a manually triggered, testable RSS/Atom fetch path for friend RSS sources.
-- Persist fetched RSS articles, preserve read state, prevent duplicate imports, and expose explicit fetch failure status.
-- Scheduled refresh is deferred; manual refresh is the closure target.
+- Batch 5 only: AI article metadata decision and persistence closed loop.
+- Product decision: reuse existing `articles.summary` / article `summary` as the AI-generated summary persistence target; do not add a separate `ai_summary` column or fake article field.
+- Keep `/api/v1/admin/ai/summary`, `/api/v1/admin/ai/ai-summary`, and `/api/v1/admin/ai/title` as generation tools; generated text must be saved through the real article create/update summary/title fields.
+- Do not include Search/SEO, deployment, FlecBlog parity, or unrelated AI feature work.
 
 Frontend/admin entry pages:
-- Admin RSS feed page lists articles through `GET /api/v1/admin/rssfeed` and marks read through `PUT /api/v1/admin/rssfeed/{id}/read` / `PUT /api/v1/admin/rssfeed/read-all`.
-- Admin friend management already stores RSS source URLs through `rss_url` on friend records.
-- Admin RSS feed page needs a manual refresh action against the backend refresh API.
+- Admin article editor page uses AI title/summary generation controls and saves through admin article create/update APIs.
+- Public article page consumes the persisted article `summary` for SEO/metadata and any summary display required by the current UI.
 
 Exact API calls:
-- `GET /api/v1/admin/rssfeed`
-- `POST /api/v1/admin/rssfeed/refresh`
-- `PUT /api/v1/admin/rssfeed/{id}/read`
-- `PUT /api/v1/admin/rssfeed/read-all`
-- Existing friend source setup through `POST /api/v1/admin/friends` / `PUT /api/v1/admin/friends/{id}` with `rss_url`.
+- `POST /api/v1/admin/ai/summary`
+- `POST /api/v1/admin/ai/ai-summary`
+- `POST /api/v1/admin/ai/title`
+- `POST /api/v1/admin/articles`
+- `PUT /api/v1/admin/articles/{id}`
+- `GET /api/v1/admin/articles/{id}`
+- `GET /api/v1/articles/{slug}`
 
 Current backend implementation:
-- RSS article list/read/read-all endpoints read and mutate persisted `rss_feed_articles` rows.
-- `friends.rss_url` is the feed source configuration used by manual refresh.
-- `POST /api/v1/admin/rssfeed/refresh` fetches configured friend RSS URLs, parses RSS/Atom items, imports new articles, preserves existing read state, and returns per-source results.
-- `friends.rss_status`, `friends.rss_last_fetch_at`, and `friends.rss_last_error` persist source refresh status.
+- AI utility endpoints call an OpenAI-compatible chat-completions provider using saved AI settings.
+- Article create/update/detail already persists and returns `summary` and `title`.
+- There is no backend `ai_summary` persistence field, and Batch 5 keeps that as an explicit product decision.
 
 Missing persistence or derived data:
-- Scheduled refresh remains deferred; manual refresh is the Batch 4 closed-loop target.
-- Friend admin list does not yet surface the detailed per-source RSS status fields; the RSS page shows refresh aggregate success/failure messaging and backend persists explicit source state.
+- No separate AI metadata persistence remains in Batch 5 scope; `summary` is the accepted persistence field for AI-generated summary text.
+- The AI settings prompt key `ai_summary_prompt` remains as a generation prompt setting for the `/admin/ai/ai-summary` tool, not as an article data field.
 
 User-visible expected behavior:
-- Admin can add or use a friend RSS URL, manually refresh, and see real fetched articles appear in the RSS list after reload.
-- Mark-read state persists after refresh and reload.
-- Repeating refresh does not create duplicate articles.
-- Failed refresh attempts report a visible error status instead of silent success.
+- Admin can generate a title or summary using AI, save the article, reopen or refresh the editor, and see the generated title/summary still present.
+- Article responses expose the real persisted `summary`; no fake `ai_summary` article field is required.
+- If AI provider config is missing or invalid, generation fails explicitly rather than pretending to save metadata.
 
 Automated RED test:
-- PASS: backend integration tests were written first with a local fake RSS HTTP server; the initial targeted run failed because `POST /api/v1/admin/rssfeed/refresh` returned 404 and no fetch/import/status behavior existed.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch5AiArticleMetadataClosedLoopTest test` first failed after the test compiled because admin/blog frontend contracts still referenced the fake `ai_summary` article field.
 
 Automated GREEN verification:
-- PASS: `mvn -f server/pom.xml -Dtest=Batch4RssReaderClosedLoopTest test` - 2 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml test` - 50 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch5AiArticleMetadataClosedLoopTest test` - 3 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 53 tests, 0 failures, 0 errors.
 - PASS: `npm --prefix admin run type-check`.
+- OBSERVED: `npm --prefix blog run type-check` completed with the existing local `vue-router/volar/sfc-route-blocks` warning for missing `@vue/language-core`.
+- PASS: Docker running-stack AI title endpoint returned a real generated title using the saved DeepSeek-compatible AI settings; no API key was written to code, docs, tests, or logs.
 
 Manual browser verification:
-- ACCEPTED: user manually verified Batch 4 RSS reader against the local running stack on 2026-05-17.
+- ACCEPTED: user manually verified DeepSeek AI config, AI title generation, summary generation, save/reopen persistence, and public article summary behavior in the running stack on 2026-05-17.
 
 ## Closed Implementation Loops
 
@@ -93,9 +94,10 @@ Every remaining feature must use this loop:
 4. Implement the minimum Java backend slice needed to pass.
 5. Run the targeted backend test until GREEN.
 6. Run the relevant frontend type-check or build if a contract changed.
-7. Give the user concrete manual acceptance steps for the real page or admin screen in the running app.
+7. Write the user-facing acceptance procedure under `docs/issues/batchN/02-acceptance.md`, then give the user concrete manual acceptance steps for the real page or admin screen in the running app.
 8. Wait for the user to confirm manual acceptance before pushing code, reporting work, or preparing the next-step plan.
-9. After acceptance, update `DELIVERY_AUDIT.md` with evidence and residual risks, then push/report/prepare the next plan if requested.
+9. If manual acceptance fails, write or update `docs/issues/batchN/03-issues.md` with phenomenon, expected behavior, cause, solution, key code, verification, and residual risk; after fixing, write or update `docs/issues/batchN/04-fix-report.md` before asking for re-acceptance.
+10. After acceptance, update `DELIVERY_AUDIT.md` with evidence and residual risks, write or update `docs/issues/batchN/05-final-report.md`, then push/report/prepare the next plan if requested.
 
 No production backend code should be written for a new feature before the RED test exists and has been observed failing.
 
@@ -221,15 +223,16 @@ Done means:
 
 ### 9. AI Article Metadata Persistence
 
-Status: partial
+Status: closed, user accepted
 
 Current facts:
-- AI endpoints return summary/title text.
-- A dedicated persisted `ai_summary` article field is not implemented.
+- Product decision: AI-generated summary text reuses the persisted article `summary`; no separate `ai_summary` article field is added.
+- Admin AI summary, AI summary, and title generation tools call the saved OpenAI-compatible AI settings and return real provider text.
+- Admin article create/update persists generated title and summary; admin detail and public article detail read the same persisted fields.
+- Backend supports the admin settings key format used by the frontend and surfaces safe upstream AI provider errors instead of hiding them behind generic 400 text.
 
 Done means:
-- Product decides whether `summary` is enough or `ai_summary` is a separate field.
-- If separate: migration, DTOs, admin editor binding, and tests are added.
+- AI title/summary generation can be saved through the article editor, survives reopen, and public article detail consumes the persisted `summary`.
 
 ### 10. Search, SEO, and Elasticsearch
 
