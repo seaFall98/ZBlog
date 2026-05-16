@@ -70,7 +70,7 @@ Automated GREEN verification:
 - PASS: `npm --prefix admin run type-check`.
 
 Manual browser verification:
-- Pending user verification in the running stack before marking Batch 4 closed/accepted.
+- ACCEPTED: user manually verified Batch 4 RSS reader against the local running stack on 2026-05-17.
 
 ## Closed Implementation Loops
 
