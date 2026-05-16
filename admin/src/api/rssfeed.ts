@@ -8,6 +8,19 @@ export interface MarkAllReadResponse {
   affected: number;
 }
 
+export interface RefreshRssFeedsResponse {
+  sources: number;
+  fetched: number;
+  inserted: number;
+  failed: number;
+  results: Array<{
+    friend_id: number;
+    status: 'success' | 'failed';
+    inserted?: number;
+    error?: string;
+  }>;
+}
+
 /**
  * 获取RSS文章列表
  * @param params 查询参数
@@ -15,6 +28,14 @@ export interface MarkAllReadResponse {
  */
 export const getRssArticles = async (params?: RssArticleQuery): Promise<RssArticleListData> => {
   return request.get('/admin/rssfeed', { params });
+};
+
+/**
+ * 手动刷新RSS源
+ * @returns Promise<RefreshRssFeedsResponse>
+ */
+export const refreshRssFeeds = async (): Promise<RefreshRssFeedsResponse> => {
+  return request.post('/admin/rssfeed/refresh');
 };
 
 /**

@@ -23,57 +23,54 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
-ID: USER-TOUCH-CLOSED-LOOP-BATCH-003
+ID: RSS-READER-CLOSED-LOOP-BATCH-004
 
 Status: closed, user accepted
 
 Scope:
-- Batch 3 only: user-touch-closed-loop.
-- MAIL-FANOUT-CLOSED-LOOP: add a real, testable mail fanout path so feedback/subscription events create auditable delivery records instead of only returning success.
-- PASSWORD-RESET-OAUTH-DECISION: implement a real password reset token lifecycle and make OAuth unsupported/deferred without fake provider behavior.
+- Batch 4 only: RSS reader closed loop.
+- Add a manually triggered, testable RSS/Atom fetch path for friend RSS sources.
+- Persist fetched RSS articles, preserve read state, prevent duplicate imports, and expose explicit fetch failure status.
+- Scheduled refresh is deferred; manual refresh is the closure target.
 
 Frontend/admin entry pages:
-- Public feedback form posts to `POST /api/v1/feedback`; admin handles feedback through `PUT /api/v1/admin/feedback/{id}`.
-- Public subscribe page posts to `POST /api/v1/subscribe` and unsubscribes through `GET /api/v1/subscribe/unsubscribe?token={token}`.
-- Public login modal calls `POST /api/v1/auth/forgot-password` and `POST /api/v1/auth/reset-password`.
-- OAuth login/bind buttons call `GET /api/v1/auth/{provider}` when enabled by settings.
+- Admin RSS feed page lists articles through `GET /api/v1/admin/rssfeed` and marks read through `PUT /api/v1/admin/rssfeed/{id}/read` / `PUT /api/v1/admin/rssfeed/read-all`.
+- Admin friend management already stores RSS source URLs through `rss_url` on friend records.
+- Admin RSS feed page needs a manual refresh action against the backend refresh API.
 
 Exact API calls:
-- `POST /api/v1/feedback`
-- `PUT /api/v1/admin/feedback/{id}`
-- `POST /api/v1/subscribe`
-- `GET /api/v1/subscribe/unsubscribe?token={token}`
-- `POST /api/v1/auth/forgot-password`
-- `POST /api/v1/auth/reset-password`
-- `GET /api/v1/auth/{provider}`
+- `GET /api/v1/admin/rssfeed`
+- `POST /api/v1/admin/rssfeed/refresh`
+- `PUT /api/v1/admin/rssfeed/{id}/read`
+- `PUT /api/v1/admin/rssfeed/read-all`
+- Existing friend source setup through `POST /api/v1/admin/friends` / `PUT /api/v1/admin/friends/{id}` with `rss_url`.
 
 Current backend implementation:
-- Feedback submit persists a feedback ticket and creates an in-app notification only.
-- Feedback admin reply persists `admin_reply` but does not email the submitter.
-- Subscription persists subscribers and unsubscribe tokens but sends no confirmation, welcome, or publish fanout mail.
-- Password reset endpoints do not exist and are not public-permitted.
-- OAuth begin/callback endpoints do not exist; only OAuth unbind exists for authenticated users.
+- RSS article list/read/read-all endpoints read and mutate persisted `rss_feed_articles` rows.
+- `friends.rss_url` is the feed source configuration used by manual refresh.
+- `POST /api/v1/admin/rssfeed/refresh` fetches configured friend RSS URLs, parses RSS/Atom items, imports new articles, preserves existing read state, and returns per-source results.
+- `friends.rss_status`, `friends.rss_last_fetch_at`, and `friends.rss_last_error` persist source refresh status.
 
 Missing persistence or derived data:
-- Mail delivery must be represented by durable records that tests can assert; no fake `ok` response is sufficient.
-- Password reset must create expiring, single-use tokens and update the user's password so old credentials fail and new credentials work.
-- OAuth must not appear implemented without provider credentials; unsupported/deferred behavior must be explicit and not `401`/missing route.
+- Scheduled refresh remains deferred; manual refresh is the Batch 4 closed-loop target.
+- Friend admin list does not yet surface the detailed per-source RSS status fields; the RSS page shows refresh aggregate success/failure messaging and backend persists explicit source state.
 
 User-visible expected behavior:
-- Feedback submission/admin reply and subscribe/unsubscribe flows produce visible dev/test mail records.
-- Forgot/reset password works without prior login, sends a dev/test reset token, changes the password, invalidates old password, and rejects token reuse.
-- OAuth begin returns an explicit unsupported/deferred response unless real providers are configured later.
+- Admin can add or use a friend RSS URL, manually refresh, and see real fetched articles appear in the RSS list after reload.
+- Mark-read state persists after refresh and reload.
+- Repeating refresh does not create duplicate articles.
+- Failed refresh attempts report a visible error status instead of silent success.
 
 Automated RED test:
-- Add backend integration tests before production code, then run targeted tests and observe failures for missing mail records, missing password reset endpoints, and missing OAuth decision endpoints.
+- PASS: backend integration tests were written first with a local fake RSS HTTP server; the initial targeted run failed because `POST /api/v1/admin/rssfeed/refresh` returned 404 and no fetch/import/status behavior existed.
 
 Automated GREEN verification:
-- PASS: `mvn -f server/pom.xml -Dtest=Batch3UserTouchClosedLoopTest test` - 3 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml test` - 48 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch4RssReaderClosedLoopTest test` - 2 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 50 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix admin run type-check`.
 
 Manual browser verification:
-- ACCEPTED: user verified feedback/admin reply mail records, subscribe mail record, forgot/reset password, and OAuth deferred UI against the running app on 2026-05-16.
-- OBSERVED: FlecBlog itself has no standalone frontend unsubscribe entry; current unsubscribe is via the email link contract. Full user-visible unsubscribe verification is deferred until real production mail delivery/link flow is enabled.
+- Pending user verification in the running stack before marking Batch 4 closed/accepted.
 
 ## Closed Implementation Loops
 
@@ -96,9 +93,9 @@ Every remaining feature must use this loop:
 4. Implement the minimum Java backend slice needed to pass.
 5. Run the targeted backend test until GREEN.
 6. Run the relevant frontend type-check or build if a contract changed.
-7. Verify the real page or admin screen manually in the running app.
-8. Update `DELIVERY_AUDIT.md` with evidence and residual risks.
-9. Ask the user for manual acceptance before moving to the next feature.
+7. Give the user concrete manual acceptance steps for the real page or admin screen in the running app.
+8. Wait for the user to confirm manual acceptance before pushing code, reporting work, or preparing the next-step plan.
+9. After acceptance, update `DELIVERY_AUDIT.md` with evidence and residual risks, then push/report/prepare the next plan if requested.
 
 No production backend code should be written for a new feature before the RED test exists and has been observed failing.
 
@@ -296,7 +293,7 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Includes: MAIL-FANOUT-CLOSED-LOOP and PASSWORD-RESET-OAUTH-DECISION.
 
 4. RSS-READER-CLOSED-LOOP-BATCH-004
-   - Status: next.
+   - Status: closed, user accepted.
    - Includes: RSS-READER-CLOSED-LOOP only.
    - Scope guard: do not include AI metadata, Search/SEO, deployment, or FlecBlog parity work in this batch.
 
@@ -349,8 +346,9 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Evidence: `Batch3UserTouchClosedLoopTest#feedbackSubscribeAndUnsubscribeCreateDurableMailRecords`.
 
 7. RSS-READER-CLOSED-LOOP
-   - Admin RSS read state exists, but external feed fetching/parsing/scheduling is not complete.
-   - Done when feed sources are fetched, parsed, stored, listed, and marked read.
+   - Automated verified, awaiting manual acceptance.
+   - Friend `rss_url` sources can be manually refreshed, parsed as RSS/Atom, inserted into `rss_feed_articles`, listed in admin RSS, marked read, deduplicated on repeated refresh, and failed sources persist explicit error state.
+   - Scheduled refresh remains deferred; manual refresh is the accepted Batch 4 scope.
 
 8. IMPORT-EXPORT-DEEP-COMPLETION
    - Baseline import/export exists, but image asset rewriting and deeper comment/user relationship migration remain.
@@ -374,20 +372,20 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
 
 ## Next Locked Implementation Candidate
 
-ID: RSS-READER-CLOSED-LOOP-BATCH-004
+ID: AI-ARTICLE-METADATA-BATCH-005
 
 Status: ready, not started
 
 Reason:
-- The fixed Batch Roadmap marks RSS-READER-CLOSED-LOOP-BATCH-004 as the next batch.
-- Current backend has admin RSS read-state baseline, but external feed fetching, parsing, persistence, deduplication, and failure-state handling are not complete.
-- This batch is intentionally limited to RSS Reader only; AI metadata, Search/SEO, deployment, and parity recheck are later batches.
+- Batch 4 is automated verified and user accepted.
+- The fixed Batch Roadmap marks AI-ARTICLE-METADATA-BATCH-005 as the next batch after RSS acceptance.
+- This next batch must stay limited to the AI article metadata decision and must not include Search/SEO, deployment, or FlecBlog parity work.
 
-Before coding, fill this section:
+Before coding the next batch, fill this section:
 - Frontend/admin entry pages:
 - Exact API calls:
 - Current backend implementation:
-- Missing source/fetch/parse/persistence/dedup/failure-state behavior:
+- Missing metadata persistence or product-decision behavior:
 - User-visible expected behavior:
 - Automated RED test:
 - Automated GREEN verification:

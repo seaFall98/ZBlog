@@ -3,6 +3,8 @@ zblog:
     allow-private-network: true
   tools:
     allow-private-network: true
+  rss:
+    allow-private-network: true
   security:
     jwt-secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     token-ttl-minutes: 30

@@ -24,6 +24,8 @@ zblog:
     port: ${ZBLOG_MAIL_PORT:25}
     username: ${ZBLOG_MAIL_USERNAME:}
     password: ${ZBLOG_MAIL_PASSWORD:}
+  rss:
+    allow-private-network: ${ZBLOG_RSS_ALLOW_PRIVATE_NETWORK:false}
   security:
     jwt-secret: ${ZBLOG_JWT_SECRET:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     token-ttl-minutes: ${ZBLOG_TOKEN_TTL_MINUTES:120}

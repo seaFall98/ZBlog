@@ -5,6 +5,7 @@ import com.zblog.rssfeed.application.RssFeedAdminService;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,6 +24,11 @@ public class RssFeedAdminController {
   @GetMapping
   public ApiResponse<Map<String, Object>> list(@RequestParam Map<String, String> params) {
     return ApiResponse.ok(rssFeedAdminService.listAdmin(params));
+  }
+
+  @PostMapping("/refresh")
+  public ApiResponse<Map<String, Object>> refresh() {
+    return ApiResponse.ok(rssFeedAdminService.refresh());
   }
 
   @PutMapping("/{id}/read")

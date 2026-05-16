@@ -54,6 +54,9 @@
             <el-option label="未读" :value="false" />
           </el-select>
         </template>
+        <el-button class="icon-btn" :loading="refreshing" @click="handleRefreshFeeds">
+          <el-icon><Refresh /></el-icon><span class="btn-text">刷新RSS</span>
+        </el-button>
         <el-button class="icon-btn" @click="openSubscriberDialog">
           <el-icon><Bell /></el-icon><span class="btn-text">本站订阅</span>
         </el-button>
@@ -182,13 +185,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Message, Bell, Check } from '@element-plus/icons-vue';
+import { Message, Bell, Check, Refresh } from '@element-plus/icons-vue';
 import CommonList from '@/components/common/CommonList.vue';
 import RssFeedFilter from './components/RssFeedFilter.vue';
 import type { RssArticle, RssArticleQuery } from '@/types/rssfeed';
 import type { Subscriber } from '@/types/subscriber';
 import type { Friend } from '@/types/friend';
-import { getRssArticles, markRssArticleRead, markAllRssArticlesRead } from '@/api/rssfeed';
+import { getRssArticles, markRssArticleRead, markAllRssArticlesRead, refreshRssFeeds } from '@/api/rssfeed';
 import { getSubscribers, deleteSubscriber } from '@/api/subscriber';
 import { getFriends } from '@/api/friend';
 import { formatDateTime } from '@/utils/date';
@@ -197,6 +200,7 @@ import { isSuperAdmin as checkSuperAdmin } from '@/utils/auth';
 const isSuperAdmin = computed(() => checkSuperAdmin());
 
 const loading = ref(false);
+const refreshing = ref(false);
 const articleList = ref<RssArticle[]>([]);
 const total = ref(0);
 const unreadCount = ref(0);
@@ -278,6 +282,26 @@ const fetchArticles = async () => {
     ElMessage.error('获取RSS文章列表失败');
   } finally {
     loading.value = false;
+  }
+};
+
+/**
+ * 手动刷新RSS源
+ */
+const handleRefreshFeeds = async () => {
+  refreshing.value = true;
+  try {
+    const result = await refreshRssFeeds();
+    if (result.failed > 0) {
+      ElMessage.warning(`RSS刷新完成：新增 ${result.inserted} 篇，失败 ${result.failed} 个源`);
+    } else {
+      ElMessage.success(`RSS刷新完成：新增 ${result.inserted} 篇`);
+    }
+    fetchArticles();
+  } catch {
+    ElMessage.error('刷新RSS失败');
+  } finally {
+    refreshing.value = false;
   }
 };
 

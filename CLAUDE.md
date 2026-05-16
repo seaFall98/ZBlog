@@ -81,6 +81,7 @@ npm --prefix blog run build
 ## Practical repo-specific reminders
 
 - Continue approved multi-step remediation work proactively instead of waiting to be nudged; at the end of each turn, state the next concrete step.
+- At the end of each implementation batch, give the user concrete manual acceptance steps before any git push, work report, or next-step planning. Only after the user confirms manual acceptance should the batch be pushed, reported, and followed by the next plan.
 - If you change article editing or admin article APIs, keep the Markdown editor bound to Markdown input, not rendered HTML.
 - If you change menu code, keep the tree shape intact and verify both public and admin menu consumers.
 - If you change frontend API wiring, check the running docker-compose stack as well as type-check/build output; SSR/base-URL issues can pass type-check but still fail at runtime.

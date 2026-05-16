@@ -26,6 +26,7 @@ These areas have been brought to a real closed loop in the current repo state:
 - Basic auth compatibility endpoints: refresh and logout.
 - User/account baseline: database-backed login/register/profile/password/admin user CRUD.
 - Feedback/subscription/RSS baseline: public feedback tickets, email subscribers, and admin RSS read-state management.
+- Batch 4 RSS reader: manual friend RSS refresh fetches RSS/Atom sources, imports real articles, preserves read state, prevents duplicates, and records explicit source failures; automated verified and user-accepted in the local running stack.
 - Import/export baseline: admin article import, WeChat export, Markdown ZIP download, and comment import.
 - Batch 2 content assets: upload/public asset delivery and supported imported Markdown image links are automated-verified, Docker-verified, and user-accepted in the local running stack.
 - Compatibility endpoints for system admin and notifications that the current frontend expects.
@@ -73,6 +74,14 @@ These are the highest-priority mismatches between frontend calls and backend rea
 - Feedback notification fan-out into the in-app notification table is now covered by Batch 1.
 - Feedback submit/admin reply and subscribe/unsubscribe now create durable `mail_outbox` records through the mail abstraction/dev outbox sender.
 
+### RSS reader
+
+- Status: automated verified and manually accepted.
+- Friend `rss_url` is now the RSS source configuration for manual refresh.
+- `POST /api/v1/admin/rssfeed/refresh` fetches configured RSS sources, parses RSS and Atom responses, inserts real `rss_feed_articles` rows, preserves existing read state, prevents duplicate imports by `(friend_id, link)`, and records explicit source failure state on `friends`.
+- The admin RSS page now has a manual `刷新RSS` action and reports aggregate inserted/failed counts after refresh.
+- Deferred: scheduled refresh remains out of Batch 4 scope, and friend admin source-list UI does not yet expose detailed `rss_status` / `rss_last_error` fields.
+
 ### Admin tools and AI utilities
 
 - Admin tools now have backend routes for link metadata fetch, Bilibili/YouTube video URL parsing, and remote image download, with authenticated access and business-effect tests.
@@ -91,6 +100,7 @@ These are the highest-priority mismatches between frontend calls and backend rea
 These areas exist, but still rely too much on placeholders, hardcoded values, or deferred product decisions.
 
 - System data: CPU usage percentage, swap total/usage, DB size, DB connection count, and remote update source are explicitly deferred as `unsupported`; email and Feishu integrations are `disabled` until configured.
+- RSS reader: manual refresh is verified; scheduled refresh and detailed friend-list source status display remain deferred.
 - Import/export assets: Markdown import now supports already-uploaded `/uploads/**` image references; local relative images, remote image downloads during import, HTML `<img>` rewriting, and bundled ZIP media files remain deferred and must fail/report rather than silently importing broken paths.
 - Article AI summary persistence: the AI endpoint returns text to the editor, but a separate persisted `ai_summary` article field is not yet implemented.
 - Search and SEO: the main public endpoints exist, but some deeper analytics and ranking pieces still need follow-up if the product expects them.
@@ -128,6 +138,15 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - PASS: `mvn -f server/pom.xml test` - 48 tests, 0 failures, 0 errors.
 - ACCEPTED: user manually verified feedback/admin reply mail records, subscribe mail record, forgot/reset password, and OAuth deferred UI against the running app on 2026-05-16.
 - OBSERVED: FlecBlog has no standalone frontend unsubscribe entry; current user-visible unsubscribe path is the email link contract, so full unsubscribe-link verification is deferred until real production mail delivery is enabled.
+
+## Batch 4 verification notes
+
+- RED observed: `mvn -f server/pom.xml -Dtest=Batch4RssReaderClosedLoopTest test` initially failed after the test setup was made H2-compatible because `POST /api/v1/admin/rssfeed/refresh` returned 404 and no fetch/import/status loop existed.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch4RssReaderClosedLoopTest test` - 2 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 50 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix admin run type-check`.
+- ACCEPTED: user manually verified Batch 4 against the local running stack on 2026-05-17.
+- DEFERRED: scheduled RSS refresh and detailed source status display in friend management.
 
 ## What to do next
 
