@@ -14,8 +14,7 @@ node_modules/
 dist/
 dev-dist/
 target/
-docs/article/*
-!docs/article/batch1-batch2-acceptance-remediation-report.md
+docs/article/
 /logs/
 uploads/
 !blog/server/routes/uploads/
