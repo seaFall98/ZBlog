@@ -61,5 +61,5 @@ The user confirmed Batch 6 search and SEO acceptance passed.
 
 Pending at the time this file was written. Fill in after commit/push:
 
-- Commit: pending
+- Commit: `dd07939 fix: close search seo batch`
 - Push target: `origin/main`
