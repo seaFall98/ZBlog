@@ -301,12 +301,13 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Scope guard: do not include AI metadata, Search/SEO, deployment, or FlecBlog parity work in this batch.
 
 5. AI-ARTICLE-METADATA-BATCH-005
-   - Status: planned.
+   - Status: closed, user accepted.
    - Includes: AI-ARTICLE-METADATA-DECISION only.
 
 6. SEARCH-SEO-DEPTH-BATCH-006
-   - Status: planned.
+   - Status: next.
    - Includes: SEARCH-SEO-DEPTH only.
+   - Scope guard: do not include deployment hardening or FlecBlog parity work in this batch.
 
 7. DEPLOYMENT-HARDENING-BATCH-007
    - Status: planned.
@@ -349,7 +350,7 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Evidence: `Batch3UserTouchClosedLoopTest#feedbackSubscribeAndUnsubscribeCreateDurableMailRecords`.
 
 7. RSS-READER-CLOSED-LOOP
-   - Automated verified, awaiting manual acceptance.
+   - Automated verified and manually accepted.
    - Friend `rss_url` sources can be manually refreshed, parsed as RSS/Atom, inserted into `rss_feed_articles`, listed in admin RSS, marked read, deduplicated on repeated refresh, and failed sources persist explicit error state.
    - Scheduled refresh remains deferred; manual refresh is the accepted Batch 4 scope.
 
@@ -358,8 +359,9 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Done when imported assets/comments survive reload and render correctly.
 
 9. AI-ARTICLE-METADATA-DECISION
-   - AI endpoints return text, but dedicated `ai_summary` persistence is undecided.
-   - Done when the product either accepts the current `summary` field or implements a separate persisted field.
+   - Automated verified and manually accepted.
+   - Product decision: reuse the existing persisted article `summary` field for AI-generated summary text; do not add a separate `ai_summary` article field.
+   - Evidence: `Batch5AiArticleMetadataClosedLoopTest` proves AI-generated title/summary can be saved, reopened, and exposed through public article detail without a fake `ai_summary` field.
 
 10. SEARCH-SEO-DEPTH
     - Public search and feeds exist, but Elasticsearch/indexing/ranking depth is not complete.
@@ -375,20 +377,20 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
 
 ## Next Locked Implementation Candidate
 
-ID: AI-ARTICLE-METADATA-BATCH-005
+ID: SEARCH-SEO-DEPTH-BATCH-006
 
 Status: ready, not started
 
 Reason:
-- Batch 4 is automated verified and user accepted.
-- The fixed Batch Roadmap marks AI-ARTICLE-METADATA-BATCH-005 as the next batch after RSS acceptance.
-- This next batch must stay limited to the AI article metadata decision and must not include Search/SEO, deployment, or FlecBlog parity work.
+- Batch 5 is automated verified and user accepted.
+- The fixed Batch Roadmap marks SEARCH-SEO-DEPTH-BATCH-006 as the next batch after AI article metadata acceptance.
+- This next batch must stay limited to search and SEO depth; do not include deployment hardening or FlecBlog parity work.
 
 Before coding the next batch, fill this section:
 - Frontend/admin entry pages:
 - Exact API calls:
 - Current backend implementation:
-- Missing metadata persistence or product-decision behavior:
+- Missing search/indexing/ranking/SEO update behavior:
 - User-visible expected behavior:
 - Automated RED test:
 - Automated GREEN verification:
