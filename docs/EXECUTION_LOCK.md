@@ -313,13 +313,13 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Includes: AI-ARTICLE-METADATA-DECISION only.
 
 6. SEARCH-SEO-DEPTH-BATCH-006
-   - Status: next.
+   - Status: closed, user accepted.
    - Includes: SEARCH-SEO-DEPTH only.
-   - Scope guard: do not include deployment hardening or FlecBlog parity work in this batch.
 
 7. DEPLOYMENT-HARDENING-BATCH-007
-   - Status: planned.
+   - Status: next.
    - Includes: DEPLOYMENT-HARDENING only.
+   - Scope guard: do not include FlecBlog parity recheck in this batch.
 
 8. FLECBLOG-PARITY-RECHECK-BATCH-008
    - Status: planned.
@@ -372,8 +372,9 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Evidence: `Batch5AiArticleMetadataClosedLoopTest` proves AI-generated title/summary can be saved, reopened, and exposed through public article detail without a fake `ai_summary` field.
 
 10. SEARCH-SEO-DEPTH
-    - Public search and feeds exist, but Elasticsearch/indexing/ranking depth is not complete.
-    - Done when the accepted v1 search strategy is explicit and tests prove create/update/delete affects results.
+    - Automated verified and manually accepted.
+    - Product decision: DB-backed search is accepted for v1; Elasticsearch is deferred as a later enhancement and must not be fake-configured or fake-indexed.
+    - Evidence: `Batch6SearchSeoDepthTest` proves article create/update/unpublish/delete lifecycle changes affect public search, RSS, Atom, and Sitemap outputs.
 
 11. DEPLOYMENT-HARDENING
     - Local Docker exists, but production-like deployment, persistence, reverse proxy, upload serving, logs, backup, and health checks need proof.
@@ -385,20 +386,20 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
 
 ## Next Locked Implementation Candidate
 
-ID: SEARCH-SEO-DEPTH-BATCH-006
+ID: DEPLOYMENT-HARDENING-BATCH-007
 
 Status: ready, not started
 
 Reason:
-- Batch 5 is automated verified and user accepted.
-- The fixed Batch Roadmap marks SEARCH-SEO-DEPTH-BATCH-006 as the next batch after AI article metadata acceptance.
-- This next batch must stay limited to search and SEO depth; do not include deployment hardening or FlecBlog parity work.
+- Batch 6 is automated verified and user accepted.
+- The fixed Batch Roadmap marks DEPLOYMENT-HARDENING-BATCH-007 as the next batch after Search/SEO acceptance.
+- This next batch must stay limited to deployment hardening; do not include FlecBlog parity recheck.
 
 Before coding the next batch, fill this section:
 - Frontend/admin entry pages:
-- Exact API calls:
-- Current backend implementation:
-- Missing search/indexing/ranking/SEO update behavior:
+- Deployment entry points and commands:
+- Current Docker/local production-like implementation:
+- Missing persistence/reverse-proxy/env/logging/backup/health-check behavior:
 - User-visible expected behavior:
 - Automated RED test:
 - Automated GREEN verification:
