@@ -279,6 +279,43 @@ Roadmap ordering is based on:
 
 These remain subject to regression tests. If a future audit finds fake behavior, move the specific gap back into the open roadmap.
 
+### Batch Roadmap
+
+This is the fixed batch plan for the remaining work. Future agents must not regroup these items ad hoc without updating this section first.
+
+1. BACKEND-TRUTH-DATA-BATCH-001
+   - Status: closed, user accepted.
+   - Includes: VISIT-STATS-CLOSED-LOOP, NOTIFICATIONS-CLOSED-LOOP, SYSTEM-INFO-HONESTY-CLOSED-LOOP.
+
+2. CONTENT-ASSET-CLOSED-LOOP-BATCH-002
+   - Status: closed, user accepted.
+   - Includes: UPLOAD-ASSET-CLOSED-LOOP and the asset-handling portion of IMPORT-EXPORT-DEEP-COMPLETION.
+
+3. USER-TOUCH-CLOSED-LOOP-BATCH-003
+   - Status: closed, user accepted.
+   - Includes: MAIL-FANOUT-CLOSED-LOOP and PASSWORD-RESET-OAUTH-DECISION.
+
+4. RSS-READER-CLOSED-LOOP-BATCH-004
+   - Status: next.
+   - Includes: RSS-READER-CLOSED-LOOP only.
+   - Scope guard: do not include AI metadata, Search/SEO, deployment, or FlecBlog parity work in this batch.
+
+5. AI-ARTICLE-METADATA-BATCH-005
+   - Status: planned.
+   - Includes: AI-ARTICLE-METADATA-DECISION only.
+
+6. SEARCH-SEO-DEPTH-BATCH-006
+   - Status: planned.
+   - Includes: SEARCH-SEO-DEPTH only.
+
+7. DEPLOYMENT-HARDENING-BATCH-007
+   - Status: planned.
+   - Includes: DEPLOYMENT-HARDENING only.
+
+8. FLECBLOG-PARITY-RECHECK-BATCH-008
+   - Status: planned.
+   - Includes: final FlecBlog parity recheck and explicit defer/implement decisions for any remaining gaps.
+
 ### Open Roadmap
 
 1. VISIT-STATS-CLOSED-LOOP
@@ -337,20 +374,20 @@ These remain subject to regression tests. If a future audit finds fake behavior,
 
 ## Next Locked Implementation Candidate
 
-ID: VISIT-STATS-CLOSED-LOOP
+ID: RSS-READER-CLOSED-LOOP-BATCH-004
 
 Status: ready, not started
 
 Reason:
-- It is a confirmed broken frontend/backend contract: the blog sends `POST /api/v1/collect`, but Java has no route.
-- It is also a confirmed fake-completion area: visitors, trend, visit logs, and several dashboard values are zero/empty placeholders.
-- Completing it first gives us a measurable TDD loop: one collect call must change real dashboard/trend/visit-log output.
+- The fixed Batch Roadmap marks RSS-READER-CLOSED-LOOP-BATCH-004 as the next batch.
+- Current backend has admin RSS read-state baseline, but external feed fetching, parsing, persistence, deduplication, and failure-state handling are not complete.
+- This batch is intentionally limited to RSS Reader only; AI metadata, Search/SEO, deployment, and parity recheck are later batches.
 
 Before coding, fill this section:
 - Frontend/admin entry pages:
 - Exact API calls:
 - Current backend implementation:
-- Missing persistence or derived data:
+- Missing source/fetch/parse/persistence/dedup/failure-state behavior:
 - User-visible expected behavior:
 - Automated RED test:
 - Automated GREEN verification:
