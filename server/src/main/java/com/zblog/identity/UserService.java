@@ -3,11 +3,15 @@ package com.zblog.identity;
 import com.zblog.common.api.PageResponse;
 import com.zblog.common.exception.BusinessException;
 import com.zblog.config.SecurityProperties;
+import com.zblog.mail.MailOutboxService;
 import com.zblog.security.JwtService;
+import java.security.SecureRandom;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,18 +33,22 @@ public class UserService {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final SecurityProperties securityProperties;
+  private final MailOutboxService mailOutboxService;
+  private final SecureRandom secureRandom = new SecureRandom();
 
   public UserService(
       JdbcClient jdbcClient,
       JdbcTemplate jdbcTemplate,
       PasswordEncoder passwordEncoder,
       JwtService jwtService,
-      SecurityProperties securityProperties) {
+      SecurityProperties securityProperties,
+      MailOutboxService mailOutboxService) {
     this.jdbcClient = jdbcClient;
     this.jdbcTemplate = jdbcTemplate;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.securityProperties = securityProperties;
+    this.mailOutboxService = mailOutboxService;
   }
 
   public LoginResponse login(String username, String password) {
@@ -70,6 +78,49 @@ public class UserService {
 
   public LoginResponse refresh(String email) {
     return tokenResponse(findActiveByEmail(email));
+  }
+
+  public Map<String, Object> forgotPassword(Map<String, Object> request) {
+    String email = requiredString(request, "email").toLowerCase();
+    UserRecord user = findActiveByEmail(email);
+    byte[] bytes = new byte[24];
+    secureRandom.nextBytes(bytes);
+    String token = HexFormat.of().formatHex(bytes);
+    jdbcTemplate.update(
+        "insert into password_reset_tokens (email, token, expires_at) values (?, ?, ?)",
+        user.email(),
+        token,
+        Timestamp.valueOf(LocalDateTime.now().plusMinutes(30)));
+    mailOutboxService.send(
+        "user",
+        "password_reset",
+        user.email(),
+        "重置密码",
+        "重置密码 token: " + token);
+    return Map.of("sent", true);
+  }
+
+  public void resetPassword(Map<String, Object> request) {
+    String email = requiredString(request, "email").toLowerCase();
+    String token = requiredString(request, "code");
+    String password = requiredString(request, "password");
+    List<Long> ids =
+        jdbcTemplate.query(
+            """
+            select id from password_reset_tokens
+            where email = ? and token = ? and used_at is null and expires_at > current_timestamp
+            order by id desc
+            """,
+            (rs, rowNum) -> rs.getLong("id"),
+            email,
+            token);
+    if (ids.isEmpty()) {
+      throw new BusinessException(400, "Invalid or expired reset token", HttpStatus.BAD_REQUEST);
+    }
+    UserRecord user = findActiveByEmail(email);
+    updatePassword(user.id(), password);
+    jdbcTemplate.update(
+        "update password_reset_tokens set used_at = current_timestamp where id = ?", ids.getFirst());
   }
 
   public Map<String, Object> profile(String email) {

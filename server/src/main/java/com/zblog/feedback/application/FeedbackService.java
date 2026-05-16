@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zblog.common.api.PageResponse;
 import com.zblog.common.exception.BusinessException;
+import com.zblog.mail.MailOutboxService;
 import com.zblog.notification.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.ResultSet;
@@ -33,12 +34,17 @@ public class FeedbackService {
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
   private final NotificationService notificationService;
+  private final MailOutboxService mailOutboxService;
 
   public FeedbackService(
-      JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, NotificationService notificationService) {
+      JdbcTemplate jdbcTemplate,
+      ObjectMapper objectMapper,
+      NotificationService notificationService,
+      MailOutboxService mailOutboxService) {
     this.jdbcTemplate = jdbcTemplate;
     this.objectMapper = objectMapper;
     this.notificationService = notificationService;
+    this.mailOutboxService = mailOutboxService;
   }
 
   @Transactional
@@ -72,6 +78,12 @@ public class FeedbackService {
             clientIp(servletRequest));
     Map<String, Object> feedback = get(id);
     notificationService.createFeedbackNotification(feedback);
+    mailOutboxService.send(
+        "admin",
+        "feedback_new",
+        ownerEmail(),
+        "New feedback " + ticketNo,
+        "Ticket " + ticketNo + "\n" + formContent.get("description"));
     return feedback;
   }
 
@@ -134,7 +146,17 @@ public class FeedbackService {
         reply,
         reply,
         id);
-    return get(id);
+    Map<String, Object> feedback = get(id);
+    String recipient = text(feedback, "email", "");
+    if (!recipient.isBlank() && !reply.isBlank()) {
+      mailOutboxService.send(
+          "user",
+          "feedback_reply",
+          recipient,
+          "Feedback reply " + feedback.get("ticket_no"),
+          "Ticket " + feedback.get("ticket_no") + "\n" + reply);
+    }
+    return feedback;
   }
 
   public void delete(long id) {
@@ -252,6 +274,17 @@ public class FeedbackService {
   private String text(Map<String, Object> request, String key, String fallback) {
     Object value = request.get(key);
     return value == null ? fallback : value.toString();
+  }
+
+  private String ownerEmail() {
+    List<String> values =
+        jdbcTemplate.query(
+            "select value_text from settings where key_name = 'basic.author_email'",
+            (rs, rowNum) -> rs.getString("value_text"));
+    if (values.isEmpty() || values.getFirst().isBlank() || values.getFirst().endsWith("@example.com")) {
+      return "zz1362410372@qq.com";
+    }
+    return values.getFirst();
   }
 
   private LocalDateTime parseStart(String value) {

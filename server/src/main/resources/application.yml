@@ -17,6 +17,13 @@ springdoc:
     path: /swagger-ui.html
 
 zblog:
+  mail:
+    mode: ${ZBLOG_MAIL_MODE:outbox}
+    from: ${ZBLOG_MAIL_FROM:noreply@zblog.local}
+    host: ${ZBLOG_MAIL_HOST:}
+    port: ${ZBLOG_MAIL_PORT:25}
+    username: ${ZBLOG_MAIL_USERNAME:}
+    password: ${ZBLOG_MAIL_PASSWORD:}
   security:
     jwt-secret: ${ZBLOG_JWT_SECRET:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     token-ttl-minutes: ${ZBLOG_TOKEN_TTL_MINUTES:120}

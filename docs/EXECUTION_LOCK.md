@@ -23,78 +23,57 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
-ID: CONTENT-ASSET-CLOSED-LOOP-BATCH-002
+ID: USER-TOUCH-CLOSED-LOOP-BATCH-003
 
-Status: closed
+Status: closed, user accepted
 
 Scope:
-- Batch 2 only: content-asset-closed-loop.
-- UPLOAD-ASSET-CLOSED-LOOP: prove admin/public uploads write real files, create `files` rows, return publicly served URLs, and behave consistently after deletion.
-- IMPORT-EXPORT-DEEP-COMPLETION: prove imported/exported article content does not silently keep broken image paths, and comment import either binds to a target article or reports failed items.
+- Batch 3 only: user-touch-closed-loop.
+- MAIL-FANOUT-CLOSED-LOOP: add a real, testable mail fanout path so feedback/subscription events create auditable delivery records instead of only returning success.
+- PASSWORD-RESET-OAUTH-DECISION: implement a real password reset token lifecycle and make OAuth unsupported/deferred without fake provider behavior.
 
 Frontend/admin entry pages:
-- Admin file page uses `POST /api/v1/admin/files`, `GET /api/v1/admin/files`, and `DELETE /api/v1/admin/files/{id}`.
-- Admin article editor inserts uploaded media URLs into Markdown through `/api/v1/admin/files`.
-- Public blog comment, feedback, and avatar upload utilities post to `/api/v1/upload` and then use returned `file_url` in public content.
-- Admin import/export page calls `POST /api/v1/admin/articles/import`, `POST /api/v1/admin/articles/{id}/wechat/export`, `GET /api/v1/admin/articles/{id}/download/zip`, and `POST /api/v1/admin/comments/import`.
+- Public feedback form posts to `POST /api/v1/feedback`; admin handles feedback through `PUT /api/v1/admin/feedback/{id}`.
+- Public subscribe page posts to `POST /api/v1/subscribe` and unsubscribes through `GET /api/v1/subscribe/unsubscribe?token={token}`.
+- Public login modal calls `POST /api/v1/auth/forgot-password` and `POST /api/v1/auth/reset-password`.
+- OAuth login/bind buttons call `GET /api/v1/auth/{provider}` when enabled by settings.
 
 Exact API calls:
-- `POST /api/v1/upload`
-- `POST /api/v1/admin/files`
-- `GET /api/v1/admin/files`
-- `DELETE /api/v1/admin/files/{id}`
-- `GET /uploads/{filename}`
-- `POST /api/v1/admin/articles/import`
-- `GET /api/v1/admin/articles/{id}`
-- `POST /api/v1/admin/articles/{id}/wechat/export`
-- `GET /api/v1/admin/articles/{id}/download/zip`
-- `POST /api/v1/admin/comments/import`
-- `GET /api/v1/comments?target_type=article&target_key={slug}`
+- `POST /api/v1/feedback`
+- `PUT /api/v1/admin/feedback/{id}`
+- `POST /api/v1/subscribe`
+- `GET /api/v1/subscribe/unsubscribe?token={token}`
+- `POST /api/v1/auth/forgot-password`
+- `POST /api/v1/auth/reset-password`
+- `GET /api/v1/auth/{provider}`
 
 Current backend implementation:
-- Admin upload and public upload both write under local `uploads/` and store rows in `files`.
-- Static resource mapping exposes `/uploads/**` from the local upload directory.
-- File deletion currently soft-deletes the DB row.
-- Article import stores Markdown and renders a basic HTML snapshot.
-- Markdown ZIP download currently exports the Markdown entry only.
-- Comment import accepts Artalk-like JSON and inserts comments.
+- Feedback submit persists a feedback ticket and creates an in-app notification only.
+- Feedback admin reply persists `admin_reply` but does not email the submitter.
+- Subscription persists subscribers and unsubscribe tokens but sends no confirmation, welcome, or publish fanout mail.
+- Password reset endpoints do not exist and are not public-permitted.
+- OAuth begin/callback endpoints do not exist; only OAuth unbind exists for authenticated users.
 
 Missing persistence or derived data:
-- Tests must prove uploaded files are actually served over HTTP and that delete behavior does not leave a misleading listed/served state.
-- Public upload type and response shape must match frontend expectations for comment/avatar/feedback upload callers.
-- Imported Markdown image handling must support a real, accessible Markdown image link path and reject or report unsupported local/relative image paths instead of silently importing broken references.
-- Comment import must not silently attach comments to a fake default article when the import item lacks a target.
+- Mail delivery must be represented by durable records that tests can assert; no fake `ok` response is sufficient.
+- Password reset must create expiring, single-use tokens and update the user's password so old credentials fail and new credentials work.
+- OAuth must not appear implemented without provider credentials; unsupported/deferred behavior must be explicit and not `401`/missing route.
 
 User-visible expected behavior:
-- Uploaded images can be inserted into an article/comment and opened through the returned URL after reload.
-- Deleted media no longer appears in the admin file list and its public availability is consistent with the delete semantics.
-- Importing Markdown with a supported public image URL preserves a usable image reference in the article and ZIP export.
-- Importing Markdown with unsupported local image paths reports failure instead of pretending success.
-- Comment import binds to the intended article target or reports a failed item.
+- Feedback submission/admin reply and subscribe/unsubscribe flows produce visible dev/test mail records.
+- Forgot/reset password works without prior login, sends a dev/test reset token, changes the password, invalidates old password, and rejects token reuse.
+- OAuth begin returns an explicit unsupported/deferred response unless real providers are configured later.
 
 Automated RED test:
-- Add or extend backend integration tests before production code, then run targeted tests and observe failures for unproven asset delivery/delete/import semantics.
+- Add backend integration tests before production code, then run targeted tests and observe failures for missing mail records, missing password reset endpoints, and missing OAuth decision endpoints.
 
 Automated GREEN verification:
-- PASS: `mvn -f server/pom.xml -Dtest=Batch2ContentAssetBatchTest test` - 7 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml -Dtest=P2ImportExportApiTest test` - 2 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml -Dtest=Phase4InteractionApiTest test` - 7 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml test` - 45 tests, 0 failures, 0 errors.
-- PASS: `npm --prefix admin run type-check`.
-- OBSERVED: `npm --prefix blog run type-check` completed with the existing local `vue-router/volar/sfc-route-blocks` warning for missing `@vue/language-core`.
-- PASS: `npm --prefix admin run build`.
-- PASS: `npm --prefix blog run build`.
-- PASS: `docker compose up --build -d server admin blog`.
-- PASS: Docker upload proxy check uploaded `/uploads/1778865616634_docker-proxy-check.png`; `http://localhost:8080`, `http://localhost:4000`, and `http://localhost:3000` all returned 200 with the same 31-byte file.
-- PASS: Docker publish check created article `docker-publish-check`, updated it through `PUT /api/v1/admin/articles/{id}` with `is_publish=true`, and `GET /api/v1/articles/docker-publish-check` returned 200.
-- PASS: `问题清单2.md` avatar follow-up verified that homepage and about-page owner images render direct `/uploads/...` URLs instead of Nuxt IPX `/_ipx/_/uploads/...`, and the actual avatar/photo files return 200 from `localhost:3000`, `localhost:4000`, and `localhost:8080`.
-- PASS: `问题清单2.md` Markdown ZIP follow-up added a RED/GREEN export test; ZIP download now rewrites `/uploads/<file>` Markdown links to `assets/<file>` and includes the image bytes in the ZIP.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch3UserTouchClosedLoopTest test` - 3 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 48 tests, 0 failures, 0 errors.
 
 Manual browser verification:
-- Local Docker verification confirms the previously broken relative `/uploads/**` URLs now work from backend, admin nginx, and blog Nuxt origins.
-- Local Docker verification confirms article edit-page publish persistence through the same `PUT /api/v1/admin/articles/{id}` path used by the admin UI.
-- ACCEPTED: user manually verified Batch 2 remediation fixes against the local running stack on 2026-05-16.
-- ACCEPTED: exact browser checklist screens were re-accepted by the user after remediation.
+- ACCEPTED: user verified feedback/admin reply mail records, subscribe mail record, forgot/reset password, and OAuth deferred UI against the running app on 2026-05-16.
+- OBSERVED: FlecBlog itself has no standalone frontend unsubscribe entry; current unsubscribe is via the email link contract. Full user-visible unsubscribe verification is deferred until real production mail delivery/link flow is enabled.
 
 ## Closed Implementation Loops
 
@@ -322,12 +301,15 @@ These remain subject to regression tests. If a future audit finds fake behavior,
    - Evidence: `BackendTruthDataBatchTest#systemInfoReturnsRealDbRuntimeAndHonestUnsupportedFields` covers non-placeholder DB/runtime fields and unsupported/disabled states.
 
 5. PASSWORD-RESET-OAUTH-DECISION
-   - Frontend exposes forgot/reset password and OAuth UI paths.
-   - Done when the product either implements token/mail/OAuth provider flows or hides/marks unsupported flows honestly.
+   - Automated verified and manually accepted.
+   - Forgot/reset password now creates expiring single-use tokens, writes reset mail records, updates the password, rejects the old password, and rejects token reuse.
+   - OAuth begin endpoints now return explicit `501` unsupported responses when provider credentials are not configured; frontend OAuth buttons remain hidden by default config.
+   - Evidence: `Batch3UserTouchClosedLoopTest#forgotPasswordResetChangesPasswordAndTokenIsSingleUse` and `Batch3UserTouchClosedLoopTest#oauthBeginIsExplicitlyUnsupportedWithoutProviderCredentials`.
 
 6. MAIL-FANOUT-CLOSED-LOOP
-   - Feedback/subscription persistence exists, but mail delivery and notification fan-out are not complete.
-   - Done when SMTP or dev mail capture proves subscription/feedback delivery behavior.
+   - Automated verified and manually accepted with unsubscribe-link caveat.
+   - Feedback submit/admin reply and subscribe/unsubscribe now create durable `mail_outbox` rows through the mail abstraction/dev outbox sender.
+   - Evidence: `Batch3UserTouchClosedLoopTest#feedbackSubscribeAndUnsubscribeCreateDurableMailRecords`.
 
 7. RSS-READER-CLOSED-LOOP
    - Admin RSS read state exists, but external feed fetching/parsing/scheduling is not complete.

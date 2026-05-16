@@ -10,6 +10,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.FormLoginConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HttpBasicConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -30,6 +32,8 @@ public class SecurityConfig {
       throws Exception {
     return http.cors(cors -> {})
         .csrf(AbstractHttpConfigurer::disable)
+        .httpBasic(HttpBasicConfigurer::disable)
+        .formLogin(FormLoginConfigurer::disable)
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(
@@ -49,6 +53,12 @@ public class SecurityConfig {
                         "/api/v1/health",
                         "/api/v1/auth/login",
                         "/api/v1/auth/register",
+                        "/api/v1/auth/forgot-password",
+                        "/api/v1/auth/reset-password",
+                        "/api/v1/auth/github",
+                        "/api/v1/auth/google",
+                        "/api/v1/auth/qq",
+                        "/api/v1/auth/microsoft",
                         "/api/v1/feedback/**",
                         "/api/v1/upload",
                         "/api/v1/collect",

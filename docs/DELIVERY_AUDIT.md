@@ -63,14 +63,15 @@ These are the highest-priority mismatches between frontend calls and backend rea
 ### Public auth/account/OAuth flows
 
 - Database-backed login, register, refresh, profile update, password update, account deactivation, OAuth unbind, and admin user CRUD are now implemented and tested.
-- True OAuth provider authorization callbacks are still not implemented and must remain explicitly out of scope until provider credentials and callback behavior are defined.
-- Password reset endpoints are still expected by the frontend and need either a real token/mail flow or explicit UI deferral.
+- Forgot/reset password is now a real token loop: `forgot-password` creates an expiring token and durable reset mail record; `reset-password` updates the password, invalidates the old password, and rejects token reuse.
+- True OAuth provider authorization callbacks remain out of scope until provider credentials and callback behavior are defined; OAuth begin endpoints now return explicit `501 unsupported` instead of missing-route or fake-provider behavior.
+- Frontend OAuth buttons remain hidden by default config unless a provider is explicitly enabled.
 
 ### Feedback and subscription flows
 
 - Public feedback tickets, ticket lookup, admin feedback handling, email subscription, unsubscribe state, and admin subscriber management are now database-backed and tested.
 - Feedback notification fan-out into the in-app notification table is now covered by Batch 1.
-- Mail delivery remains follow-up work; the current closure is persistence, admin observability, and in-app notification fan-out.
+- Feedback submit/admin reply and subscribe/unsubscribe now create durable `mail_outbox` records through the mail abstraction/dev outbox sender.
 
 ### Admin tools and AI utilities
 
@@ -119,6 +120,14 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - PASS: `问题清单2.md` avatar follow-up verified homepage and about-page owner images render direct `/uploads/...` URLs instead of Nuxt IPX `/_ipx/_/uploads/...`, and the real avatar/photo files return 200 from `localhost:3000`, `localhost:4000`, and `localhost:8080`.
 - PASS: `问题清单2.md` Markdown ZIP follow-up added a RED/GREEN export test; ZIP download now rewrites `/uploads/<file>` Markdown links to `assets/<file>` and includes the image bytes in the ZIP.
 - ACCEPTED: user manually verified Batch 2 remediation fixes and checklist screens against the local running stack on 2026-05-16.
+
+## Batch 3 verification notes
+
+- RED observed: `mvn -f server/pom.xml -Dtest=Batch3UserTouchClosedLoopTest test` initially failed because `mail_outbox` did not exist, forgot-password was not public/implemented, and OAuth begin returned `401` instead of explicit unsupported.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch3UserTouchClosedLoopTest test` - 3 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 48 tests, 0 failures, 0 errors.
+- ACCEPTED: user manually verified feedback/admin reply mail records, subscribe mail record, forgot/reset password, and OAuth deferred UI against the running app on 2026-05-16.
+- OBSERVED: FlecBlog has no standalone frontend unsubscribe entry; current user-visible unsubscribe path is the email link contract, so full unsubscribe-link verification is deferred until real production mail delivery is enabled.
 
 ## What to do next
 

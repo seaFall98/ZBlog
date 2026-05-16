@@ -2,6 +2,7 @@ package com.zblog.subscription.application;
 
 import com.zblog.common.api.PageResponse;
 import com.zblog.common.exception.BusinessException;
+import com.zblog.mail.MailOutboxService;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -19,9 +20,11 @@ public class SubscriptionService {
   private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
   private final JdbcTemplate jdbcTemplate;
+  private final MailOutboxService mailOutboxService;
 
-  public SubscriptionService(JdbcTemplate jdbcTemplate) {
+  public SubscriptionService(JdbcTemplate jdbcTemplate, MailOutboxService mailOutboxService) {
     this.jdbcTemplate = jdbcTemplate;
+    this.mailOutboxService = mailOutboxService;
   }
 
   @Transactional
@@ -41,7 +44,9 @@ public class SubscriptionService {
               "insert into subscribers (email, unsubscribe_token, active) values (?, ?, true)",
               email,
               UUID.randomUUID().toString().replace("-", ""));
-      return get(id);
+      Map<String, Object> subscriber = get(id);
+      sendSubscribeConfirm(subscriber);
+      return subscriber;
     }
     long id = existing.getFirst();
     jdbcTemplate.update(
@@ -51,7 +56,9 @@ public class SubscriptionService {
         where id = ?
         """,
         id);
-    return get(id);
+    Map<String, Object> subscriber = get(id);
+    sendSubscribeConfirm(subscriber);
+    return subscriber;
   }
 
   public Map<String, Object> unsubscribe(String token) {
@@ -66,7 +73,14 @@ public class SubscriptionService {
     long id = ids.getFirst();
     jdbcTemplate.update(
         "update subscribers set active = false, updated_at = current_timestamp where id = ?", id);
-    return get(id);
+    Map<String, Object> subscriber = get(id);
+    mailOutboxService.send(
+        "user",
+        "unsubscribe_confirm",
+        subscriber.get("email").toString(),
+        "已退订",
+        "已退订 " + subscriber.get("email"));
+    return subscriber;
   }
 
   public PageResponse<Map<String, Object>> listAdmin(int page, int pageSize) {
@@ -99,7 +113,7 @@ public class SubscriptionService {
     return jdbcTemplate
         .query(
             """
-            select id, email, active, created_at, updated_at
+            select id, email, unsubscribe_token, active, created_at, updated_at
             from subscribers
             where id = ? and deleted_at is null
             """,
@@ -111,17 +125,29 @@ public class SubscriptionService {
   }
 
   private Map<String, Object> mapRow(ResultSet rs) throws SQLException {
-    return Map.of(
-        "id",
-        rs.getLong("id"),
-        "email",
-        rs.getString("email"),
-        "active",
-        rs.getBoolean("active"),
-        "created_at",
-        rs.getTimestamp("created_at"),
-        "updated_at",
-        rs.getTimestamp("updated_at"));
+    java.util.LinkedHashMap<String, Object> row = new java.util.LinkedHashMap<>();
+    row.put("id", rs.getLong("id"));
+    row.put("email", rs.getString("email"));
+    try {
+      row.put("unsubscribe_token", rs.getString("unsubscribe_token"));
+    } catch (SQLException ignored) {
+      row.put("unsubscribe_token", "");
+    }
+    row.put("active", rs.getBoolean("active"));
+    row.put("created_at", rs.getTimestamp("created_at"));
+    row.put("updated_at", rs.getTimestamp("updated_at"));
+    return row;
+  }
+
+  private void sendSubscribeConfirm(Map<String, Object> subscriber) {
+    String email = subscriber.get("email").toString();
+    String token = subscriber.get("unsubscribe_token").toString();
+    mailOutboxService.send(
+        "user",
+        "subscribe_confirm",
+        email,
+        "Subscribe confirm",
+        "Subscription confirmed. unsubscribe token: " + token);
   }
 
   @Transactional
