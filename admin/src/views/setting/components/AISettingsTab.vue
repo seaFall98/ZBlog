@@ -22,11 +22,12 @@
     </el-form-item>
 
     <el-form-item label="模型名称">
-      <el-input v-model="form.model" placeholder="例如 deepseek-chat" :disabled="loading" />
+      <el-input v-model="form.model" placeholder="例如 deepseek-v4-flash" :disabled="loading" />
     </el-form-item>
 
     <el-form-item label=" ">
       <el-button :loading="testing" @click="handleTest">测试连接</el-button>
+      <span class="test-tip">测试通过后需要保存配置，文章页生成才会使用新配置</span>
     </el-form-item>
 
     <el-divider content-position="left">提示词配置</el-divider>
@@ -156,6 +157,12 @@ async function resetSecret() {
 </script>
 
 <style lang="scss" scoped>
+.test-tip {
+  margin-left: 12px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
 // 移动端适配
 @media (max-width: 768px) {
   :deep(.el-form-item__label) {

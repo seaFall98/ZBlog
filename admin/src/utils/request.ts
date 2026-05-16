@@ -126,6 +126,11 @@ request.interceptors.response.use(
       }
     }
 
+    const responseData = error.response?.data as Partial<ApiResponse> | undefined;
+    if (responseData?.message) {
+      return Promise.reject(new Error(responseData.message));
+    }
+
     // 其他错误直接返回
     return Promise.reject(error);
   }

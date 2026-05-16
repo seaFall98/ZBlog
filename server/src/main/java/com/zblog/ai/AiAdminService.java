@@ -87,7 +87,7 @@ public class AiAdminService {
               .build();
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() < 200 || response.statusCode() >= 300) {
-        throw new BusinessException(40050, "AI provider returned status " + response.statusCode(), HttpStatus.BAD_REQUEST);
+        throw new BusinessException(40050, providerErrorMessage(response), HttpStatus.BAD_REQUEST);
       }
       JsonNode root = objectMapper.readTree(response.body());
       JsonNode content = root.at("/choices/0/message/content");
@@ -102,11 +102,47 @@ public class AiAdminService {
     }
   }
 
+  private String providerErrorMessage(HttpResponse<String> response) {
+    String detail = extractProviderMessage(response.body());
+    if (!detail.isBlank()) {
+      return "AI provider returned status " + response.statusCode() + ": " + detail;
+    }
+    return "AI provider returned status " + response.statusCode();
+  }
+
+  private String extractProviderMessage(String body) {
+    if (body == null || body.isBlank()) {
+      return "";
+    }
+    try {
+      JsonNode root = objectMapper.readTree(body);
+      JsonNode message = root.at("/error/message");
+      if (message.isTextual() && !message.asText().isBlank()) {
+        return message.asText().trim();
+      }
+      JsonNode directMessage = root.get("message");
+      if (directMessage != null && directMessage.isTextual() && !directMessage.asText().isBlank()) {
+        return directMessage.asText().trim();
+      }
+    } catch (Exception ignored) {
+      return body.length() > 300 ? body.substring(0, 300) : body;
+    }
+    return "";
+  }
+
   private AiConfig configFrom(Map<String, String> values) {
     return new AiConfig(
-        validatedBaseUrl(required(values.get("base_url"), "base_url")),
-        required(values.get("api_key"), "api_key"),
-        required(values.get("model"), "model"));
+        validatedBaseUrl(required(configValue(values, "base_url"), "base_url")),
+        required(configValue(values, "api_key"), "api_key"),
+        required(configValue(values, "model"), "model"));
+  }
+
+  private String configValue(Map<String, String> values, String key) {
+    String value = values.get("ai." + key);
+    if (value == null || value.isBlank()) {
+      value = values.get(key);
+    }
+    return value;
   }
 
   private String validatedBaseUrl(String value) {
@@ -141,7 +177,11 @@ public class AiAdminService {
   }
 
   private String setting(String key, String defaultValue) {
-    String value = settingService.getGroup("ai").get(key);
+    Map<String, String> values = settingService.getGroup("ai");
+    String value = values.get("ai." + key);
+    if (value == null || value.isBlank()) {
+      value = values.get(key);
+    }
     return value == null || value.isBlank() ? defaultValue : value;
   }
 

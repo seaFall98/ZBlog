@@ -117,7 +117,7 @@ onUnmounted(() => {
 
 <template>
   <div v-if="article" id="post">
-    <FeaturesArticleAISummary v-if="article.ai_summary" :summary="article.ai_summary" />
+    <FeaturesArticleAISummary v-if="article.summary" :summary="article.summary" />
 
     <FeaturesArticleOutdatedNotice v-if="article.is_outdated" />
 

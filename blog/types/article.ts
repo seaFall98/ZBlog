@@ -12,7 +12,6 @@ export interface Article {
   content_markdown?: string;
   content_html?: string;
   summary: string;
-  ai_summary?: string;
   excerpt?: string;
   cover?: string;
   is_top: boolean;

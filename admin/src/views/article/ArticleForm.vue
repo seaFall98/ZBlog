@@ -98,41 +98,18 @@
           <template #label>
             <div class="form-item-header">
               <span>文章摘要</span>
-              <i
-                v-if="!generatingSummary"
-                class="ri-quill-pen-ai-line ai-generate-icon"
-                @click="handleGenerateSummary"
-              ></i>
-              <i v-else class="ri-loader-line ai-generate-icon is-loading"></i>
+              <el-button link size="small" :loading="generatingSummary" @click="handleGenerateSummary">
+                生成摘要
+              </el-button>
+              <el-button link size="small" :loading="generatingAISummary" @click="handleGenerateAISummary">
+                AI 总结
+              </el-button>
             </div>
           </template>
           <el-input
             v-model="formData.summary"
             type="textarea"
             placeholder="请输入文章摘要，如不填写将自动截取内容前150字符"
-            :rows="3"
-            maxlength="150"
-            show-word-limit
-            clearable
-          />
-        </el-form-item>
-
-        <el-form-item prop="ai_summary">
-          <template #label>
-            <div class="form-item-header">
-              <span>AI 总结</span>
-              <i
-                v-if="!generatingAISummary"
-                class="ri-quill-pen-ai-line ai-generate-icon"
-                @click="handleGenerateAISummary"
-              ></i>
-              <i v-else class="ri-loader-line ai-generate-icon is-loading"></i>
-            </div>
-          </template>
-          <el-input
-            v-model="formData.ai_summary"
-            type="textarea"
-            placeholder="AI 总结"
             :rows="3"
             maxlength="300"
             show-word-limit
@@ -339,8 +316,7 @@ const formData = reactive({
   slug: '',
   content: '',
   summary: '',
-  ai_summary: '',
-  cover: '',
+    cover: '',
   category_id: undefined as number | undefined,
   tag_ids: [] as number[],
   location: '',
@@ -358,8 +334,7 @@ const originalData = reactive({
   slug: '',
   content: '',
   summary: '',
-  ai_summary: '',
-  cover: '',
+    cover: '',
   category_id: undefined as number | undefined,
   tag_ids: [] as number[],
   location: '',
@@ -439,7 +414,6 @@ watch(
     slug: formData.slug,
     content: formData.content,
     summary: formData.summary,
-    ai_summary: formData.ai_summary,
     cover: formData.cover,
     category_id: formData.category_id,
     tag_ids: formData.tag_ids,
@@ -490,7 +464,6 @@ const fetchArticle = async (id: number) => {
       slug: article.slug || '',
       content: article.content_markdown || article.content || '',
       summary: article.summary,
-      ai_summary: article.ai_summary || '',
       cover: article.cover || '',
       category_id: article.category?.id || undefined,
       tag_ids: article.tags?.map(tag => tag.id) || [],
@@ -604,7 +577,6 @@ const handleSave = async (autoRedirect: boolean = true) => {
       slug: formData.slug.trim(),
       content: formData.content.trim(),
       summary: formData.summary.trim(),
-      ai_summary: formData.ai_summary.trim(),
       cover: formData.cover || '',
       tag_ids: Array.from(formData.tag_ids || []),
       location: formData.location.trim(),
@@ -697,7 +669,6 @@ const hasFormChanged = (): boolean => {
     formData.slug !== originalData.slug ||
     formData.content !== originalData.content ||
     formData.summary !== originalData.summary ||
-    formData.ai_summary !== originalData.ai_summary ||
     formData.cover !== originalData.cover ||
     formData.category_id !== originalData.category_id ||
     !arraysEqual(formData.tag_ids, originalData.tag_ids) ||
@@ -727,8 +698,8 @@ const handleGenerateAISummary = async () => {
   generatingAISummary.value = true;
   try {
     const result = await generateAISummary({ content: formData.content });
-    formData.ai_summary = result.summary;
-    ElMessage.success('AI总结生成成功');
+    formData.summary = result.summary;
+    ElMessage.success('AI总结已写入文章摘要');
   } catch (error: unknown) {
     ElMessage.error((error as Error)?.message || 'AI总结生成失败');
   } finally {
