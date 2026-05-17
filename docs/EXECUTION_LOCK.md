@@ -23,63 +23,59 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
-ID: SEARCH-SEO-DEPTH-BATCH-006
+ID: PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
 
-Status: closed, user accepted
+Status: ready, not started
 
 Scope:
-- Batch 6 only: Search and SEO depth closed loop for real article data.
-- Product decision: DB-backed search is accepted for v1; Elasticsearch is deferred as a later enhancement and must not be fake-configured or fake-indexed.
-- Search derives from real published articles and reacts to create, update, publish, unpublish, and delete.
-- SEO XML outputs (`rss.xml`, `atom.xml`, `sitemap.xml`) derive from real published articles and react to article state/content changes.
-- Do not include Deployment Hardening, FlecBlog Parity Recheck, or unrelated Batch 1-5 changes.
+- Batch 7 only: pre-deployment feature and technology audit.
+- This is an audit/planning batch, not a production-code implementation batch.
+- Re-check current Java/backend/frontend behavior before deployment hardening.
+- Compare current behavior against FlecBlog, current frontend-visible gaps, and the old ZBlog backend refactor target stack.
+- Produce an updated roadmap that decides which missing features and technology-stack enhancements must happen before deployment.
+- Do not implement Redis, Elasticsearch, MQ, CDC, or deployment code in this batch unless the user explicitly re-scopes it.
 
 Frontend/admin entry pages:
-- Admin article editor/list creates, updates, publishes, unpublishes, and deletes articles through admin article APIs.
-- Public blog search page consumes `GET /api/v1/articles/search`.
-- Browser-accessible SEO outputs consume `/rss.xml`, `/atom.xml`, and `/sitemap.xml`.
+- Public article detail page, especially article `view_count`.
+- Public blog search, RSS/Atom/Sitemap, site stats, and sidebar stats.
+- Admin dashboard, article list, visit list, settings, files, comments, feedback, subscribers, notifications, RSS reader, and system pages.
 
 Exact API calls:
-- `POST /api/v1/admin/articles`
-- `PUT /api/v1/admin/articles/{id}`
-- `POST /api/v1/admin/articles/{id}/publish`
-- `POST /api/v1/admin/articles/{id}/unpublish`
-- `DELETE /api/v1/admin/articles/{id}`
-- `GET /api/v1/articles/search?keyword=...`
-- `GET /rss.xml`
-- `GET /atom.xml`
-- `GET /sitemap.xml`
+- Audit current frontend API calls and backend routes rather than locking new implementation APIs.
+- Known issue to verify: article detail `view_count` appears to remain `0` because visit collection updates `visit_events` but does not prove per-article `articles.view_count` increments.
+- Known technology candidates to review: Redis, Elasticsearch, RabbitMQ/Kafka, PostgreSQL CDC via pgoutput/Debezium, outbox/event pattern, and deployment cost.
 
-Current backend implementation:
-- Public search currently uses DB queries over `articles` and filters `status = 'PUBLISHED'`.
-- SEO XML outputs currently query published articles directly from the DB for each request.
-- No Elasticsearch implementation is currently proven in Java backend code.
+Reference inputs:
+- Current repo code and frontend-visible behavior.
+- `docs/DELIVERY_AUDIT.md`.
+- FlecBlog reference behavior.
+- Old ZBlog backend refactor plan: `D:\MyCode\ZBlogProject\ZBlog_1\docs\06_BACKEND_REFACTOR_PLAN.md`.
+- min-lj Blog may be used as a learning reference for a richer Java blog stack, but do not copy its architecture blindly.
 
-Missing persistence or derived data:
-- Batch 6 must prove search and SEO outputs react correctly to article create/update/delete/publish-state changes.
-- Any cache behavior must be explicit; this batch should not introduce long-lived stale search/SEO caches.
+Expected audit output:
+- Updated `Feature Completion Backlog` and `Batch Roadmap`.
+- A clear list of must-fix-before-deploy items, optional portfolio/architecture enhancements, and post-deploy deferred items.
+- Explicit recommendation for Redis scope beyond article view count if justified by real flows.
+- Explicit recommendation for Elasticsearch strategy scope.
+- Explicit recommendation for lightweight PostgreSQL CDC / Debezium / MQ / outbox scope, including why it is or is not worth doing before deployment.
 
 User-visible expected behavior:
-- A newly published article with a unique keyword appears in public search and SEO XML outputs.
-- Draft articles do not appear in public search or SEO XML outputs.
-- Updating title, summary, or body changes search and SEO output.
-- Unpublishing or deleting removes the article from public search and SEO XML outputs.
+- The user can understand what is still missing before deployment and why.
+- The next implementation batches are feature-based, testable, and not random or ad hoc.
+- Technology-stack additions are tied to real behavior and can be defended in code review or an interview.
 
 Automated RED test:
-- Observed: `mvn -f server/pom.xml -Dtest=Batch6SearchSeoDepthTest test` failed after adding `adminCreateWithPublishFlagImmediatelyEntersSearchAndSeoOutputs` because direct article creation with `is_publish=true` still created a draft; public search returned an empty result for the unique keyword and SEO XML did not include the article.
+- Not required for the audit itself.
+- The audit must identify which next implementation batch needs RED tests first.
 
 Automated GREEN verification:
-- PASS: `mvn -f server/pom.xml -Dtest=Batch6SearchSeoDepthTest test` - 2 tests, 0 failures, 0 errors.
-- PASS: `mvn -f server/pom.xml test` - 55 tests, 0 failures, 0 errors.
-- Frontend type-check was not required because Batch 6 changed backend service behavior, backend tests, and docs only.
+- Documentation-only audit batch; verify by reviewing changed docs and ensuring no production code was modified.
 
 Docker running-stack verification:
-- PASS: rebuilt `server` with `docker compose up --build -d server`, then verified create-and-publish, search, RSS, Atom, sitemap, update, draft exclusion, unpublish exclusion, republish, delete exclusion, and cleanup through real `localhost:8080` APIs.
-- Evidence keywords: `batch6-docker-initial-1778959750`, `batch6-docker-updated-1778959750`, `batch6-docker-draft-1778959750`.
+- Optional during audit if needed to confirm visible gaps such as article view count.
 
 Manual browser verification:
-- ACCEPTED: user manually verified Batch 6 search and SEO behavior against the running stack on 2026-05-17.
-- Follow-up suggestions: tighten AI summary length guidance in a future AI utilities batch; consider a future strategy-style search design where DB-backed search remains default and Elasticsearch can be enabled by configuration only when intentionally adopted.
+- User reviews and accepts the adjusted roadmap before implementation resumes.
 
 ## Closed Implementation Loops
 
@@ -278,6 +274,12 @@ Roadmap ordering is based on:
 - confirmed Java backend gaps, stubs, hardcoded values, or missing persistence;
 - FlecBlog reference behavior;
 - dependency and user-visible impact.
+- previously discussed target architecture, including Java 21, PostgreSQL, Redis, RabbitMQ, optional Elasticsearch, PostgreSQL CDC/Debezium, lightweight DDD, Strategy/Adapter/Event/Outbox patterns, and real tests.
+
+Architecture note:
+- Technology stack is allowed when it closes real blog behavior or creates a defensible integration seam.
+- Do not add Redis, Elasticsearch, MQ, Kafka, Debezium, or CDC only to make the README look richer.
+- For this project, "MySQL + Canal + MQ" should map to "PostgreSQL + pgoutput/Debezium + RabbitMQ/Kafka" only if the batch proves a real event/indexing/notification workflow.
 
 ### Closed Baseline
 
@@ -316,14 +318,35 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Status: closed, user accepted.
    - Includes: SEARCH-SEO-DEPTH only.
 
-7. DEPLOYMENT-HARDENING-BATCH-007
+7. PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
    - Status: next.
-   - Includes: DEPLOYMENT-HARDENING only.
-   - Scope guard: do not include FlecBlog parity recheck in this batch.
+   - Includes: code review, feature-gap review, technology-stack review, and roadmap correction before deployment hardening.
+   - Scope guard: audit and planning only; do not implement Redis/ES/MQ/CDC/deployment code in this batch unless the user explicitly re-scopes it.
+   - Required outcome: decide whether Redis, Elasticsearch, lightweight async/outbox/MQ, PostgreSQL CDC, and remaining base features belong before deployment.
 
-8. FLECBLOG-PARITY-RECHECK-BATCH-008
+8. REDIS-FOUNDATION-CLOSED-LOOP-BATCH-008
+   - Status: planned, subject to Batch 7 audit.
+   - Initial candidates: article `view_count` closed loop, hot-article/read-ranking cache, site stats/cache, idempotent view collection or rate limiting if justified by real UI/API flows.
+   - Scope guard: do not make Redis mandatory for production deployment unless the fallback/degradation strategy is explicit.
+
+9. SEARCH-STRATEGY-ELASTICSEARCH-BATCH-009
    - Status: planned.
-   - Includes: final FlecBlog parity recheck and explicit defer/implement decisions for any remaining gaps.
+   - Includes: search strategy abstraction and optional Elasticsearch implementation if Batch 7 confirms it is worth doing before deployment.
+   - Scope guard: DB-backed search remains the default unless ES is explicitly enabled and verified.
+
+10. ASYNC-EVENT-PIPELINE-BATCH-010
+   - Status: planned, subject to Batch 7 audit.
+   - Initial candidates: outbox event model, article/comment/notification/mail/search-index events, RabbitMQ adapter, and a lightweight PostgreSQL CDC/Debezium proof path if it adds value without overloading deployment.
+   - Scope guard: every async path needs idempotency, retry/error visibility, and a synchronous fallback or explicit deferred risk.
+
+11. DEPLOYMENT-HARDENING-BATCH-011
+   - Status: planned.
+   - Includes: production-like deployment, environment variables, persistence, reverse proxy/static uploads, logs, backup, and health checks.
+   - Scope guard: do not hide missing functional gaps behind deployment documentation.
+
+12. FLECBLOG-PARITY-RECHECK-BATCH-012
+   - Status: planned.
+   - Includes: final FlecBlog parity recheck and explicit defer/implement decisions for any remaining gaps after the pre-deployment technical work.
 
 ### Open Roadmap
 
@@ -376,34 +399,62 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
     - Product decision: DB-backed search is accepted for v1; Elasticsearch is deferred as a later enhancement and must not be fake-configured or fake-indexed.
     - Evidence: `Batch6SearchSeoDepthTest` proves article create/update/unpublish/delete lifecycle changes affect public search, RSS, Atom, and Sitemap outputs.
 
-11. DEPLOYMENT-HARDENING
+11. PRE-DEPLOYMENT-FEATURE-TECH-AUDIT
+    - Open.
+    - Purpose: re-audit current feature completeness and target technology stack before deployment hardening.
+    - Must verify user-visible base gaps such as per-article `view_count`, not only global visit stats.
+    - Must reconcile current implementation with the old backend refactor direction: Redis, RabbitMQ, optional Elasticsearch, PostgreSQL CDC/Debezium, lightweight DDD, Strategy/Adapter/Event/Outbox patterns.
+    - Done when the roadmap is corrected, must-fix-before-deploy items are listed, and the user accepts the next implementation order.
+
+12. REDIS-FOUNDATION
+    - Planned, subject to Batch 7 audit.
+    - Initial candidates: article view count, hot articles/read ranking, site stats/cache, settings cache, idempotent/rate-limited visit collection.
+    - Done means Redis participates in real user-visible behavior and PostgreSQL remains the durable source or reconciliation target.
+    - Must avoid fake Redis usage where the application still works exactly the same without touching Redis.
+
+13. SEARCH-STRATEGY-ELASTICSEARCH
+    - Planned, subject to Batch 7 audit.
+    - DB-backed search is accepted as the default v1 strategy.
+    - Elasticsearch may be added behind a `SearchPort`/strategy interface with explicit configuration, indexing, reindexing, and fallback behavior.
+    - Done means article create/update/delete affects both the active strategy and tests prove the selected strategy behavior.
+
+14. ASYNC-EVENT-PIPELINE
+    - Planned, subject to Batch 7 audit.
+    - PostgreSQL counterpart to "MySQL + Canal + MQ" should be considered as PostgreSQL logical decoding/pgoutput or Debezium plus RabbitMQ/Kafka, but only in a lightweight, defensible scope.
+    - Initial candidates: outbox records for article/comment/notification/mail/search-index events, RabbitMQ consumer, error/retry visibility, and optional Debezium CDC proof path.
+    - Done means at least one real workflow benefits from async processing and has idempotency, retry/error handling, and verification.
+
+15. DEPLOYMENT-HARDENING
     - Local Docker exists, but production-like deployment, persistence, reverse proxy, upload serving, logs, backup, and health checks need proof.
     - Done when a clean environment can run the stack and survive restart with data/uploads intact.
 
-12. FLECBLOG-PARITY-RECHECK
-    - Final audit pass against FlecBlog after items 1-11.
+16. FLECBLOG-PARITY-RECHECK
+    - Final audit pass against FlecBlog after the pre-deployment feature/technology work.
     - Done when every intentional difference is documented and every required missing capability is either implemented or explicitly deferred by the user.
 
 ## Next Locked Implementation Candidate
 
-ID: DEPLOYMENT-HARDENING-BATCH-007
+ID: PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
 
 Status: ready, not started
 
 Reason:
 - Batch 6 is automated verified and user accepted.
-- The fixed Batch Roadmap marks DEPLOYMENT-HARDENING-BATCH-007 as the next batch after Search/SEO acceptance.
-- This next batch must stay limited to deployment hardening; do not include FlecBlog parity recheck.
+- The user observed that article `view_count` remains `0`, showing that at least one base feature may still be incomplete before deployment.
+- The old backend refactor plan includes Redis, RabbitMQ, optional Elasticsearch, PostgreSQL CDC/Debezium, lightweight DDD, Strategy/Adapter/Event/Outbox patterns, and these need objective re-evaluation against current code.
+- This next batch must stay limited to audit/roadmap correction; do not implement Redis, ES, MQ, CDC, or deployment code during the audit.
 
 Before coding the next batch, fill this section:
-- Frontend/admin entry pages:
-- Deployment entry points and commands:
-- Current Docker/local production-like implementation:
-- Missing persistence/reverse-proxy/env/logging/backup/health-check behavior:
-- User-visible expected behavior:
-- Automated RED test:
-- Automated GREEN verification:
-- Manual browser verification:
+- Audit entry pages and API routes:
+- Current functional gaps:
+- Current technology gaps:
+- Redis candidate flows and recommendation:
+- Elasticsearch strategy recommendation:
+- PostgreSQL CDC / Debezium / RabbitMQ/Kafka recommendation:
+- Must-fix-before-deploy list:
+- Optional portfolio-enhancement list:
+- Post-deploy deferred list:
+- Updated batch order:
 
 ## Handoff Protocol
 

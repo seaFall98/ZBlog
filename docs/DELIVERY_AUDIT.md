@@ -171,11 +171,11 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 
 ## What to do next
 
-1. Start the next batch from the `Feature Completion Backlog` in `docs/EXECUTION_LOCK.md`.
-2. Lock exactly one batch or feature group as the Active Work Slot.
-3. Write and run failing backend tests before production code.
-4. Implement the smallest backend/frontend slice needed to pass.
-5. Verify the real UI manually before marking the batch closed.
+1. Run `PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007` before deployment hardening.
+2. Re-check visible gaps such as article `view_count` and any UI path that still shows placeholder or fake-complete behavior.
+3. Re-evaluate the previously planned backend stack: Redis, optional Elasticsearch, RabbitMQ/Kafka, PostgreSQL CDC/Debezium, outbox/event pattern, and deployment cost.
+4. Update the roadmap into must-fix-before-deploy, optional portfolio/architecture enhancement, and post-deploy deferred groups.
+5. Resume implementation only after the user accepts the adjusted roadmap.
 
 ## Acceptance rule for future work
 
