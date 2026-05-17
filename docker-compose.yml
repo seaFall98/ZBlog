@@ -16,6 +16,37 @@ services:
       timeout: 3s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    container_name: zblog-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - zblog_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: zblog-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: zblog
+      RABBITMQ_DEFAULT_PASS: zblog
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - zblog_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   server:
     build:
       context: ./server
@@ -24,6 +55,12 @@ services:
       ZBLOG_DATASOURCE_URL: jdbc:postgresql://postgres:5432/zblog
       ZBLOG_DATASOURCE_USERNAME: zblog
       ZBLOG_DATASOURCE_PASSWORD: zblog
+      ZBLOG_REDIS_HOST: redis
+      ZBLOG_REDIS_PORT: 6379
+      ZBLOG_RABBITMQ_HOST: rabbitmq
+      ZBLOG_RABBITMQ_PORT: 5672
+      ZBLOG_RABBITMQ_USERNAME: zblog
+      ZBLOG_RABBITMQ_PASSWORD: zblog
       ZBLOG_JWT_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       ZBLOG_ADMIN_USERNAME: admin
       ZBLOG_ADMIN_PASSWORD: admin123456
@@ -33,6 +70,10 @@ services:
       - zblog_uploads:/app/uploads
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   blog:
@@ -60,4 +101,6 @@ services:
 
 volumes:
   zblog_postgres_data:
+  zblog_redis_data:
+  zblog_rabbitmq_data:
   zblog_uploads:

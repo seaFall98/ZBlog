@@ -45,16 +45,22 @@ const scrollToHash = () => {
   });
 };
 
-const trackArticlePageView = () => {
+const trackArticlePageView = async () => {
   if (!article.value) {
     $tracker?.setArticleId(undefined);
     return;
   }
 
   $tracker?.setArticleId(article.value.id);
-  const sent = $tracker?.trackPageView(undefined, article.value.id);
+  const result = await $tracker?.trackArticlePageView(undefined, article.value.id);
 
-  if (sent) {
+  if (result?.sent && typeof result.articleViewCount === 'number') {
+    article.value = {
+      ...article.value,
+      view_count: result.articleViewCount,
+    };
+    setCurrentArticle(article.value);
+  } else if (result?.sent && result.articleViewCounted) {
     article.value = {
       ...article.value,
       view_count: (article.value.view_count || 0) + 1,
@@ -99,7 +105,7 @@ const fetchArticle = async () => {
     setCurrentArticle(article.value);
 
     if (article.value) {
-      trackArticlePageView();
+      await trackArticlePageView();
       scrollToHash();
     }
   } catch (error: unknown) {
@@ -117,8 +123,8 @@ const fetchArticle = async () => {
 // 监听路由参数变化
 watch(() => route.params.slug, fetchArticle);
 
-onMounted(() => {
-  trackArticlePageView();
+onMounted(async () => {
+  await trackArticlePageView();
   scrollToHash();
 });
 

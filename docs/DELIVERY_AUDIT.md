@@ -229,10 +229,27 @@ These areas exist, but still rely too much on placeholders, hardcoded values, pa
 - PASS after issue 4 fix: running-stack authenticated `GET /api/v1/admin/files` for a real settings-referenced `站长形象` upload returned `status=1`.
 - ACCEPTED: user manually verified Batch 8 after the issue 1-4 remediation loop on 2026-05-18.
 
+## Batch 9 verification notes
+
+- DECISION: implement Redis plus a lightweight application outbox/RabbitMQ chain in this batch. Debezium, Elasticsearch, Kafka, OpenResty/Nginx+Lua, and deployment hardening remain out of scope.
+- DECISION: PostgreSQL remains the source of truth. Redis is used only for article-view 10-second debounce, recent hot ranking, site-stats short TTL cache, and collect rate limiting.
+- DECISION: hot articles are split into two explicit ranking semantics: `type=recent` uses Redis ZSET and displays `hot_score`; `type=total` uses PostgreSQL `view_count` and displays total reads.
+- RED observed: `mvn -f server/pom.xml -Dtest=Batch9RedisOutboxRabbitMqTest test` initially failed because `/collect` did not expose article counting metadata, collect rate limiting did not exist, and the `event_outbox` table did not exist.
+- RED observed after manual acceptance issues: targeted test failed because 10-second debounce recovery, dual ranking semantics, direct-create publish outbox, and duplicate slug handling were not implemented.
+- PASS after manual issue fixes: `mvn -f server/pom.xml -Dtest=Batch9RedisOutboxRabbitMqTest test` - 7 tests, 0 failures, 0 errors.
+- PASS after manual issue fixes: `mvn -f server/pom.xml test` - 67 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix blog run type-check`; observed existing local `@vue/language-core` warning from vue-router/volar.
+- PASS: `npm --prefix blog run build`; observed existing Nuxt sourcemap/deprecation warnings.
+- PASS: `npm --prefix admin run type-check`.
+- PASS: `docker compose up --build -d server blog`.
+- PASS: Docker running-stack smoke verified direct create-and-publish produced a sent outbox event and article-published notification, 10-second article-view debounce counted again after the window, duplicate slug returned 409, and recent/total hot article APIs returned valid data.
+- PASS after final acceptance fixes: Docker running-stack smoke verified article-published notification links use `/articles/edit/{id}` and the public blog bootstrap script defaults to light theme unless `localStorage.theme` is explicitly `dark`.
+- ACCEPTED: user manually verified Batch 9 after the Redis/MQ remediation loop and final notification/theme fixes on 2026-05-18.
+
 ## What to do next
 
-1. Commit and push the accepted Batch 8 work.
-2. Next portfolio batch should include Redis ranking/cache/rate-limit plus one minimal real PG+Debezium+MQ flow.
+1. Commit and push the accepted Batch 9 work.
+2. Next batch should revisit the remaining roadmap: Elasticsearch strategy, deployment hardening, and Redis+Nginx+Lua gateway planning.
 
 ## Acceptance rule for future work
 

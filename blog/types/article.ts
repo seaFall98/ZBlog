@@ -18,6 +18,7 @@ export interface Article {
   is_essence: boolean;
   is_outdated?: boolean;
   view_count?: number;
+  hot_score?: number;
   comment_count: number;
   publish_time: string;
   update_time: string;

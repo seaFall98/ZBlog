@@ -66,6 +66,31 @@ public class NotificationService {
     return get(id);
   }
 
+  public Map<String, Object> createArticlePublishedNotification(long articleId, String title, String slug, long eventId) {
+    long existing =
+        count(
+            "select count(*) from notifications where type = 'article_published' and target_id = "
+                + articleId);
+    if (existing > 0) {
+      return jdbcTemplate
+          .query(
+              "select * from notifications where type = 'article_published' and target_id = ? order by id desc limit 1",
+              (rs, rowNum) -> mapRow(rs),
+              articleId)
+          .getFirst();
+    }
+    long id =
+        insert(
+            "article_published",
+            "文章已发布",
+            "文章《" + title + "》已发布",
+            "/articles/edit/" + articleId,
+            Map.of("article_id", articleId, "slug", slug, "event_id", eventId),
+            articleId,
+            "mq");
+    return get(id);
+  }
+
   public Map<String, Object> markRead(long id) {
     jdbcTemplate.update(
         "update notifications set is_read = true, read_at = current_timestamp where id = ?", id);
@@ -147,6 +172,7 @@ public class NotificationService {
       case "feedback_new" -> "反馈投诉";
       case "comment_new" -> "新评论";
       case "friend_apply" -> "友链申请";
+      case "article_published" -> "文章发布";
       default -> "系统通知";
     };
   }

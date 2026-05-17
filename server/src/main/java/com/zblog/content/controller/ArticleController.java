@@ -46,6 +46,13 @@ public class ArticleController {
     return ApiResponse.ok(articleService.searchPublic(keyword, page, pageSize));
   }
 
+  @GetMapping("/articles/hot")
+  public ApiResponse<PageResponse<Map<String, Object>>> hot(
+      @RequestParam(defaultValue = "10") int limit,
+      @RequestParam(defaultValue = "recent") String type) {
+    return ApiResponse.ok(articleService.hotArticles(limit, type));
+  }
+
   @GetMapping("/articles/{slug}")
   public ApiResponse<Map<String, Object>> getPublic(@PathVariable String slug) {
     return ApiResponse.ok(articleService.getPublicBySlug(slug));

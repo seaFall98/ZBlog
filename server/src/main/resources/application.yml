@@ -8,6 +8,17 @@ spring:
     url: ${ZBLOG_DATASOURCE_URL:jdbc:postgresql://localhost:5432/zblog}
     username: ${ZBLOG_DATASOURCE_USERNAME:zblog}
     password: ${ZBLOG_DATASOURCE_PASSWORD:zblog}
+  data:
+    redis:
+      host: ${ZBLOG_REDIS_HOST:localhost}
+      port: ${ZBLOG_REDIS_PORT:6379}
+      password: ${ZBLOG_REDIS_PASSWORD:}
+      timeout: ${ZBLOG_REDIS_TIMEOUT:2s}
+  rabbitmq:
+    host: ${ZBLOG_RABBITMQ_HOST:localhost}
+    port: ${ZBLOG_RABBITMQ_PORT:5672}
+    username: ${ZBLOG_RABBITMQ_USERNAME:zblog}
+    password: ${ZBLOG_RABBITMQ_PASSWORD:zblog}
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -17,6 +28,14 @@ springdoc:
     path: /swagger-ui.html
 
 zblog:
+  cache:
+    article-view-dedup-seconds: ${ZBLOG_ARTICLE_VIEW_DEDUP_SECONDS:10}
+    collect-rate-limit-per-minute: ${ZBLOG_COLLECT_RATE_LIMIT_PER_MINUTE:120}
+    site-stats-cache-seconds: ${ZBLOG_SITE_STATS_CACHE_SECONDS:60}
+  mq:
+    exchange: ${ZBLOG_MQ_EXCHANGE:zblog.events}
+    article-published-routing-key: ${ZBLOG_MQ_ARTICLE_PUBLISHED_ROUTING_KEY:article.published}
+    article-published-queue: ${ZBLOG_MQ_ARTICLE_PUBLISHED_QUEUE:zblog.article.published}
   mail:
     mode: ${ZBLOG_MAIL_MODE:outbox}
     from: ${ZBLOG_MAIL_FROM:noreply@zblog.local}

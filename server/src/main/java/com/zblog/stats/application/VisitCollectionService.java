@@ -2,13 +2,17 @@ package com.zblog.stats.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zblog.cache.BlogCache;
+import com.zblog.cache.CacheProperties;
 import com.zblog.common.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
 import java.util.HexFormat;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -20,10 +24,18 @@ public class VisitCollectionService {
 
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
+  private final BlogCache blogCache;
+  private final CacheProperties cacheProperties;
 
-  public VisitCollectionService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+  public VisitCollectionService(
+      JdbcTemplate jdbcTemplate,
+      ObjectMapper objectMapper,
+      BlogCache blogCache,
+      CacheProperties cacheProperties) {
     this.jdbcTemplate = jdbcTemplate;
     this.objectMapper = objectMapper;
+    this.blogCache = blogCache;
+    this.cacheProperties = cacheProperties;
   }
 
   public Map<String, Object> collect(Map<String, Object> payload, HttpServletRequest request) {
@@ -35,6 +47,13 @@ public class VisitCollectionService {
     String userAgent = header(request, "User-Agent");
     String url = text(payload.get("url"), "");
     String visitorId = visitorId(ip, userAgent, text(payload.get("screen"), ""), text(payload.get("language"), ""));
+    long currentRate =
+        blogCache.incrementWithTtl(
+            "zblog:collect:rate:" + visitorId,
+            Duration.ofMinutes(1));
+    if (currentRate > cacheProperties.getCollectRateLimitPerMinute()) {
+      throw new BusinessException(42901, "Too many collect requests", HttpStatus.TOO_MANY_REQUESTS);
+    }
     LocalDateTime createdAt = timestamp(payload.get("timestamp"));
     Long articleId = number(payload.get("article_id"));
     jdbcTemplate.update(
@@ -59,12 +78,36 @@ public class VisitCollectionService {
         ip,
         userAgent,
         createdAt);
+    blogCache.delete("zblog:stats:site");
+    boolean articleViewCounted = false;
+    Long articleViewCount = null;
     if (type.equals("pageview") && articleId != null) {
-      jdbcTemplate.update(
-          "update articles set view_count = view_count + 1, updated_at = updated_at where id = ? and status = 'PUBLISHED'",
-          articleId);
+      String dedupKey = "zblog:article:view:dedup:v2:" + articleId + ":" + visitorId;
+      articleViewCounted =
+          blogCache.setIfAbsent(
+              dedupKey,
+              "1",
+              Duration.ofSeconds(cacheProperties.getArticleViewDedupSeconds()));
+      if (articleViewCounted) {
+        jdbcTemplate.update(
+            "update articles set view_count = view_count + 1, updated_at = updated_at where id = ? and status = 'PUBLISHED'",
+            articleId);
+        blogCache.incrementHotArticle(articleId, 1);
+      }
+      articleViewCount = articleViewCount(articleId);
     }
-    return Map.of("accepted", true, "visitor_id", visitorId);
+    Map<String, Object> response = new LinkedHashMap<>();
+    response.put("accepted", true);
+    response.put("visitor_id", visitorId);
+    if (type.equals("pageview") && articleId != null) {
+      response.put("article_view_counted", articleViewCounted);
+      response.put("article_view_count", articleViewCount);
+    }
+    return response;
+  }
+
+  private Long articleViewCount(long articleId) {
+    return jdbcTemplate.queryForObject("select view_count from articles where id = ?", Long.class, articleId);
   }
 
   private String visitorId(String ip, String userAgent, String screen, String language) {

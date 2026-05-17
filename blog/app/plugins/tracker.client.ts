@@ -7,8 +7,15 @@
  */
 
 // 类型声明
+export interface ArticlePageViewResult {
+  sent: boolean;
+  articleViewCounted?: boolean;
+  articleViewCount?: number;
+}
+
 export interface TrackerPlugin {
   trackPageView: (path?: string, articleId?: number) => boolean;
+  trackArticlePageView: (path?: string, articleId?: number) => Promise<ArticlePageViewResult>;
   trackEvent: (name: string, data?: Record<string, unknown>) => boolean;
   setArticleId: (id?: number) => void;
 }
@@ -67,6 +74,41 @@ export default defineNuxtPlugin({
       }
     };
 
+    const sendArticlePageView = async (
+      url?: string,
+      articleId?: number
+    ): Promise<ArticlePageViewResult> => {
+      if (isSuperAdmin()) return { sent: false };
+
+      const payload = { ...getBaseData(url, articleId), type: 'pageview' };
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        });
+
+        if (!response.ok) return { sent: false };
+
+        const body = (await response.json().catch(() => null)) as {
+          data?: {
+            article_view_counted?: boolean;
+            article_view_count?: number;
+          };
+        } | null;
+
+        return {
+          sent: true,
+          articleViewCounted: body?.data?.article_view_counted,
+          articleViewCount: body?.data?.article_view_count,
+        };
+      } catch {
+        return { sent: false };
+      }
+    };
+
     const sendDuration = (url?: string, articleId?: number) => {
       const sec = Math.floor((Date.now() - pageStartTime) / 1000);
       if (sec > 0) send('duration', { duration: sec }, url, articleId);
@@ -100,6 +142,7 @@ export default defineNuxtPlugin({
         tracker: {
           trackPageView: (path?: string, articleId?: number) =>
             send('pageview', {}, path, articleId),
+          trackArticlePageView: sendArticlePageView,
           trackEvent: (name: string, data?: Record<string, unknown>) =>
             Boolean(name) && send('event', { event_name: name, event_data: data }),
           setArticleId: (id?: number) => {

@@ -1,7 +1,14 @@
 package com.zblog.stats.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zblog.cache.BlogCache;
+import com.zblog.cache.CacheProperties;
+import com.zblog.common.exception.BusinessException;
 import com.zblog.common.api.PageResponse;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -12,18 +19,45 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
 public class StatsService {
 
   private final JdbcTemplate jdbcTemplate;
+  private final BlogCache blogCache;
+  private final CacheProperties cacheProperties;
+  private final ObjectMapper objectMapper;
 
-  public StatsService(JdbcTemplate jdbcTemplate) {
+  public StatsService(
+      JdbcTemplate jdbcTemplate,
+      BlogCache blogCache,
+      CacheProperties cacheProperties,
+      ObjectMapper objectMapper) {
     this.jdbcTemplate = jdbcTemplate;
+    this.blogCache = blogCache;
+    this.cacheProperties = cacheProperties;
+    this.objectMapper = objectMapper;
   }
 
   public Map<String, Object> siteStats() {
+    if (cacheProperties.getSiteStatsCacheSeconds() <= 0) {
+      return computeSiteStats();
+    }
+    String cacheKey = "zblog:stats:site";
+    return blogCache
+        .get(cacheKey)
+        .map(this::readStats)
+        .orElseGet(
+            () -> {
+              Map<String, Object> stats = computeSiteStats();
+              blogCache.set(cacheKey, writeStats(stats), Duration.ofSeconds(cacheProperties.getSiteStatsCacheSeconds()));
+              return stats;
+            });
+  }
+
+  private Map<String, Object> computeSiteStats() {
     long totalArticles = count("select count(*) from articles where status = 'PUBLISHED'");
     long totalComments = count("select count(*) from comments where is_deleted = false");
     long totalFriends =
@@ -72,6 +106,22 @@ public class StatsService {
     stats.put("yesterday_pageviews", countPageviews(yesterday, today));
     stats.put("month_pageviews", countPageviews(monthStart, today.plusDays(1)));
     return stats;
+  }
+
+  private Map<String, Object> readStats(String value) {
+    try {
+      return objectMapper.readValue(value, new TypeReference<>() {});
+    } catch (JsonProcessingException exception) {
+      throw new BusinessException(500, "Invalid site stats cache", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private String writeStats(Map<String, Object> stats) {
+    try {
+      return objectMapper.writeValueAsString(stats);
+    } catch (JsonProcessingException exception) {
+      throw new BusinessException(500, "Invalid site stats cache", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   public Map<String, Object> archiveStats() {

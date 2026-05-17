@@ -111,6 +111,31 @@ public class JdbcArticleRepository {
     return new PageResponse<>(articles, total == null ? 0 : total, page, pageSize);
   }
 
+  public List<Map<String, Object>> hotPublished(int limit) {
+    return jdbcTemplate
+        .queryForList(
+            baseSelect()
+                + " where a.status = 'PUBLISHED' order by a.view_count desc, a.published_at desc, a.id desc limit ?",
+            limit)
+        .stream()
+        .map(this::withRelations)
+        .toList();
+  }
+
+  public List<Map<String, Object>> findPublishedByIds(List<Long> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return List.of();
+    }
+    String placeholders = String.join(",", ids.stream().map(id -> "?").toList());
+    Map<Long, Map<String, Object>> byId =
+        jdbcTemplate
+            .queryForList(baseSelect() + " where a.status = 'PUBLISHED' and a.id in (" + placeholders + ")", ids.toArray())
+            .stream()
+            .map(this::withRelations)
+            .collect(java.util.stream.Collectors.toMap(row -> ((Number) row.get("id")).longValue(), row -> row));
+    return ids.stream().map(byId::get).filter(java.util.Objects::nonNull).toList();
+  }
+
   public PageResponse<Map<String, Object>> listAdmin(
       int page,
       int pageSize,

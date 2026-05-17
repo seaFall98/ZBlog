@@ -1,4 +1,6 @@
 zblog:
+  cache:
+    site-stats-cache-seconds: 0
   ai:
     allow-private-network: true
   tools:

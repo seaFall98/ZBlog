@@ -1,9 +1,12 @@
 package com.zblog.content.application;
 
+import com.zblog.cache.BlogCache;
 import com.zblog.common.api.PageResponse;
+import com.zblog.common.exception.BusinessException;
 import com.zblog.common.util.Slugify;
 import com.zblog.content.application.MarkdownRenderer.RenderedContent;
 import com.zblog.content.infrastructure.JdbcArticleRepository;
+import com.zblog.event.EventOutboxService;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,6 +19,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,15 +34,21 @@ public class ArticleService {
   private final JdbcArticleRepository articleRepository;
   private final MarkdownRenderer markdownRenderer;
   private final JdbcTemplate jdbcTemplate;
+  private final BlogCache blogCache;
+  private final EventOutboxService eventOutboxService;
   private final Path uploadRoot = Path.of("uploads").toAbsolutePath().normalize();
 
   public ArticleService(
       JdbcArticleRepository articleRepository,
       MarkdownRenderer markdownRenderer,
-      JdbcTemplate jdbcTemplate) {
+      JdbcTemplate jdbcTemplate,
+      BlogCache blogCache,
+      EventOutboxService eventOutboxService) {
     this.articleRepository = articleRepository;
     this.markdownRenderer = markdownRenderer;
     this.jdbcTemplate = jdbcTemplate;
+    this.blogCache = blogCache;
+    this.eventOutboxService = eventOutboxService;
   }
 
   public PageResponse<Map<String, Object>> listPublic(
@@ -55,6 +66,29 @@ public class ArticleService {
 
   public PageResponse<Map<String, Object>> searchPublic(String keyword, int page, int pageSize) {
     return articleRepository.searchPublic(keyword, page, pageSize);
+  }
+
+  public PageResponse<Map<String, Object>> hotArticles(int limit, String type) {
+    int resolvedLimit = Math.max(1, Math.min(limit, 20));
+    if ("total".equalsIgnoreCase(type)) {
+      List<Map<String, Object>> totalArticles = articleRepository.hotPublished(resolvedLimit);
+      return new PageResponse<>(totalArticles, totalArticles.size(), 1, resolvedLimit);
+    }
+
+    List<Long> hotIds = blogCache.topHotArticles(resolvedLimit);
+    List<Map<String, Object>> articles = hotIds.isEmpty() ? List.of() : articleRepository.findPublishedByIds(hotIds);
+    Map<Long, Double> scores = blogCache.hotArticleScores(hotIds);
+    articles =
+        articles.stream()
+            .map(article -> withHotScore(article, scores.get(id(article))))
+            .toList();
+    if (articles.isEmpty()) {
+      articles =
+          articleRepository.hotPublished(resolvedLimit).stream()
+              .map(article -> withHotScore(article, (double) viewCount(article)))
+              .toList();
+    }
+    return new PageResponse<>(articles, articles.size(), 1, resolvedLimit);
   }
 
   public PageResponse<Map<String, Object>> listAdmin(
@@ -111,23 +145,28 @@ public class ArticleService {
     String slug = textOrDefault(request, "slug", Slugify.from(title));
     String markdown = text(request, "content");
     RenderedContent rendered = markdownRenderer.render(markdown);
-    Map<String, Object> created =
-        articleRepository.create(
-            title,
-            slug,
-            markdown,
-            rendered.html(),
-            rendered.text(),
-            textOrDefault(request, "summary", ""),
-            nullableText(request, "cover"),
-            nullableLong(request, "category_id"),
-            tagIds(request),
-            nullableText(request, "location"),
-            bool(request, "is_top"),
-            bool(request, "is_essence"),
-            bool(request, "is_outdated"));
+    Map<String, Object> created;
+    try {
+      created =
+          articleRepository.create(
+              title,
+              slug,
+              markdown,
+              rendered.html(),
+              rendered.text(),
+              textOrDefault(request, "summary", ""),
+              nullableText(request, "cover"),
+              nullableLong(request, "category_id"),
+              tagIds(request),
+              nullableText(request, "location"),
+              bool(request, "is_top"),
+              bool(request, "is_essence"),
+              bool(request, "is_outdated"));
+    } catch (DuplicateKeyException exception) {
+      throw new BusinessException(40901, "Article slug already exists: " + slug, HttpStatus.CONFLICT);
+    }
     if (bool(request, "is_publish")) {
-      return articleRepository.publish(((Number) created.get("id")).longValue());
+      return publish(((Number) created.get("id")).longValue());
     }
     return created;
   }
@@ -138,30 +177,41 @@ public class ArticleService {
     String slug = textOrDefault(request, "slug", existing.get("slug").toString());
     String markdown = textOrDefault(request, "content", value(existing, "content_markdown"));
     RenderedContent rendered = markdownRenderer.render(markdown);
-    Map<String, Object> updated =
-        articleRepository.update(
-            id,
-            title,
-            slug,
-            markdown,
-            rendered.html(),
-            rendered.text(),
-            textOrDefault(request, "summary", value(existing, "summary")),
-            nullableTextOrDefault(request, "cover", value(existing, "cover")),
-            nullableLong(request, "category_id"),
-            tagIds(request),
-            nullableTextOrDefault(request, "location", value(existing, "location")),
-            boolOrDefault(request, "is_top", (Boolean) existing.get("is_top")),
-            boolOrDefault(request, "is_essence", (Boolean) existing.get("is_essence")),
-            boolOrDefault(request, "is_outdated", (Boolean) existing.get("is_outdated")));
+    Map<String, Object> updated;
+    try {
+      updated =
+          articleRepository.update(
+              id,
+              title,
+              slug,
+              markdown,
+              rendered.html(),
+              rendered.text(),
+              textOrDefault(request, "summary", value(existing, "summary")),
+              nullableTextOrDefault(request, "cover", value(existing, "cover")),
+              nullableLong(request, "category_id"),
+              tagIds(request),
+              nullableTextOrDefault(request, "location", value(existing, "location")),
+              boolOrDefault(request, "is_top", (Boolean) existing.get("is_top")),
+              boolOrDefault(request, "is_essence", (Boolean) existing.get("is_essence")),
+              boolOrDefault(request, "is_outdated", (Boolean) existing.get("is_outdated")));
+    } catch (DuplicateKeyException exception) {
+      throw new BusinessException(40901, "Article slug already exists: " + slug, HttpStatus.CONFLICT);
+    }
     if (request.containsKey("is_publish")) {
-      return bool(request, "is_publish") ? articleRepository.publish(id) : articleRepository.unpublish(id);
+      return bool(request, "is_publish") ? publish(id) : articleRepository.unpublish(id);
     }
     return updated;
   }
 
   public Map<String, Object> publish(long id) {
-    return articleRepository.publish(id);
+    Map<String, Object> existing = articleRepository.getAdmin(id);
+    boolean alreadyPublished = Boolean.TRUE.equals(existing.get("is_publish"));
+    Map<String, Object> published = articleRepository.publish(id);
+    if (!alreadyPublished) {
+      eventOutboxService.createArticlePublishedEvent(published);
+    }
+    return published;
   }
 
   public Map<String, Object> unpublish(long id) {
@@ -448,6 +498,21 @@ public class ArticleService {
   private String value(Map<String, Object> map, String key) {
     Object value = map.get(key);
     return value == null ? "" : value.toString();
+  }
+
+  private long id(Map<String, Object> article) {
+    return ((Number) article.get("id")).longValue();
+  }
+
+  private long viewCount(Map<String, Object> article) {
+    Object value = article.get("view_count");
+    return value instanceof Number number ? number.longValue() : 0;
+  }
+
+  private Map<String, Object> withHotScore(Map<String, Object> article, Double score) {
+    Map<String, Object> copy = new LinkedHashMap<>(article);
+    copy.put("hot_score", score == null ? 0 : score);
+    return copy;
   }
 
   private record ParsedArticle(

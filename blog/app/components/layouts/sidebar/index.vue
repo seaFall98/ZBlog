@@ -14,6 +14,7 @@ const isArticlePage = computed(() => route.meta.typeHeader === 'post');
         <LayoutsSidebarTocCard />
       </template>
       <template v-else>
+        <LayoutsSidebarHotArticlesCard />
         <LayoutsSidebarCategoriesCard />
         <LayoutsSidebarTagsCard />
         <LayoutsSidebarArchivesCard />

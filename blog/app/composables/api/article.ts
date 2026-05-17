@@ -19,6 +19,11 @@ export const searchArticles = async (keyword: string, params: Partial<ArticleQue
   return articleApi.get<PaginationData<Article>>('/search', { keyword, ...params });
 };
 
+/** 热门文章 */
+export const getHotArticles = async (limit = 10, type: 'recent' | 'total' = 'recent') => {
+  return articleApi.get<PaginationData<Article>>('/hot', { limit, type });
+};
+
 /** 随机文章 slug */
 export const getRandomArticleSlug = async () => {
   return articleApi.get<string>('/random');
