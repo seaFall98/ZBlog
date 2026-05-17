@@ -23,6 +23,66 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
+ID: PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008
+
+Status: closed, user accepted
+
+Scope:
+- Batch 8 only: pre-deployment core closure.
+- Fix article view/statistics semantics before adding Redis.
+- Implement backend-real admin filters for visits, articles, comments, and files.
+- Make upload/import/export/settings UI honest where backend support is intentionally partial.
+- Keep visit browser/OS/location details admin-facing and remove privacy-adjacent fields from public comments.
+- Do not introduce Redis, Elasticsearch, MQ, CDC, or deployment hardening in this batch.
+
+Exact API calls:
+- `POST /api/v1/collect`: when `type=pageview` and `article_id` is present, insert `visit_events` and increment published `articles.view_count`.
+- `GET /api/v1/stats/site`: `total_page_views` is the persisted `visit_events` pageview count only, not `sum(articles.view_count)` plus visits.
+- `GET /api/v1/admin/stats/visits`: supports keyword/url, visitor_id, ip, exclude_ips, location, browser, os, start_time, end_time, page, and page_size.
+- `GET /api/v1/admin/articles`: supports keyword, category_id, tag_ids, location, is_publish, is_top, is_essence, is_outdated, start_time, end_time, page, and page_size.
+- `GET /api/v1/admin/comments`: supports keyword, status, is_deleted, is_sub, start_time, end_time, page, and page_size.
+- `GET /api/v1/admin/files`: supports keyword, file_type, status, upload_type, min_size, max_size, start_time, end_time, page, and page_size.
+- `GET /api/v1/comments`: public response omits `location`, `browser`, and `os`.
+
+Verification evidence:
+- RED observed: `mvn -f server/pom.xml -Dtest=Batch8PreDeploymentCoreClosureTest test` initially failed because article view count, admin filters, and public comment privacy were not closed.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch8PreDeploymentCoreClosureTest test` - 5 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 60 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix admin run type-check`.
+- PASS: `npm --prefix blog run type-check`; existing local `@vue/language-core` warning still appears.
+- PASS: `npm --prefix admin run build`.
+- PASS: `npm --prefix blog run build`; existing Nuxt/dependency warnings only.
+- PASS: `docker compose up --build -d server admin blog`.
+- PASS: Docker running-stack smoke verified `POST /api/v1/collect` returned 200 for article `hello-zblog`, `articles.view_count` increased from 2 to 3, and persisted `visit_events` pageviews increased from 190 to 191.
+- Manual issue 1 reproduced: backend direct collect worked, but direct article page open/refresh did not trigger article-level pageview on initial mount.
+- PASS after fix: `npm --prefix blog run type-check`; existing `@vue/language-core` warning only.
+- PASS after fix: `npm --prefix blog run build`; existing Nuxt/dependency warnings only.
+- PASS after fix: `docker compose up --build -d blog`.
+- PASS after fix: clean Chrome headless opened `http://localhost:3000/posts/test2`; `articles.view_count` increased from 0 to 1 and a persisted `visit_events` pageview with `article_id=4` was created.
+- PASS after fix: second clean Chrome headless open increased `articles.view_count` from 1 to 2 while total persisted pageviews increased only from 234 to 235, proving no article-page double count in this path.
+- Manual issue 2 reproduced by user: front article header could show one fewer view than admin/database after a refresh, because the header displayed the SSR pre-count snapshot.
+- PASS after issue 2 fix: `npm --prefix blog run type-check`; existing `@vue/language-core` warning only.
+- PASS after issue 2 fix: `npm --prefix blog run build`; existing Nuxt/dependency warnings only.
+- PASS after issue 2 fix: `docker compose up --build -d blog`.
+- PASS after issue 2 fix: clean Chrome CDP opened `http://localhost:3000/posts/test2`; database `articles.view_count` increased from 3 to 4 and the front page DOM displayed `浏览量: 4`.
+- Manual issue 3 reproduced by user: admin visit log page showed "获取访问日志失败" on initial load.
+- Root cause for issue 3: visit SQL concatenated `where 1 = 1order by ...` when no filters were supplied.
+- PASS after issue 3 fix: `mvn -f server/pom.xml -Dtest=Batch8PreDeploymentCoreClosureTest test`; 5 tests, 0 failures, 0 errors.
+- PASS after issue 3 fix: `mvn -f server/pom.xml test`; 60 tests, 0 failures, 0 errors.
+- PASS after issue 3 fix: `docker compose up --build -d server`.
+- PASS after issue 3 fix: running-stack authenticated `GET /api/v1/admin/stats/visits?page=1&page_size=20` returned 200 with `data.list`.
+- Manual issue 4 reproduced by user: admin file list showed all files as unused even when images were visible in public pages.
+- Root cause for issue 4: file list read static `files.status`, but business references in settings/articles/comments/etc. did not update that field.
+- PASS after issue 4 fix: file list now dynamically computes effective usage status from persisted references in articles, settings, comments, feedbacks, users, friends, and moments.
+- PASS after issue 4 fix: `mvn -f server/pom.xml -Dtest=Batch8PreDeploymentCoreClosureTest test`; 5 tests, 0 failures, 0 errors.
+- PASS after issue 4 fix: `mvn -f server/pom.xml test`; 60 tests, 0 failures, 0 errors.
+- PASS after issue 4 fix: running-stack authenticated `GET /api/v1/admin/files` for a real settings-referenced `站长形象` upload returned `status=1`.
+
+Manual acceptance:
+- ACCEPTED: user manually verified Batch 8 after the issue 1-4 remediation loop on 2026-05-18.
+
+Previous Batch 7 audit lock is retained below for traceability.
+
 ID: PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
 
 Status: closed, user accepted
@@ -396,7 +456,7 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Required outcome: decide whether Redis, Elasticsearch, lightweight async/outbox/MQ, PostgreSQL CDC, and remaining base features belong before deployment.
 
 8. PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008
-   - Status: next.
+   - Status: closed, user accepted.
    - Includes: article-level `view_count`, public/sidebar/admin stats semantics, duplicate pageview prevention, admin list filter/pagination honesty, import/export/settings honesty, and visit geo/browser/OS parsing.
    - Scope guard: backend/admin may store and read detailed visit environment data, but public/frontend areas must not display privacy-adjacent details such as commenter location, browser, OS, or IP.
 

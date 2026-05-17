@@ -128,9 +128,6 @@ const handleReplyClick = () => {
           </span>
         </span>
         <span class="comment-time">{{ formatDate(comment.created_at) }}</span>
-        <span v-if="comment.location" class="comment-meta">{{ comment.location }}</span>
-        <span v-if="comment.os" class="comment-meta">{{ comment.os }}</span>
-        <span v-if="comment.browser" class="comment-meta">{{ comment.browser }}</span>
       </div>
 
       <!-- 中：内容 -->

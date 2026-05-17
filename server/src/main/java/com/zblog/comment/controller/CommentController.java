@@ -41,8 +41,14 @@ public class CommentController {
   @GetMapping("/admin/comments")
   public ApiResponse<PageResponse<Map<String, Object>>> listAdmin(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(name = "page_size", defaultValue = "50") int pageSize) {
-    return ApiResponse.ok(commentService.listAdmin(page, pageSize));
+      @RequestParam(name = "page_size", defaultValue = "50") int pageSize,
+      @RequestParam(required = false) String keyword,
+      @RequestParam(required = false) Integer status,
+      @RequestParam(name = "is_deleted", required = false) Boolean deleted,
+      @RequestParam(name = "is_sub", required = false) Boolean sub,
+      @RequestParam(name = "start_time", required = false) String startTime,
+      @RequestParam(name = "end_time", required = false) String endTime) {
+    return ApiResponse.ok(commentService.listAdmin(page, pageSize, keyword, status, deleted, sub, startTime, endTime));
   }
 
   @PutMapping("/admin/comments/{id}/toggle-status")

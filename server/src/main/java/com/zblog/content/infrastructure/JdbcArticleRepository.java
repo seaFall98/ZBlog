@@ -5,6 +5,7 @@ import com.zblog.common.exception.BusinessException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -111,19 +112,71 @@ public class JdbcArticleRepository {
   }
 
   public PageResponse<Map<String, Object>> listAdmin(
-      int page, int pageSize, String keyword, Boolean published) {
+      int page,
+      int pageSize,
+      String keyword,
+      Boolean published,
+      Long categoryId,
+      List<Long> tagIds,
+      String location,
+      Boolean top,
+      Boolean essence,
+      Boolean outdated,
+      String startTime,
+      String endTime) {
     int offset = (page - 1) * pageSize;
     List<Object> args = new ArrayList<>();
     StringBuilder where = new StringBuilder(" where 1 = 1");
     if (keyword != null && !keyword.isBlank()) {
-      where.append(" and (lower(a.title) like ? or lower(a.slug) like ?)");
+      where.append(
+          " and (lower(a.title) like ? or lower(a.slug) like ? or lower(a.summary) like ? or lower(a.content_text) like ?)");
       String like = "%" + keyword.toLowerCase() + "%";
+      args.add(like);
+      args.add(like);
       args.add(like);
       args.add(like);
     }
     if (published != null) {
       where.append(" and a.status = ?");
       args.add(published ? "PUBLISHED" : "DRAFT");
+    }
+    if (categoryId != null) {
+      where.append(" and a.category_id = ?");
+      args.add(categoryId);
+    }
+    if (tagIds != null) {
+      for (Long tagId : tagIds) {
+        if (tagId != null) {
+          where.append(" and exists (select 1 from article_tags at2 where at2.article_id = a.id and at2.tag_id = ?)");
+          args.add(tagId);
+        }
+      }
+    }
+    if (location != null && !location.isBlank()) {
+      where.append(" and lower(coalesce(a.location, '')) like ?");
+      args.add("%" + location.toLowerCase() + "%");
+    }
+    if (top != null) {
+      where.append(" and a.is_top = ?");
+      args.add(top);
+    }
+    if (essence != null) {
+      where.append(" and a.is_essence = ?");
+      args.add(essence);
+    }
+    if (outdated != null) {
+      where.append(" and a.is_outdated = ?");
+      args.add(outdated);
+    }
+    LocalDate start = parseNullableDate(startTime);
+    LocalDate end = parseNullableDate(endTime);
+    if (start != null) {
+      where.append(" and coalesce(a.published_at, a.created_at) >= ?");
+      args.add(Timestamp.valueOf(start.atStartOfDay()));
+    }
+    if (end != null) {
+      where.append(" and coalesce(a.published_at, a.created_at) < ?");
+      args.add(Timestamp.valueOf(end.plusDays(1).atStartOfDay()));
     }
     Long total =
         jdbcTemplate.queryForObject(
@@ -140,6 +193,23 @@ public class JdbcArticleRepository {
             .map(this::withRelations)
             .toList();
     return new PageResponse<>(articles, total == null ? 0 : total, page, pageSize);
+  }
+
+  public PageResponse<Map<String, Object>> listAdmin(
+      int page, int pageSize, String keyword, Boolean published) {
+    return listAdmin(
+        page,
+        pageSize,
+        keyword,
+        published,
+        null,
+        List.of(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   public Map<String, Object> getAdmin(long id) {
@@ -278,6 +348,13 @@ public class JdbcArticleRepository {
         from articles a
         left join categories c on c.id = a.category_id
         """;
+  }
+
+  private LocalDate parseNullableDate(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return LocalDate.parse(value);
   }
 
   private Map<String, Object> withRelations(Map<String, Object> article) {

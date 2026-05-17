@@ -3,6 +3,7 @@ package com.zblog.content.controller;
 import com.zblog.common.api.ApiResponse;
 import com.zblog.common.api.PageResponse;
 import com.zblog.content.application.ArticleService;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -55,8 +56,31 @@ public class ArticleController {
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(name = "page_size", defaultValue = "10") int pageSize,
       @RequestParam(required = false) String keyword,
-      @RequestParam(name = "is_publish", required = false) Boolean published) {
-    return ApiResponse.ok(articleService.listAdmin(page, pageSize, keyword, published));
+      @RequestParam(name = "is_publish", required = false) Boolean published,
+      @RequestParam(name = "category_id", required = false) Long categoryId,
+      @RequestParam(name = "tag_ids", required = false) List<Long> tagIds,
+      @RequestParam(name = "tag_ids[]", required = false) List<Long> bracketTagIds,
+      @RequestParam(required = false) String location,
+      @RequestParam(name = "is_top", required = false) Boolean top,
+      @RequestParam(name = "is_essence", required = false) Boolean essence,
+      @RequestParam(name = "is_outdated", required = false) Boolean outdated,
+      @RequestParam(name = "start_time", required = false) String startTime,
+      @RequestParam(name = "end_time", required = false) String endTime) {
+    List<Long> resolvedTagIds = tagIds == null || tagIds.isEmpty() ? bracketTagIds : tagIds;
+    return ApiResponse.ok(
+        articleService.listAdmin(
+            page,
+            pageSize,
+            keyword,
+            published,
+            categoryId,
+            resolvedTagIds,
+            location,
+            top,
+            essence,
+            outdated,
+            startTime,
+            endTime));
   }
 
   @GetMapping("/admin/articles/{id}")

@@ -20,6 +20,18 @@
     width="600px"
     :close-on-click-modal="false"
   >
+    <el-alert
+      title="当前文章导入能力边界"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 16px"
+    >
+      <div>
+        Markdown 图片仅支持已经上传并可访问的 /uploads/** 路径；远程图片和相对路径图片会明确导入失败，不会静默伪成功。
+      </div>
+    </el-alert>
+
     <el-form label-width="100px">
       <el-form-item label="数据来源">
         <el-select
@@ -55,8 +67,10 @@
       </el-form-item>
 
       <el-form-item label="图片处理">
-        <el-switch v-model="articleUploadImages" :disabled="readonly" />
-        <div class="form-tip" style="margin: 0 15px">开启后将自动下载并上传文章中的图片</div>
+        <el-switch v-model="articleUploadImages" disabled />
+        <div class="form-tip" style="margin: 0 15px">
+          自动下载远程图片暂未接入；当前只接受已上传的 /uploads/** 图片引用。
+        </div>
       </el-form-item>
     </el-form>
 

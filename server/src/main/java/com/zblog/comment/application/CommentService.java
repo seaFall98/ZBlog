@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zblog.common.api.PageResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,13 +48,65 @@ public class CommentService {
   }
 
   public PageResponse<Map<String, Object>> listAdmin(int page, int pageSize) {
+    return listAdmin(page, pageSize, null, null, null, null, null, null);
+  }
+
+  public PageResponse<Map<String, Object>> listAdmin(
+      int page,
+      int pageSize,
+      String keyword,
+      Integer status,
+      Boolean deleted,
+      Boolean sub,
+      String startTime,
+      String endTime) {
+    int offset = Math.max(0, page - 1) * pageSize;
+    List<Object> args = new ArrayList<>();
+    StringBuilder where = new StringBuilder(" where 1 = 1");
+    if (keyword != null && !keyword.isBlank()) {
+      where.append(
+          " and (lower(content) like ? or lower(nickname) like ? or lower(email) like ? or lower(target_key) like ?)");
+      String like = "%" + keyword.toLowerCase() + "%";
+      args.add(like);
+      args.add(like);
+      args.add(like);
+      args.add(like);
+    }
+    if (status != null) {
+      where.append(" and status = ?");
+      args.add(status);
+    }
+    if (deleted != null) {
+      where.append(" and is_deleted = ?");
+      args.add(deleted);
+    }
+    if (sub != null) {
+      where.append(sub ? " and parent_id is not null" : " and parent_id is null");
+    }
+    LocalDate start = parseNullableDate(startTime);
+    LocalDate end = parseNullableDate(endTime);
+    if (start != null) {
+      where.append(" and created_at >= ?");
+      args.add(Timestamp.valueOf(start.atStartOfDay()));
+    }
+    if (end != null) {
+      where.append(" and created_at < ?");
+      args.add(Timestamp.valueOf(end.plusDays(1).atStartOfDay()));
+    }
+
+    Long total =
+        jdbcTemplate.queryForObject("select count(*) from comments" + where, Long.class, args.toArray());
+    args.add(pageSize);
+    args.add(offset);
     List<Map<String, Object>> list =
         jdbcTemplate
-            .queryForList("select * from comments order by created_at desc, id desc")
+            .queryForList(
+                "select * from comments" + where + " order by created_at desc, id desc limit ? offset ?",
+                args.toArray())
             .stream()
             .map(this::adminView)
             .toList();
-    return new PageResponse<>(list, list.size(), page, pageSize);
+    return new PageResponse<>(list, total == null ? 0 : total, page, pageSize);
   }
 
   public Map<String, Object> create(Map<String, Object> request) {
@@ -181,9 +235,6 @@ public class CommentService {
     view.put("is_deleted", row.get("is_deleted"));
     view.put("parent_id", row.get("parent_id"));
     view.put("created_at", row.get("created_at").toString());
-    view.put("location", row.get("location"));
-    view.put("browser", row.get("browser"));
-    view.put("os", row.get("os"));
     view.put(
         "user",
         Map.of(
@@ -247,6 +298,13 @@ public class CommentService {
   private String text(Map<String, Object> request, String key) {
     Object value = request.get(key);
     return value == null ? "" : value.toString();
+  }
+
+  private LocalDate parseNullableDate(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return LocalDate.parse(value);
   }
 
   private String textOrDefault(Map<String, Object> request, String key, String fallback) {

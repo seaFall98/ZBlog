@@ -74,7 +74,18 @@ public class StatsController {
   @GetMapping("/admin/stats/visits")
   public ApiResponse<PageResponse<Map<String, Object>>> visits(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(name = "page_size", defaultValue = "20") int pageSize) {
-    return ApiResponse.ok(statsService.visits(page, pageSize));
+      @RequestParam(name = "page_size", defaultValue = "20") int pageSize,
+      @RequestParam(required = false) String keyword,
+      @RequestParam(name = "visitor_id", required = false) String visitorId,
+      @RequestParam(required = false) String ip,
+      @RequestParam(name = "exclude_ips", required = false) String excludeIps,
+      @RequestParam(required = false) String location,
+      @RequestParam(required = false) String browser,
+      @RequestParam(required = false) String os,
+      @RequestParam(name = "start_time", required = false) String startTime,
+      @RequestParam(name = "end_time", required = false) String endTime) {
+    return ApiResponse.ok(
+        statsService.visits(
+            page, pageSize, keyword, visitorId, ip, excludeIps, location, browser, os, startTime, endTime));
   }
 }

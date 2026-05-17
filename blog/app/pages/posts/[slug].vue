@@ -37,6 +37,32 @@ if (article.value) {
   clearCurrentArticle();
 }
 
+const scrollToHash = () => {
+  nextTick(() => {
+    if (route.hash) {
+      requestAnimationFrame(() => scrollToElement(route.hash, { block: 'start' }));
+    }
+  });
+};
+
+const trackArticlePageView = () => {
+  if (!article.value) {
+    $tracker?.setArticleId(undefined);
+    return;
+  }
+
+  $tracker?.setArticleId(article.value.id);
+  const sent = $tracker?.trackPageView(undefined, article.value.id);
+
+  if (sent) {
+    article.value = {
+      ...article.value,
+      view_count: (article.value.view_count || 0) + 1,
+    };
+    setCurrentArticle(article.value);
+  }
+};
+
 // 动态页面标题和 SEO
 useHead({
   title: () => article.value?.title,
@@ -72,18 +98,9 @@ const fetchArticle = async () => {
     article.value = await getArticleBySlug(slug);
     setCurrentArticle(article.value);
 
-    // 设置当前文章ID用于埋点追踪
     if (article.value) {
-      $tracker?.setArticleId(article.value.id);
-      // 发送包含 article_id 的页面访问埋点
-      $tracker?.trackPageView(undefined, article.value.id);
-
-      // 处理 URL hash 锚点跳转
-      nextTick(() => {
-        if (route.hash) {
-          requestAnimationFrame(() => scrollToElement(route.hash, { block: 'start' }));
-        }
-      });
+      trackArticlePageView();
+      scrollToHash();
     }
   } catch (error: unknown) {
     const err = error as Error & { response?: { status?: number } };
@@ -99,6 +116,11 @@ const fetchArticle = async () => {
 
 // 监听路由参数变化
 watch(() => route.params.slug, fetchArticle);
+
+onMounted(() => {
+  trackArticlePageView();
+  scrollToHash();
+});
 
 // 监听 URL hash 变化，实现锚点跳转
 watch(

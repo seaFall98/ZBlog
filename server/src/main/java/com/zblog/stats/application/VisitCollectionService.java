@@ -36,6 +36,7 @@ public class VisitCollectionService {
     String url = text(payload.get("url"), "");
     String visitorId = visitorId(ip, userAgent, text(payload.get("screen"), ""), text(payload.get("language"), ""));
     LocalDateTime createdAt = timestamp(payload.get("timestamp"));
+    Long articleId = number(payload.get("article_id"));
     jdbcTemplate.update(
         """
         insert into visit_events (
@@ -51,13 +52,18 @@ public class VisitCollectionService {
         text(payload.get("referrer"), ""),
         text(payload.get("language"), ""),
         text(payload.get("screen"), ""),
-        number(payload.get("article_id")),
+        articleId,
         text(payload.get("event_name"), ""),
         writeJson(payload.get("event_data")),
         number(payload.get("duration")),
         ip,
         userAgent,
         createdAt);
+    if (type.equals("pageview") && articleId != null) {
+      jdbcTemplate.update(
+          "update articles set view_count = view_count + 1, updated_at = updated_at where id = ? and status = 'PUBLISHED'",
+          articleId);
+    }
     return Map.of("accepted", true, "visitor_id", visitorId);
   }
 

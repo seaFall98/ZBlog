@@ -59,7 +59,47 @@ public class ArticleService {
 
   public PageResponse<Map<String, Object>> listAdmin(
       int page, int pageSize, String keyword, Boolean published) {
-    return articleRepository.listAdmin(page, pageSize, keyword, published);
+    return articleRepository.listAdmin(
+        page,
+        pageSize,
+        keyword,
+        published,
+        null,
+        List.of(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
+  }
+
+  public PageResponse<Map<String, Object>> listAdmin(
+      int page,
+      int pageSize,
+      String keyword,
+      Boolean published,
+      Long categoryId,
+      List<Long> tagIds,
+      String location,
+      Boolean top,
+      Boolean essence,
+      Boolean outdated,
+      String startTime,
+      String endTime) {
+    return articleRepository.listAdmin(
+        page,
+        pageSize,
+        keyword,
+        published,
+        categoryId,
+        tagIds == null ? List.of() : tagIds,
+        location,
+        top,
+        essence,
+        outdated,
+        startTime,
+        endTime);
   }
 
   public Map<String, Object> getAdmin(long id) {

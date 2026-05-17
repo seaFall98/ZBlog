@@ -515,15 +515,15 @@ const exportArticleId = ref<number>(0);
 const exportOptions = reactive([
   {
     key: 'wechat',
-    title: '复制微信公众号格式',
-    desc: '转换为公众号 HTML 并复制到剪贴板',
+    title: '复制 HTML 到剪贴板',
+    desc: '当前为基础 HTML 导出，不承诺完整公众号排版适配',
     icon: 'ri-wechat-line',
     loading: false,
   },
   {
     key: 'markdown',
     title: '下载为 Markdown',
-    desc: '下载含图片资源的完整文章',
+    desc: '仅打包 /uploads/** 中已落盘的本地图片资源',
     icon: 'ri-markdown-line',
     loading: false,
   },

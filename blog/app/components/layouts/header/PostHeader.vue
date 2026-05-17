@@ -3,12 +3,23 @@ import { getArticleBySlug } from '@/composables/api/article';
 
 const router = useRouter();
 const route = useRoute();
+const { currentArticle, setCurrentArticle } = useCurrentArticle();
 
 // 使用 useAsyncData 确保服务端渲染时数据已加载
-const { data: article } = await useAsyncData('post-header-article', async () => {
+const { data: headerArticle } = await useAsyncData('post-header-article', async () => {
   const slug = route.params.slug as string;
   return await getArticleBySlug(slug);
 });
+
+watch(
+  headerArticle,
+  value => {
+    if (value) setCurrentArticle(value);
+  },
+  { immediate: true }
+);
+
+const article = computed(() => currentArticle.value || headerArticle.value);
 
 // 计算文章字数（去除 Markdown 标记后的准确字数）
 const wordCount = computed(() => {

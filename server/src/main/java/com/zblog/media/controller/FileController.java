@@ -46,8 +46,18 @@ public class FileController {
   @GetMapping("/admin/files")
   public ApiResponse<PageResponse<Map<String, Object>>> list(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(name = "page_size", defaultValue = "50") int pageSize) {
-    return ApiResponse.ok(fileService.list(page, pageSize));
+      @RequestParam(name = "page_size", defaultValue = "50") int pageSize,
+      @RequestParam(required = false) String keyword,
+      @RequestParam(name = "file_type", required = false) String fileType,
+      @RequestParam(required = false) Integer status,
+      @RequestParam(name = "upload_type", required = false) String uploadType,
+      @RequestParam(name = "min_size", required = false) Long minSize,
+      @RequestParam(name = "max_size", required = false) Long maxSize,
+      @RequestParam(name = "start_time", required = false) String startTime,
+      @RequestParam(name = "end_time", required = false) String endTime) {
+    return ApiResponse.ok(
+        fileService.list(
+            page, pageSize, keyword, fileType, status, uploadType, minSize, maxSize, startTime, endTime));
   }
 
   @DeleteMapping("/admin/files/{id}")

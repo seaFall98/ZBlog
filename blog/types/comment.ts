@@ -14,9 +14,6 @@ export interface Comment {
   is_deleted: boolean;
   parent_id: number | null;
   created_at: string;
-  location?: string; // 地理位置
-  browser?: string; // 浏览器内核
-  os?: string; // 操作系统
   user: {
     role: UserRole;
     badge?: string;

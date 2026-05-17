@@ -8,8 +8,8 @@
 
 // 类型声明
 export interface TrackerPlugin {
-  trackPageView: (path?: string, articleId?: number) => void;
-  trackEvent: (name: string, data?: Record<string, unknown>) => void;
+  trackPageView: (path?: string, articleId?: number) => boolean;
+  trackEvent: (name: string, data?: Record<string, unknown>) => boolean;
   setArticleId: (id?: number) => void;
 }
 
@@ -36,6 +36,8 @@ export default defineNuxtPlugin({
       return userInfo.value?.role === 'super_admin';
     };
 
+    const isArticlePath = (path: string) => path.startsWith('/posts/');
+
     const getBaseData = (url?: string, articleId?: number) => ({
       url: url || location.pathname + location.search,
       hostname: location.hostname,
@@ -53,14 +55,15 @@ export default defineNuxtPlugin({
       url?: string,
       articleId?: number
     ) => {
-      if (isSuperAdmin()) return;
+      if (isSuperAdmin()) return false;
 
       const payload = { ...getBaseData(url, articleId), type, ...extra };
       const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
       if (navigator.sendBeacon) {
-        navigator.sendBeacon(endpoint, blob);
+        return navigator.sendBeacon(endpoint, blob);
       } else {
         fetch(endpoint, { method: 'POST', body: blob, keepalive: true }).catch(() => {});
+        return true;
       }
     };
 
@@ -86,7 +89,9 @@ export default defineNuxtPlugin({
         pageStartTime = Date.now();
         lastPageUrl = to.path;
         currentArticleId = undefined;
-        send('pageview', {}, to.path);
+        if (!isArticlePath(to.path)) {
+          send('pageview', {}, to.path);
+        }
       }, 100);
     });
 
@@ -96,7 +101,7 @@ export default defineNuxtPlugin({
           trackPageView: (path?: string, articleId?: number) =>
             send('pageview', {}, path, articleId),
           trackEvent: (name: string, data?: Record<string, unknown>) =>
-            name && send('event', { event_name: name, event_data: data }),
+            Boolean(name) && send('event', { event_name: name, event_data: data }),
           setArticleId: (id?: number) => {
             currentArticleId = id;
           },

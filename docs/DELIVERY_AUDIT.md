@@ -48,13 +48,15 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ### Visit collection and real statistics
 
-- Status: partial after Batch 7 re-audit.
+- Status: closed for Batch 8 core semantics, automated verified and user accepted.
 - The blog tracker posts to `POST /api/v1/collect`, and Java now persists tracker payloads into `visit_events`.
 - `/api/v1/stats/site`, `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits` derive visit-related values from persisted visit events.
 - Evidence: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` passes and proves a collect call changes site/dashboard/trend/visit-log output.
-- Batch 7 correction: public article pages send `article_id` pageviews, but the backend does not update `articles.view_count`; article detail/admin article list counters can stay stale.
-- Batch 7 correction: `total_page_views` currently adds `sum(articles.view_count)` plus visit-event pageviews, so the next fix must define semantics that avoid double-counting once article counters are maintained.
-- Deferred: visit-log geo location, browser parsing, and OS parsing return explicit `unsupported`.
+- Batch 8 correction: public article pages send `article_id` pageviews and the backend increments `articles.view_count` for published articles.
+- Batch 8 correction: `total_page_views` now means only `visit_events` pageview count and no longer adds article aggregate counters.
+- Batch 8 correction: admin visit list supports real filters for keyword/url, visitor ID, IP, excluded IPs, browser, OS, date range, and location. Browser/OS are parsed from User-Agent; location remains explicit `unsupported`.
+- Batch 8 manual issue 1 correction: direct article page open/refresh now sends an article-level pageview on initial mount; generic route pageviews skip `/posts/` paths to avoid double counting.
+- Batch 8 manual issue 2 correction: public article header now consumes the shared current-article state after tracker acceptance, so the current page displays the post-count `view_count` instead of the SSR pre-count snapshot.
 
 ### Notifications
 
@@ -101,12 +103,12 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 These areas exist, but still rely too much on placeholders, hardcoded values, partial backend support, or deferred product decisions.
 
-- Article view/stat counters: global visit collection is real, but article-level `view_count` is not proven to mutate; this is the next must-fix-before-deploy gap.
-- Admin list filters and pagination: article, visit, comment, and file list UIs expose more filters than the backend currently proves; unsupported filters must be implemented or hidden before deployment.
+- Article view/stat counters: Batch 8 automated tests, clean Chrome running-stack smoke, and user acceptance now prove article-level `view_count` mutates from article pageviews and site PV avoids double counting.
+- Admin list filters and pagination: Batch 8 automated tests and user acceptance now prove visit, article, comment, and file filter contracts for the core UI parameters.
 - System data: CPU usage percentage, swap total/usage, DB size, DB connection count, and remote update source are explicitly deferred as `unsupported`; email and Feishu integrations are `disabled` until configured.
 - RSS reader: manual refresh is verified; scheduled refresh and detailed friend-list source status display remain deferred.
-- Import/export assets: Markdown import now supports already-uploaded `/uploads/**` image references; local relative images, remote image downloads during import, HTML `<img>` rewriting, and bundled ZIP media files remain deferred and must fail/report rather than silently importing broken paths.
-- Upload settings and export labels: some UI settings/labels imply behavior broader than the backend currently enforces, such as storage/size settings and WeChat-specific formatting.
+- Import/export assets: Markdown import supports already-uploaded `/uploads/**` image references; Batch 8 UI now states this boundary and disables the misleading remote-image auto-download switch.
+- Upload settings and export labels: Batch 8 UI now shows only local storage as currently effective, states the fixed 10MB backend limit, and describes article HTML export as basic HTML rather than full WeChat-specific formatting.
 - AI summary length: generated title/summary persistence is closed, but provider output length is prompt-guided rather than strictly enforced.
 - Search and SEO: DB-backed search is accepted for the online/default path; Elasticsearch should be added as optional Strategy code with indexing/rebuild/fallback tests, disabled by default for deployment.
 - Mail/notification reliability and MQ: notification persistence is real and feedback produces notifications; broader event producers and retryable async mail/outbox behavior remain future work and should become part of the minimal PG+Debezium+MQ portfolio chain.
@@ -189,13 +191,48 @@ These areas exist, but still rely too much on placeholders, hardcoded values, pa
 - RECOMMENDATION: implement `REDIS-PG-DEBEZIUM-MQ-MINIMAL-BATCH-009` soon after core closure; Kafka should stay as a later explanation/proof item if it remains too complex.
 - PENDING: user manual review and acceptance of the adjusted roadmap.
 
+## Batch 8 verification notes
+
+- DECISION: keep PostgreSQL as the source of truth for Batch 8 counters. Redis remains deferred to Batch 9 and must build on the now-explicit PostgreSQL semantics.
+- RED observed: `mvn -f server/pom.xml -Dtest=Batch8PreDeploymentCoreClosureTest test` initially failed because article view count did not increment, admin visit/article/comment/file filters were not fully honored, and public comment privacy fields were exposed.
+- PASS: `mvn -f server/pom.xml -Dtest=Batch8PreDeploymentCoreClosureTest test` - 5 tests, 0 failures, 0 errors.
+- PASS: `mvn -f server/pom.xml test` - 60 tests, 0 failures, 0 errors.
+- PASS: `npm --prefix admin run type-check`.
+- PASS: `npm --prefix blog run type-check`; observed the existing local `@vue/language-core` warning from vue-router/volar.
+- PASS: `npm --prefix admin run build`; observed existing large-chunk/config-script warnings.
+- PASS: `npm --prefix blog run build`; observed existing Nuxt/dependency sourcemap and deprecation warnings.
+- PASS: `docker compose up --build -d server admin blog`.
+- PASS: Docker running-stack smoke verified `POST /api/v1/collect` returned 200 for article `hello-zblog`, `articles.view_count` increased from 2 to 3, and persisted `visit_events` pageviews increased from 190 to 191.
+- MANUAL ISSUE 1: user observed that most article pages still showed `view_count=0`; only the previously smoked `hello-zblog` article showed `3`.
+- ROOT CAUSE: the public article page only sent article-level pageviews when `route.params.slug` changed, not on direct open/refresh.
+- PASS after fix: `npm --prefix blog run type-check`; existing `@vue/language-core` warning only.
+- PASS after fix: `npm --prefix blog run build`; existing Nuxt/dependency warnings only.
+- PASS after fix: `docker compose up --build -d blog`.
+- PASS after fix: clean Chrome headless opened `http://localhost:3000/posts/test2`; `articles.view_count` increased 0 -> 1, then 1 -> 2 on the second open, while site persisted pageviews increased by exactly 1 for the second open.
+- MANUAL ISSUE 2: user observed front article view count could stay one lower than admin/database after refresh.
+- ROOT CAUSE: article header displayed its independent SSR pre-count article snapshot while the client-side tracker increment happened after render.
+- PASS after issue 2 fix: `npm --prefix blog run type-check`; existing `@vue/language-core` warning only.
+- PASS after issue 2 fix: `npm --prefix blog run build`; existing Nuxt/dependency warnings only.
+- PASS after issue 2 fix: `docker compose up --build -d blog`.
+- PASS after issue 2 fix: clean Chrome CDP opened `http://localhost:3000/posts/test2`; database `articles.view_count` increased 3 -> 4 and the front page DOM displayed `浏览量: 4`.
+- MANUAL ISSUE 3: user observed admin visit log page showed "获取访问日志失败" on initial load.
+- ROOT CAUSE: visit-list SQL concatenation produced `where 1 = 1order by ...` when no filters were supplied.
+- PASS after issue 3 fix: `mvn -f server/pom.xml -Dtest=Batch8PreDeploymentCoreClosureTest test`; 5 tests, 0 failures, 0 errors.
+- PASS after issue 3 fix: `mvn -f server/pom.xml test`; 60 tests, 0 failures, 0 errors.
+- PASS after issue 3 fix: `docker compose up --build -d server`.
+- PASS after issue 3 fix: running-stack authenticated `GET /api/v1/admin/stats/visits?page=1&page_size=20` returned 200 with `data.list`.
+- MANUAL ISSUE 4: user observed admin file list showed all files as unused, including images visibly used by public pages.
+- ROOT CAUSE: file list read static `files.status`; business references in settings/articles/comments/etc. did not update that field.
+- PASS after issue 4 fix: file list dynamically computes effective usage status from persisted references in articles, settings, comments, feedbacks, users, friends, and moments.
+- PASS after issue 4 fix: `mvn -f server/pom.xml -Dtest=Batch8PreDeploymentCoreClosureTest test`; 5 tests, 0 failures, 0 errors.
+- PASS after issue 4 fix: `mvn -f server/pom.xml test`; 60 tests, 0 failures, 0 errors.
+- PASS after issue 4 fix: running-stack authenticated `GET /api/v1/admin/files` for a real settings-referenced `站长形象` upload returned `status=1`.
+- ACCEPTED: user manually verified Batch 8 after the issue 1-4 remediation loop on 2026-05-18.
+
 ## What to do next
 
-1. Ask the user to review and accept Batch 7 audit conclusions and roadmap.
-2. If accepted, write Batch 7 final report and commit/push documentation only.
-3. Next implementation batch should be `PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008`.
-4. The next portfolio batch should include Redis ranking/cache/rate-limit plus one minimal real PG+Debezium+MQ flow.
-5. Do not start implementation until the user accepts the Batch 7 roadmap.
+1. Commit and push the accepted Batch 8 work.
+2. Next portfolio batch should include Redis ranking/cache/rate-limit plus one minimal real PG+Debezium+MQ flow.
 
 ## Acceptance rule for future work
 

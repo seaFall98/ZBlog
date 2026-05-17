@@ -49,9 +49,7 @@ public class StatsService {
             join articles a on a.id = at.article_id
             where a.status = 'PUBLISHED'
             """);
-    long articleViews = count("select coalesce(sum(view_count), 0) from articles");
     long visitPageViews = count("select count(*) from visit_events where event_type = 'pageview'");
-    long totalViews = articleViews + visitPageViews;
     long totalWords = count("select coalesce(sum(length(content_text)), 0) from articles where status = 'PUBLISHED'");
     LocalDate today = LocalDate.now();
     LocalDate yesterday = today.minusDays(1);
@@ -60,7 +58,7 @@ public class StatsService {
     Map<String, Object> stats = new LinkedHashMap<>();
     stats.put("total_words", Long.toString(totalWords));
     stats.put("total_visitors", count("select count(distinct visitor_id) from visit_events"));
-    stats.put("total_page_views", totalViews);
+    stats.put("total_page_views", visitPageViews);
     stats.put("online_users", countSince(Timestamp.valueOf(java.time.LocalDateTime.now().minusMinutes(5))));
     stats.put("total_articles", totalArticles);
     stats.put("total_comments", totalComments);
@@ -194,23 +192,75 @@ public class StatsService {
         .toList();
   }
 
-  public PageResponse<Map<String, Object>> visits(int page, int pageSize) {
-    int offset = Math.max(0, page - 1) * pageSize;
-    long total = count("select count(*) from visit_events");
+  public PageResponse<Map<String, Object>> visits(
+      int page,
+      int pageSize,
+      String keyword,
+      String visitorId,
+      String ip,
+      String excludeIps,
+      String location,
+      String browser,
+      String os,
+      String startTime,
+      String endTime) {
+    List<Object> args = new ArrayList<>();
+    StringBuilder where = new StringBuilder(" where 1 = 1");
+    if (keyword != null && !keyword.isBlank()) {
+      where.append(" and (lower(url) like ? or lower(title) like ? or lower(referrer) like ?)");
+      String like = "%" + keyword.toLowerCase() + "%";
+      args.add(like);
+      args.add(like);
+      args.add(like);
+    }
+    if (visitorId != null && !visitorId.isBlank()) {
+      where.append(" and visitor_id = ?");
+      args.add(visitorId);
+    }
+    if (ip != null && !ip.isBlank()) {
+      where.append(" and ip = ?");
+      args.add(ip);
+    }
+    if (excludeIps != null && !excludeIps.isBlank()) {
+      for (String excluded : excludeIps.split(",")) {
+        if (!excluded.isBlank()) {
+          where.append(" and ip <> ?");
+          args.add(excluded.trim());
+        }
+      }
+    }
+    LocalDate start = parseNullableDate(startTime);
+    LocalDate end = parseNullableDate(endTime);
+    if (start != null) {
+      where.append(" and created_at >= ?");
+      args.add(Timestamp.valueOf(start.atStartOfDay()));
+    }
+    if (end != null) {
+      where.append(" and created_at < ?");
+      args.add(Timestamp.valueOf(end.plusDays(1).atStartOfDay()));
+    }
+
     List<Map<String, Object>> rows =
         jdbcTemplate.queryForList(
             """
             select id, visitor_id, ip, url, user_agent, referrer, event_type, event_name, created_at
             from visit_events
+            """
+                + where
+                + """
+
             order by created_at desc, id desc
-            limit ? offset ?
             """,
-            pageSize,
-            offset)
+            args.toArray())
             .stream()
             .map(this::visitRow)
+            .filter(row -> location == null || location.isBlank() || row.get("location").toString().equalsIgnoreCase(location))
+            .filter(row -> browser == null || browser.isBlank() || row.get("browser").toString().toLowerCase().contains(browser.toLowerCase()))
+            .filter(row -> os == null || os.isBlank() || row.get("os").toString().toLowerCase().contains(os.toLowerCase()))
             .toList();
-    return new PageResponse<>(rows, total, page, pageSize);
+    int from = Math.min(Math.max(0, page - 1) * pageSize, rows.size());
+    int to = Math.min(from + pageSize, rows.size());
+    return new PageResponse<>(rows.subList(from, to), rows.size(), page, pageSize);
   }
 
   private Map<String, Object> visitRow(Map<String, Object> row) {
@@ -225,10 +275,29 @@ public class StatsService {
     mapped.put("event_type", row.get("event_type"));
     mapped.put("event_name", row.get("event_name"));
     mapped.put("location", "unsupported");
-    mapped.put("browser", "unsupported");
-    mapped.put("os", "unsupported");
+    mapped.put("browser", browser(row.get("user_agent")));
+    mapped.put("os", os(row.get("user_agent")));
     mapped.put("created_at", row.get("created_at"));
     return mapped;
+  }
+
+  private String browser(Object userAgentValue) {
+    String userAgent = userAgentValue == null ? "" : userAgentValue.toString();
+    if (userAgent.contains("Edg/")) return "Edge";
+    if (userAgent.contains("Chrome/")) return "Chrome";
+    if (userAgent.contains("Firefox/")) return "Firefox";
+    if (userAgent.contains("Safari/")) return "Safari";
+    return "Unknown";
+  }
+
+  private String os(Object userAgentValue) {
+    String userAgent = userAgentValue == null ? "" : userAgentValue.toString();
+    if (userAgent.contains("Windows")) return "Windows";
+    if (userAgent.contains("Mac OS X") || userAgent.contains("Macintosh")) return "macOS";
+    if (userAgent.contains("Android")) return "Android";
+    if (userAgent.contains("iPhone") || userAgent.contains("iPad")) return "iOS";
+    if (userAgent.contains("Linux")) return "Linux";
+    return "Unknown";
   }
 
   private Map<String, Map<String, Long>> dailyVisitGroups(LocalDate start, LocalDate end) {
@@ -317,6 +386,13 @@ public class StatsService {
   private LocalDate parseDate(String value, LocalDate fallback) {
     if (value == null || value.isBlank()) {
       return fallback;
+    }
+    return LocalDate.parse(value);
+  }
+
+  private LocalDate parseNullableDate(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
     }
     return LocalDate.parse(value);
   }
