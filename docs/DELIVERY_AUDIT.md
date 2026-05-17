@@ -189,7 +189,7 @@ These areas exist, but still rely too much on placeholders, hardcoded values, pa
 - FINDING: Redis, Elasticsearch, RabbitMQ/Kafka, and Debezium/CDC are not present in the active stack; Redis and a minimal PG+Debezium+MQ flow should be implemented as required portfolio capabilities, while ES should be optional Strategy code with DB as default online search.
 - RECOMMENDATION: next implementation batch should be `PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008`, combining article stats, admin filter honesty, import/export/settings honesty, and backend/admin-only visit geo/browser/OS parsing with public privacy masking.
 - RECOMMENDATION: implement `REDIS-PG-DEBEZIUM-MQ-MINIMAL-BATCH-009` soon after core closure; Kafka should stay as a later explanation/proof item if it remains too complex.
-- PENDING: user manual review and acceptance of the adjusted roadmap.
+- ACCEPTED: user manually accepted the adjusted roadmap and later accepted Batch 8 and Batch 9 implementation outcomes.
 
 ## Batch 8 verification notes
 
@@ -248,8 +248,10 @@ These areas exist, but still rely too much on placeholders, hardcoded values, pa
 
 ## What to do next
 
-1. Commit and push the accepted Batch 9 work.
-2. Next batch should revisit the remaining roadmap: Elasticsearch strategy, deployment hardening, and Redis+Nginx+Lua gateway planning.
+1. Start Batch 10: Search Strategy + Outbox-Driven ES Indexing.
+2. Keep DB-backed search as the default online path.
+3. Implement a lightweight application-outbox-driven article indexing chain as the honest, low-cost equivalent of the MySQL+Canal+ES workflow at the product level.
+4. Defer deployment hardening and Redis+Nginx+Lua gateway work to Batch 11.
 
 ## Acceptance rule for future work
 

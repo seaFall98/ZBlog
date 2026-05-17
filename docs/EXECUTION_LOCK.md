@@ -23,42 +23,32 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ## Active Work Slot
 
-ID: REDIS-OUTBOX-RABBITMQ-BATCH-009
+ID: SEARCH-STRATEGY-OUTBOX-ES-BATCH-010
 
-Status: closed, user accepted
+Status: planning locked, not started
 
 Scope:
-- Batch 9 only: Redis plus lightweight application-level MQ.
-- Add Redis-backed article view debounce, recent hot ranking, total view ranking, site stats cache, and collect rate limiting.
-- Add application outbox plus RabbitMQ publishing/consuming for one real article-published event chain.
-- Keep PostgreSQL as the source of truth; Redis is an accelerator/guard, not the only persistence layer.
-- Do not introduce Debezium, Elasticsearch, OpenResty/Nginx+Lua implementation, Kafka, or deployment hardening in this batch.
-- Record Redis+Nginx+Lua as a later deployment/gateway enhancement, not as Batch 9 production code.
+- Batch 10 only: search strategy plus lightweight outbox-driven search indexing.
+- Keep DB-backed search as the default online path so deployment remains low-cost.
+- Add a clear `SearchPort` / adapter boundary and optional Elasticsearch adapter code disabled by default.
+- Add a lightweight `PostgreSQL article change -> application outbox -> search index consumer` chain. This is intentionally an application-outbox equivalent of the "MySQL + Canal + ES" business effect, not a fake claim of WAL-level PostgreSQL CDC.
+- Add admin-visible search index status/rebuild behavior if needed for verification.
+- Do not combine deployment hardening, Redis+Nginx+Lua, Kafka, Debezium, or FlecBlog parity into this batch.
 
 Exact API calls:
-- `POST /api/v1/collect`: remains compatible and adds `article_view_counted` plus `article_view_count` when `type=pageview` and `article_id` is present; article view debounce is 10 seconds.
-- `GET /api/v1/articles/hot?type=recent&limit=10`: returns published recent hot articles using Redis ZSET ranking and `hot_score`.
-- `GET /api/v1/articles/hot?type=total&limit=10`: returns published total-view articles using PostgreSQL `view_count`.
-- `GET /api/v1/stats/site`: may use a short Redis cache, but values must remain PostgreSQL-consistent after cache expiry or cache eviction.
-- `GET /api/v1/admin/outbox`: returns observable outbox rows.
-- `POST /api/v1/admin/outbox/publish-pending`: manually drains pending/failed outbox rows for local verification and retry.
+- Existing public search API remains compatible.
+- Existing article create/update/publish/unpublish/delete admin APIs should emit search-index outbox events when they change public search visibility.
+- `POST /api/v1/admin/search/reindex`: planned admin rebuild endpoint if no equivalent exists.
+- `GET /api/v1/admin/search/status`: planned admin status endpoint if needed to expose selected strategy and last indexing failures.
+- Existing `POST /api/v1/admin/outbox/publish-pending` may be reused for local/manual search-index event draining if the current outbox abstraction supports it.
 
 Verification evidence:
-- RED observed: `mvn -f server/pom.xml -Dtest=Batch9RedisOutboxRabbitMqTest test` initially failed because `/collect` did not return article counting metadata, collect rate limiting was missing, and the `event_outbox` table did not exist.
-- RED observed after manual acceptance issues: targeted test failed because 10-second debounce recovery, dual ranking semantics, direct-create publish outbox, and duplicate slug handling were not implemented.
-- PASS after manual issue fixes: `mvn -f server/pom.xml -Dtest=Batch9RedisOutboxRabbitMqTest test` - 7 tests, 0 failures, 0 errors.
-- PASS after manual issue fixes: `mvn -f server/pom.xml test` - 67 tests, 0 failures, 0 errors.
-- PASS: `npm --prefix blog run type-check`; observed existing local `@vue/language-core` warning from vue-router/volar.
-- PASS: `npm --prefix blog run build`; observed existing Nuxt sourcemap/deprecation warnings.
-- PASS: `npm --prefix admin run type-check`.
-- PASS: `docker compose up --build -d server blog`.
-- PASS: Docker running-stack smoke verified direct create-and-publish produced a sent outbox event and article-published notification, 10-second article-view debounce recovered after the window, duplicate slug returned 409, and recent/total hot article APIs returned distinct valid data.
-- PASS after final acceptance fixes: Docker running-stack smoke verified article-published notification links use `/articles/edit/{id}` and the public blog bootstrap script defaults to light theme unless `localStorage.theme` is explicitly `dark`.
+- RED required before production code: `mvn -f server/pom.xml -Dtest=Batch10SearchStrategyOutboxEsTest test` must first fail because search strategy/outbox indexing/reindex/status behavior does not exist.
 
 Manual acceptance:
-- ACCEPTED: user manually verified Batch 9 after the Redis/MQ remediation loop and final notification/theme fixes on 2026-05-18.
+- Pending. Batch 10 implementation must write `docs/issues/batch10/02-acceptance.md` before asking the user to verify.
 
-Previous Batch 8 lock is retained below for traceability.
+Previous Batch 8 lock is retained below for traceability. Batch 9 final evidence is recorded in `docs/issues/batch9/05-final-report.md` and `docs/DELIVERY_AUDIT.md`.
 
 ID: PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008
 
@@ -177,8 +167,9 @@ Privacy-aware visit detail recommendation:
 Must-fix-before-deploy list:
 - Batch 8: pre-deployment core closure. Fix article view/statistics semantics, admin list filter/pagination honesty, import/export/settings honesty, and backend-only visit geo/browser/OS parsing with public privacy masking.
 - Batch 9: Redis + PG/Debezium/MQ portfolio stack. Add Redis ranking/cache/rate-limit behavior and one minimal real PG+Debezium+MQ flow, with Kafka kept as planning/proof unless explicitly selected.
-- Batch 10: search strategy and deployment hardening. Add ES Strategy code with DB default if still desired, then complete production-like deployment hardening.
-- Batch 11: FlecBlog parity recheck and final defer/implement decisions.
+- Batch 10: search strategy plus lightweight outbox-driven ES indexing. Add optional ES Strategy code with DB default and a verifiable article-change-to-index pipeline.
+- Batch 11: deployment hardening. Complete production-like environment variables, persistence, reverse proxy/static uploads, logs, backup, health checks, and Redis+Nginx+Lua gateway planning.
+- Batch 12: FlecBlog parity recheck and final defer/implement decisions.
 
 Required portfolio-enhancement list:
 - Redis-backed hot article/ranking/stat cache/settings cache/rate-limit behavior with PostgreSQL reconciliation and fallback.
@@ -196,8 +187,9 @@ Optional or post-deploy deferred list:
 Updated batch order:
 - Batch 8: PRE-DEPLOYMENT-CORE-CLOSURE.
 - Batch 9: REDIS-PG-DEBEZIUM-MQ-MINIMAL.
-- Batch 10: SEARCH-STRATEGY-DEPLOYMENT-HARDENING.
-- Batch 11: FLECBLOG-PARITY-RECHECK.
+- Batch 10: SEARCH-STRATEGY-OUTBOX-ES.
+- Batch 11: DEPLOYMENT-HARDENING.
+- Batch 12: FLECBLOG-PARITY-RECHECK.
 - Optional after the minimal MQ chain: KAFKA-CDC-PROOF.
 
 ## Closed Implementation Loops
@@ -457,12 +449,17 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Includes: Redis hot article/read ranking, site-stats cache, visit dedup/rate-limit, and one minimal application outbox + RabbitMQ article-published event chain.
    - Scope guard: Debezium/CDC, Kafka, and Redis+Nginx+Lua are deferred; this batch intentionally keeps MQ tiny and verifiable.
 
-10. SEARCH-STRATEGY-DEPLOYMENT-HARDENING-BATCH-010
-   - Status: planned after core closure and the minimal portfolio stack are accepted.
-   - Includes: optional `SearchPort`/ES Strategy code with DB default, production-like deployment, environment variables, persistence, reverse proxy/static uploads, logs, backup, and health checks.
-   - Scope guard: do not require Elasticsearch service deployment for the default online path, and do not hide missing functional gaps behind deployment documentation.
+10. SEARCH-STRATEGY-OUTBOX-ES-BATCH-010
+   - Status: planning locked, not started.
+   - Includes: optional `SearchPort`/ES Strategy code with DB default, search index rebuild/status, and one lightweight application-outbox-driven article search indexing chain.
+   - Scope guard: do not require Elasticsearch service deployment for the default online path; do not claim PostgreSQL CDC/Debezium unless WAL-level CDC is actually implemented; do not include deployment hardening.
 
-11. FLECBLOG-PARITY-RECHECK-BATCH-011
+11. DEPLOYMENT-HARDENING-BATCH-011
+   - Status: planned after Batch 10.
+   - Includes: production-like deployment, environment variables, persistence, reverse proxy/static uploads, logs, backup, health checks, and Redis+Nginx+Lua gateway planning or a small explicit gateway proof if still desired.
+   - Scope guard: do not hide remaining functional gaps behind deployment documentation.
+
+12. FLECBLOG-PARITY-RECHECK-BATCH-012
    - Status: planned.
    - Includes: final FlecBlog parity recheck and explicit defer/implement decisions for any remaining gaps after pre-deployment functional and technology work.
 
@@ -539,71 +536,72 @@ Optional architecture proof after the minimal MQ chain:
     - PG+Debezium+MQ should implement one simplest real flow now, comparable in spirit to min-lj Blog's MySQL+Canal+MQ, rather than staying planning-only.
     - Kafka remains a later explain-and-proof item if the simple MQ path is not enough.
 
-14. SEARCH-STRATEGY-DEPLOYMENT-HARDENING
+14. SEARCH-STRATEGY-OUTBOX-ES
     - Open after core closure and minimal portfolio stack.
     - Elasticsearch should be a configurable strategy with DB fallback, indexing, reindexing, and failure visibility, disabled by default for online deployment.
-    - Deployment hardening proves a clean environment can run the stack and survive restart with data/uploads intact.
+    - The search indexing pipeline should reuse the application outbox to make article create/update/publish/unpublish/delete events flow into the selected indexer.
+    - This is a lightweight, honest implementation of the "database change -> async pipeline -> search index" idea; it is comparable to MySQL+Canal+ES at the product workflow level, but it is not PostgreSQL WAL CDC unless Debezium/logical decoding is implemented later.
 
-15. FLECBLOG-PARITY-RECHECK
+15. DEPLOYMENT-HARDENING
+    - Open after Batch 10.
+    - Deployment hardening proves a clean environment can run the stack and survive restart with data/uploads intact.
+    - Redis+Nginx+Lua belongs here as gateway planning or a small proof, not as hidden complexity inside search.
+
+16. FLECBLOG-PARITY-RECHECK
     - Final audit pass against FlecBlog after the pre-deployment feature/technology work.
     - Done when every intentional difference is documented and every required missing capability is either implemented or explicitly deferred by the user.
 
-16. KAFKA-CDC-PROOF
+17. KAFKA-CDC-PROOF
     - Optional proof after the minimal PG+Debezium+MQ chain is useful and the user understands whether Kafka is worth the added complexity.
 
 ## Next Locked Implementation Candidate
 
-ID: PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008
+ID: SEARCH-STRATEGY-OUTBOX-ES-BATCH-010
 
-Status: ready, not started
+Status: planning locked, not started
 
 Reason:
-- Batch 7 audit is closed and user accepted.
-- The next implementation batch should close core user-visible gaps together before adding Redis/MQ/ES/deployment complexity.
-- Batch 8 must use RED tests first and must not implement Redis, Elasticsearch, MQ, CDC, or deployment hardening.
+- Batch 8 and Batch 9 are closed and user accepted.
+- Search is currently DB-backed and accepted for v1, but the planned ES Strategy/adapter and index pipeline are not implemented.
+- The user wants a lightweight, defensible `PG/outbox -> ES indexing` style chain as a portfolio highlight without increasing online deployment cost.
+- Batch 10 must use RED tests first and must not implement deployment hardening, Redis+Nginx+Lua, Kafka, Debezium, or FlecBlog parity.
 
 Frontend/admin entry pages:
-- Public article detail page: `/posts/[slug]`, article header `view_count`.
-- Public site/sidebar stats that consume `GET /api/v1/stats/site`.
-- Admin dashboard, visit list, article list, comment list, file list.
-- Admin import/export and settings pages where UI may expose unsupported options.
+- Public search page and any components that call the existing public search API.
+- Admin article create/edit/publish/unpublish/delete flows that change search visibility.
+- Admin search maintenance/status page if an existing page can host it; otherwise use API-only acceptance for this batch.
 
 Exact API calls:
-- `GET /api/v1/articles/{slug}`
-- `POST /api/v1/collect`
-- `GET /api/v1/stats/site`
-- `GET /api/v1/admin/stats/dashboard`
-- `GET /api/v1/admin/stats/trend`
-- `GET /api/v1/admin/stats/visits`
-- Admin article/comment/file list endpoints used by the current UI.
-- Admin import/export/settings endpoints used by the current UI.
+- Existing public search API used by the blog must remain backward compatible.
+- Article mutation APIs must create durable search-index outbox events when they change public search visibility.
+- `POST /api/v1/admin/search/reindex` should rebuild searchable article documents through the selected strategy.
+- `GET /api/v1/admin/search/status` should expose selected strategy, default/fallback state, and last indexing errors if implemented.
 
 Backend behavior to prove:
-- Visiting an article has one coherent article-level and site-level counting model.
-- `articles.view_count`, public article detail, admin article list, dashboard/sidebar/site stats, and visit events do not contradict each other.
-- Pageview counting avoids double-counting generic route pageviews and article-specific pageviews.
-- Visible admin filters either work against backend parameters or are hidden/disabled with honest UI.
-- Import/export/settings UI does not claim unsupported capabilities.
-- Visit geo/browser/OS details may be stored/read in admin, but public/frontend areas must not expose privacy-adjacent visitor details such as IP, location, browser, or OS.
+- DB search remains the default and still returns correct public results.
+- Optional ES adapter code is present and disabled by default so a low-cost deployment does not require Elasticsearch.
+- Article create/update/publish/unpublish/delete produces idempotent search indexing work through the outbox.
+- Reindex rebuilds all currently published searchable articles and excludes drafts/deleted/unpublished articles.
+- Indexing failures are visible and retryable rather than silently swallowed.
 
 Persistence or derived data path:
-- Define whether article view count is a durable aggregate column, a query derived from `visit_events`, or a hybrid model.
-- Preserve `visit_events` as the detailed event source.
-- Keep privacy-sensitive details admin-only.
+- PostgreSQL remains the source of truth for article content and public search fallback.
+- `event_outbox` is reused or extended for search-index events.
+- Search index documents are derived from published article fields.
+- Elasticsearch is an optional derived index; it must be rebuildable from PostgreSQL.
 
 Automated RED test:
-- Required before production code. At minimum prove current article visits do not update article-level `view_count` or currently cause ambiguous/double-counted stats.
+- Required before production code. At minimum prove current code lacks a search strategy boundary, outbox search-index event chain, rebuild endpoint/status, or failure visibility.
 
 Automated GREEN verification:
-- Targeted Batch 8 tests.
+- Targeted Batch 10 tests.
 - Full backend tests.
-- Frontend type-check/build if UI contracts or visible filters/settings screens change.
+- Blog/admin type-check or build if API contracts or UI are changed.
 
 Manual browser verification:
-- User verifies an article visit updates the expected visible count after reload.
-- User verifies sidebar/dashboard/admin article list statistics are coherent.
-- User verifies admin filters/settings/import-export UI is honest.
-- User verifies public pages do not expose visitor privacy details.
+- User verifies public search still works with DB default and does not require Elasticsearch.
+- User verifies article publish/update/unpublish/delete changes are reflected in search after the outbox/reindex flow.
+- User verifies admin search status/reindex path if UI is added; otherwise verify through API and documented commands.
 
 ## Handoff Protocol
 
