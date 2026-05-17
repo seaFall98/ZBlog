@@ -25,7 +25,7 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ID: PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
 
-Status: audit complete, user review pending
+Status: closed, user accepted
 
 Scope:
 - Batch 7 only: pre-deployment feature and technology audit.
@@ -75,7 +75,7 @@ Docker running-stack verification:
 - Not required for this documentation-only audit; conclusions are backed by code search and source reads.
 
 Manual browser verification:
-- User reviews and accepts the adjusted roadmap before implementation resumes.
+- ACCEPTED: user reviewed and accepted the adjusted roadmap on 2026-05-17.
 
 Current functional gaps:
 - Article detail `view_count` is not a true closed loop yet: the public article page sends a pageview with `article_id`, and `VisitCollectionService` stores `article_id` in `visit_events`, but no code updates `articles.view_count`. Admin article list/public article data can therefore show stale article-level counts.
@@ -390,13 +390,13 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Includes: SEARCH-SEO-DEPTH only.
 
 7. PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
-   - Status: next.
+   - Status: closed, user accepted.
    - Includes: code review, feature-gap review, technology-stack review, and roadmap correction before deployment hardening.
    - Scope guard: audit and planning only; do not implement Redis/ES/MQ/CDC/deployment code in this batch unless the user explicitly re-scopes it.
    - Required outcome: decide whether Redis, Elasticsearch, lightweight async/outbox/MQ, PostgreSQL CDC, and remaining base features belong before deployment.
 
 8. PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008
-   - Status: recommended next.
+   - Status: next.
    - Includes: article-level `view_count`, public/sidebar/admin stats semantics, duplicate pageview prevention, admin list filter/pagination honesty, import/export/settings honesty, and visit geo/browser/OS parsing.
    - Scope guard: backend/admin may store and read detailed visit environment data, but public/frontend areas must not display privacy-adjacent details such as commenter location, browser, OS, or IP.
 
@@ -469,7 +469,7 @@ Optional architecture proof after the minimal MQ chain:
     - Evidence: `Batch6SearchSeoDepthTest` proves article create/update/unpublish/delete lifecycle changes affect public search, RSS, Atom, and Sitemap outputs.
 
 11. PRE-DEPLOYMENT-FEATURE-TECH-AUDIT
-    - Open.
+    - Closed, user accepted.
     - Purpose: re-audit current feature completeness and target technology stack before deployment hardening.
     - Must verify user-visible base gaps such as per-article `view_count`, not only global visit stats.
     - Must reconcile current implementation with the old backend refactor direction: Redis, RabbitMQ, optional Elasticsearch, PostgreSQL CDC/Debezium, lightweight DDD, Strategy/Adapter/Event/Outbox patterns.
@@ -501,56 +501,57 @@ Optional architecture proof after the minimal MQ chain:
 
 ## Next Locked Implementation Candidate
 
-ID: PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
+ID: PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008
 
-Status: audit complete, user review pending
+Status: ready, not started
 
 Reason:
-- Batch 7 found that several broad loops are closed at baseline level, but the remaining work should be grouped into fewer, larger batches instead of many tiny slices.
-- The next implementation batch should close core user-visible gaps together: article view/statistics semantics, admin filter honesty, import/export/settings honesty, and backend/admin-only visit geo/browser/OS parsing.
-- Redis and a minimal PG+Debezium+MQ flow are required portfolio capabilities and should be implemented soon; Kafka can remain a later explain-and-proof item if it adds too much complexity.
+- Batch 7 audit is closed and user accepted.
+- The next implementation batch should close core user-visible gaps together before adding Redis/MQ/ES/deployment complexity.
+- Batch 8 must use RED tests first and must not implement Redis, Elasticsearch, MQ, CDC, or deployment hardening.
 
-Audit entry pages and API routes:
-- Public article detail: `/posts/[slug]`, `GET /api/v1/articles/{slug}`, `POST /api/v1/collect`.
-- Public stats/sidebar: `GET /api/v1/stats/site`.
-- Admin stats/visits: `GET /api/v1/admin/stats/dashboard`, `/trend`, `/visits`.
-- Admin article/comment/file lists and settings/import/export pages.
-- Admin/public notifications, feedback, subscriptions, RSS reader, and system pages.
+Frontend/admin entry pages:
+- Public article detail page: `/posts/[slug]`, article header `view_count`.
+- Public site/sidebar stats that consume `GET /api/v1/stats/site`.
+- Admin dashboard, visit list, article list, comment list, file list.
+- Admin import/export and settings pages where UI may expose unsupported options.
 
-Current functional gaps:
-- See Active Work Slot `Current functional gaps` for the detailed list.
+Exact API calls:
+- `GET /api/v1/articles/{slug}`
+- `POST /api/v1/collect`
+- `GET /api/v1/stats/site`
+- `GET /api/v1/admin/stats/dashboard`
+- `GET /api/v1/admin/stats/trend`
+- `GET /api/v1/admin/stats/visits`
+- Admin article/comment/file list endpoints used by the current UI.
+- Admin import/export/settings endpoints used by the current UI.
 
-Current technology gaps:
-- Redis, Elasticsearch, MQ, CDC, Debezium, and async outbox workers are not implemented in the active stack.
+Backend behavior to prove:
+- Visiting an article has one coherent article-level and site-level counting model.
+- `articles.view_count`, public article detail, admin article list, dashboard/sidebar/site stats, and visit events do not contradict each other.
+- Pageview counting avoids double-counting generic route pageviews and article-specific pageviews.
+- Visible admin filters either work against backend parameters or are hidden/disabled with honest UI.
+- Import/export/settings UI does not claim unsupported capabilities.
+- Visit geo/browser/OS details may be stored/read in admin, but public/frontend areas must not expose privacy-adjacent visitor details such as IP, location, browser, or OS.
 
-Redis candidate flows and recommendation:
-- Candidate flows: hot articles/read ranking, stats/settings cache, visit idempotency/rate limiting, and optional non-critical Redis Pub/Sub via an `@RedisTopic`-style auto-subscription pattern.
-- Recommendation: include Redis in the near-term portfolio batch with real ranking/cache/rate-limit behavior and PostgreSQL reconciliation/fallback.
+Persistence or derived data path:
+- Define whether article view count is a durable aggregate column, a query derived from `visit_events`, or a hybrid model.
+- Preserve `visit_events` as the detailed event source.
+- Keep privacy-sensitive details admin-only.
 
-Elasticsearch strategy recommendation:
-- DB-backed search remains default; ES should be implemented as configurable strategy code with indexing/reindex/fallback tests and disabled default deployment, likely together with deployment hardening unless pulled earlier.
+Automated RED test:
+- Required before production code. At minimum prove current article visits do not update article-level `view_count` or currently cause ambiguous/double-counted stats.
 
-PostgreSQL CDC / Debezium / RabbitMQ/Kafka recommendation:
-- Implement one minimal real PG+Debezium+MQ flow soon, comparable in spirit to MySQL+Canal+MQ.
-- Kafka is for durable, high-throughput event streaming/replay and can stay as later explanation/proof if it is too complex now.
+Automated GREEN verification:
+- Targeted Batch 8 tests.
+- Full backend tests.
+- Frontend type-check/build if UI contracts or visible filters/settings screens change.
 
-Must-fix-before-deploy list:
-- PRE-DEPLOYMENT-CORE-CLOSURE: article stats, admin list honesty, import/export/settings honesty, and backend/admin-only visit geo/browser/OS parsing with public privacy masking.
-- REDIS-PG-DEBEZIUM-MQ-MINIMAL: Redis ranking/cache/rate-limit plus one tiny real PG+Debezium+MQ function.
-- SEARCH-STRATEGY-DEPLOYMENT-HARDENING: ES Strategy code if still desired, then production-like deployment proof.
-
-Required portfolio-enhancement list:
-- Redis ranking/cache/rate-limit and minimal PG+Debezium+MQ event chain.
-- Elasticsearch strategy code with DB default.
-
-Post-deploy deferred list:
-- True OAuth callbacks, scheduled RSS refresh, full remote/relative import assets, rich WeChat formatting, Kafka/full CDC proof.
-
-Updated batch order:
-- Batch 8: PRE-DEPLOYMENT-CORE-CLOSURE.
-- Batch 9: REDIS-PG-DEBEZIUM-MQ-MINIMAL.
-- Batch 10: SEARCH-STRATEGY-DEPLOYMENT-HARDENING.
-- Batch 11: FLECBLOG-PARITY-RECHECK.
+Manual browser verification:
+- User verifies an article visit updates the expected visible count after reload.
+- User verifies sidebar/dashboard/admin article list statistics are coherent.
+- User verifies admin filters/settings/import-export UI is honest.
+- User verifies public pages do not expose visitor privacy details.
 
 ## Handoff Protocol
 
