@@ -31,7 +31,7 @@ These areas have been brought to a real closed loop in the current repo state:
 - Batch 2 content assets: upload/public asset delivery and supported imported Markdown image links are automated-verified, Docker-verified, and user-accepted in the local running stack.
 - Compatibility endpoints for system admin and notifications that the current frontend expects.
 - Admin tools and AI utility endpoints: link metadata, video parsing, remote image download, AI config test, summary, AI summary, and title generation.
-- Batch 1 backend truth data: visit collection/stat derivation, persisted notifications/read-state, and honest system info are automated-verified and user-accepted in the local running stack.
+- Batch 1 backend truth data: visit collection/stat derivation, persisted notifications/read-state, and honest system info are automated-verified and user-accepted in the local running stack. Batch 7 clarified that this proves global visit/stat derivation, not article-level `articles.view_count` mutation.
 
 ## Critical gaps
 
@@ -48,10 +48,12 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ### Visit collection and real statistics
 
-- Status: automated verified and manually accepted.
+- Status: partial after Batch 7 re-audit.
 - The blog tracker posts to `POST /api/v1/collect`, and Java now persists tracker payloads into `visit_events`.
-- `/api/v1/stats/site`, `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits` now derive visit-related values from persisted visit events.
+- `/api/v1/stats/site`, `/api/v1/admin/stats/dashboard`, `/api/v1/admin/stats/trend`, and `/api/v1/admin/stats/visits` derive visit-related values from persisted visit events.
 - Evidence: `mvn -f server/pom.xml -Dtest=BackendTruthDataBatchTest test` passes and proves a collect call changes site/dashboard/trend/visit-log output.
+- Batch 7 correction: public article pages send `article_id` pageviews, but the backend does not update `articles.view_count`; article detail/admin article list counters can stay stale.
+- Batch 7 correction: `total_page_views` currently adds `sum(articles.view_count)` plus visit-event pageviews, so the next fix must define semantics that avoid double-counting once article counters are maintained.
 - Deferred: visit-log geo location, browser parsing, and OS parsing return explicit `unsupported`.
 
 ### Notifications
@@ -97,13 +99,18 @@ These are the highest-priority mismatches between frontend calls and backend rea
 
 ## Medium gaps
 
-These areas exist, but still rely too much on placeholders, hardcoded values, or deferred product decisions.
+These areas exist, but still rely too much on placeholders, hardcoded values, partial backend support, or deferred product decisions.
 
+- Article view/stat counters: global visit collection is real, but article-level `view_count` is not proven to mutate; this is the next must-fix-before-deploy gap.
+- Admin list filters and pagination: article, visit, comment, and file list UIs expose more filters than the backend currently proves; unsupported filters must be implemented or hidden before deployment.
 - System data: CPU usage percentage, swap total/usage, DB size, DB connection count, and remote update source are explicitly deferred as `unsupported`; email and Feishu integrations are `disabled` until configured.
 - RSS reader: manual refresh is verified; scheduled refresh and detailed friend-list source status display remain deferred.
 - Import/export assets: Markdown import now supports already-uploaded `/uploads/**` image references; local relative images, remote image downloads during import, HTML `<img>` rewriting, and bundled ZIP media files remain deferred and must fail/report rather than silently importing broken paths.
-- Article AI summary persistence: automated verified and awaiting manual acceptance; generated summary/title text is saved through real article `summary`/`title` fields, with no fake `ai_summary` article field.
-- Search and SEO: DB-backed search is accepted for v1, with Elasticsearch deferred as a later product enhancement. Search and SEO XML now have automated coverage for real published article lifecycle changes; deeper analytics/ranking remain future product scope if needed.
+- Upload settings and export labels: some UI settings/labels imply behavior broader than the backend currently enforces, such as storage/size settings and WeChat-specific formatting.
+- AI summary length: generated title/summary persistence is closed, but provider output length is prompt-guided rather than strictly enforced.
+- Search and SEO: DB-backed search is accepted for the online/default path; Elasticsearch should be added as optional Strategy code with indexing/rebuild/fallback tests, disabled by default for deployment.
+- Mail/notification reliability and MQ: notification persistence is real and feedback produces notifications; broader event producers and retryable async mail/outbox behavior remain future work and should become part of the minimal PG+Debezium+MQ portfolio chain.
+- Visit privacy: geo/browser/OS parsing can be stored/read for admin analysis, but public/frontend areas should not display privacy-adjacent visitor details such as commenter location, browser, OS, or IP.
 - Test coverage: too many tests only assert that the envelope exists; too few assert the business effect.
 
 ## Batch 1 verification notes
@@ -169,13 +176,26 @@ These areas exist, but still rely too much on placeholders, hardcoded values, or
 - ACCEPTED: user manually verified Batch 6 search and SEO behavior in the running stack on 2026-05-17.
 - FOLLOW-UP: AI summary length prompt guidance and optional future search strategy design are deferred outside Batch 6.
 
+## Batch 7 verification notes
+
+- DECISION: Batch 7 was documentation-only audit/planning; no production code was changed and no full test suite was required.
+- FINDING: article-level `view_count` is not closed. Article pages send `article_id` pageviews, but `VisitCollectionService` only inserts `visit_events` and does not update `articles.view_count`.
+- FINDING: public/sidebar/admin stats are real enough for global visit data, but pageview semantics must be corrected to avoid duplicate article pageview tracking and double-counting `articles.view_count` plus `visit_events`.
+- FINDING: several admin list pages expose filters/pagination that the backend does not fully honor yet, especially visits, articles, comments, and files.
+- FINDING: import/export and upload settings are honest at baseline but still partial; UI labels/settings should be narrowed or backend behavior expanded.
+- FINDING: AI summary length is prompt-guided, not enforced; this is a follow-up AI utility batch candidate.
+- FINDING: Redis, Elasticsearch, RabbitMQ/Kafka, and Debezium/CDC are not present in the active stack; Redis and a minimal PG+Debezium+MQ flow should be implemented as required portfolio capabilities, while ES should be optional Strategy code with DB as default online search.
+- RECOMMENDATION: next implementation batch should be `PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008`, combining article stats, admin filter honesty, import/export/settings honesty, and backend/admin-only visit geo/browser/OS parsing with public privacy masking.
+- RECOMMENDATION: implement `REDIS-PG-DEBEZIUM-MQ-MINIMAL-BATCH-009` soon after core closure; Kafka should stay as a later explanation/proof item if it remains too complex.
+- PENDING: user manual review and acceptance of the adjusted roadmap.
+
 ## What to do next
 
-1. Run `PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007` before deployment hardening.
-2. Re-check visible gaps such as article `view_count` and any UI path that still shows placeholder or fake-complete behavior.
-3. Re-evaluate the previously planned backend stack: Redis, optional Elasticsearch, RabbitMQ/Kafka, PostgreSQL CDC/Debezium, outbox/event pattern, and deployment cost.
-4. Update the roadmap into must-fix-before-deploy, optional portfolio/architecture enhancement, and post-deploy deferred groups.
-5. Resume implementation only after the user accepts the adjusted roadmap.
+1. Ask the user to review and accept Batch 7 audit conclusions and roadmap.
+2. If accepted, write Batch 7 final report and commit/push documentation only.
+3. Next implementation batch should be `PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008`.
+4. The next portfolio batch should include Redis ranking/cache/rate-limit plus one minimal real PG+Debezium+MQ flow.
+5. Do not start implementation until the user accepts the Batch 7 roadmap.
 
 ## Acceptance rule for future work
 

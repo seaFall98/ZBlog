@@ -25,15 +25,15 @@ If another agent continues this project, read this file first. Do not infer comp
 
 ID: PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
 
-Status: ready, not started
+Status: audit complete, user review pending
 
 Scope:
 - Batch 7 only: pre-deployment feature and technology audit.
 - This is an audit/planning batch, not a production-code implementation batch.
-- Re-check current Java/backend/frontend behavior before deployment hardening.
-- Compare current behavior against FlecBlog, current frontend-visible gaps, and the old ZBlog backend refactor target stack.
-- Produce an updated roadmap that decides which missing features and technology-stack enhancements must happen before deployment.
-- Do not implement Redis, Elasticsearch, MQ, CDC, or deployment code in this batch unless the user explicitly re-scopes it.
+- Re-checked current Java/backend/frontend behavior before deployment hardening.
+- Compared current behavior against current frontend-visible gaps and the old ZBlog backend refactor target stack.
+- Produced an updated roadmap that decides which missing features and technology-stack enhancements should happen before deployment.
+- Redis, Elasticsearch, MQ, CDC, and deployment code were not implemented in this batch.
 
 Frontend/admin entry pages:
 - Public article detail page, especially article `view_count`.
@@ -72,10 +72,81 @@ Automated GREEN verification:
 - Documentation-only audit batch; verify by reviewing changed docs and ensuring no production code was modified.
 
 Docker running-stack verification:
-- Optional during audit if needed to confirm visible gaps such as article view count.
+- Not required for this documentation-only audit; conclusions are backed by code search and source reads.
 
 Manual browser verification:
 - User reviews and accepts the adjusted roadmap before implementation resumes.
+
+Current functional gaps:
+- Article detail `view_count` is not a true closed loop yet: the public article page sends a pageview with `article_id`, and `VisitCollectionService` stores `article_id` in `visit_events`, but no code updates `articles.view_count`. Admin article list/public article data can therefore show stale article-level counts.
+- Public site/sidebar stats derive from real persisted data, but `total_page_views` currently adds `sum(articles.view_count)` and visit-event pageviews. Once article counters are fixed, the counting semantics must avoid double-counting.
+- Public tracker can send a generic route pageview and the article page can also send an article-specific pageview, so Batch 8 must define one article-page PV attribution path.
+- Admin visit list has filter UI/query types, but the backend `/api/v1/admin/stats/visits` currently accepts only page/page_size; browser, OS, and location remain explicit `unsupported` values.
+- Admin article list exposes richer filters than the backend currently honors; backend admin list filters only keyword and publish state.
+- Comment admin filters and pagination need a deeper pass; the current backend list path is not yet proven to honor all UI filters or scale beyond small data.
+- File admin filters and upload settings need a deeper pass; backend file validation/storage still uses hardcoded local storage and size/type rules rather than all saved settings.
+- Import/export remains partial: Markdown import only supports already-uploaded `/uploads/**` image references, WeChat export returns rendered HTML rather than a richer WeChat-specific format, and ZIP asset bundling only covers `/uploads/**` assets.
+- Notification persistence/read-state is real, but event producers are partial; feedback creates notifications, while comments/friend/system events are not broadly wired yet.
+- Mail outbox rows are durable, but delivery is synchronous/dev-outbox style with no retry worker, dead-letter handling, or admin-visible resend path.
+- AI title/summary persistence is closed, but provider output length is prompt-guided rather than enforced; the user observed summaries can exceed intended length.
+- System page is honest but limited: CPU usage, DB size, DB connection count, swap, remote update, email, and Feishu remain explicit unsupported/disabled values.
+
+Current technology gaps:
+- Redis is not present in dependencies or docker-compose; no production code currently depends on it.
+- Elasticsearch is not present; public search is DB-backed and accepted for v1.
+- RabbitMQ/Kafka is not present; no queue dependency or service exists in the active stack.
+- PostgreSQL CDC/Debezium is not present; docker-compose contains PostgreSQL/server/blog/admin only.
+- A mail outbox table/service exists, but there is no async outbox worker/retry pipeline.
+- Current backend is Java 21/Spring Boot/PostgreSQL/Flyway/JDBC and is sufficient for a low-cost personal deployment if remaining user-visible gaps are closed first.
+
+Redis candidate flows and recommendation:
+- Candidate flows: article view count aggregation, hot articles/read ranking, site stats cache, settings cache, visit collection idempotency/dedup/rate limiting, and a small Redis Pub/Sub integration where message loss is acceptable.
+- Recommendation: Redis is a required roadmap capability for this project, but Batch 8 should first define correct PostgreSQL-backed article view/stat semantics so Redis accelerates a proven model rather than hiding an unclear counter model.
+- Implementation direction: use PostgreSQL as source of truth, add Redis for ranking/cache/rate-limit with explicit reconciliation or fallback, and consider an `@RedisTopic`-style auto-subscription wrapper as a portfolio highlight for non-critical events.
+- Boundary: Redis Pub/Sub is not durable; core mail/notification/search-index delivery should still use outbox/MQ where reliability matters.
+
+Elasticsearch strategy recommendation:
+- DB-backed search remains the online/default strategy for v1 and first deployment.
+- ES should be implemented as optional strategy-pattern code rather than a required deployed dependency: `SearchPort` with DB default adapter and configurable `ElasticsearchSearchAdapter` disabled by default.
+- ES scope must include index schema, article create/update/delete indexing, rebuild-index admin operation, failure visibility, fallback to DB search, and tests for selected strategy behavior.
+- Recommendation: plan a bounded ES strategy-code batch after core functional honesty work; do not require Elasticsearch in docker-compose or production deployment until the user chooses to operate it.
+
+PostgreSQL CDC / Debezium / RabbitMQ/Kafka recommendation:
+- PostgreSQL counterpart to MySQL+Canal+MQ is pgoutput/logical decoding or Debezium plus MQ. Do a minimal real PG+Debezium+MQ flow now rather than leaving it as planning-only work.
+- Scope should stay deliberately small: one real source table/event, one MQ topic/queue, one consumer side effect, observable retry/error state, and a simple manual verification path.
+- Kafka is useful for high-throughput durable event streaming and replay, but it adds concepts and deployment cost. Keep Kafka as a later planning/proof item unless the RabbitMQ/simple-MQ path becomes insufficient.
+- Any async pipeline must define idempotency keys, retry policy, dead-letter/error visibility, replay/rebuild path, and synchronous fallback or accepted degradation.
+
+Privacy-aware visit detail recommendation:
+- Detailed visit geo/browser/OS parsing can be implemented now and stored/read in admin-facing visit analysis.
+- Public/frontend areas should not display privacy-adjacent details such as commenter location, browser, OS, or IP. It is acceptable to keep backend read capability for admin/audit use while omitting these fields from public UI.
+- This intentionally differs from FlecBlog where needed: privacy is preferred over showing user environment details in public comment areas.
+
+Must-fix-before-deploy list:
+- Batch 8: pre-deployment core closure. Fix article view/statistics semantics, admin list filter/pagination honesty, import/export/settings honesty, and backend-only visit geo/browser/OS parsing with public privacy masking.
+- Batch 9: Redis + PG/Debezium/MQ portfolio stack. Add Redis ranking/cache/rate-limit behavior and one minimal real PG+Debezium+MQ flow, with Kafka kept as planning/proof unless explicitly selected.
+- Batch 10: search strategy and deployment hardening. Add ES Strategy code with DB default if still desired, then complete production-like deployment hardening.
+- Batch 11: FlecBlog parity recheck and final defer/implement decisions.
+
+Required portfolio-enhancement list:
+- Redis-backed hot article/ranking/stat cache/settings cache/rate-limit behavior with PostgreSQL reconciliation and fallback.
+- Minimal PG+Debezium+MQ flow comparable in spirit to MySQL+Canal+MQ, but scoped to the simplest useful ZBlog event.
+- Search strategy abstraction and optional Elasticsearch adapter with rebuild/fallback tests, disabled by default for online deployment.
+
+Optional or post-deploy deferred list:
+- True OAuth provider callback integration until provider credentials/callback domains are known.
+- Scheduled RSS refresh beyond the accepted manual refresh flow.
+- Full remote/relative Markdown asset ingestion and HTML image rewriting beyond accepted `/uploads/**` support.
+- Rich WeChat-specific article formatting beyond raw rendered HTML export.
+- Kafka or a fuller CDC/event-stream platform until the minimal PG+Debezium+MQ path is understood and useful.
+- More complete system observability: DB size/connection count, CPU sampling, update-source configuration, mail/Feishu real status.
+
+Updated batch order:
+- Batch 8: PRE-DEPLOYMENT-CORE-CLOSURE.
+- Batch 9: REDIS-PG-DEBEZIUM-MQ-MINIMAL.
+- Batch 10: SEARCH-STRATEGY-DEPLOYMENT-HARDENING.
+- Batch 11: FLECBLOG-PARITY-RECHECK.
+- Optional after the minimal MQ chain: KAFKA-CDC-PROOF.
 
 ## Closed Implementation Loops
 
@@ -324,29 +395,27 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
    - Scope guard: audit and planning only; do not implement Redis/ES/MQ/CDC/deployment code in this batch unless the user explicitly re-scopes it.
    - Required outcome: decide whether Redis, Elasticsearch, lightweight async/outbox/MQ, PostgreSQL CDC, and remaining base features belong before deployment.
 
-8. REDIS-FOUNDATION-CLOSED-LOOP-BATCH-008
-   - Status: planned, subject to Batch 7 audit.
-   - Initial candidates: article `view_count` closed loop, hot-article/read-ranking cache, site stats/cache, idempotent view collection or rate limiting if justified by real UI/API flows.
-   - Scope guard: do not make Redis mandatory for production deployment unless the fallback/degradation strategy is explicit.
+8. PRE-DEPLOYMENT-CORE-CLOSURE-BATCH-008
+   - Status: recommended next.
+   - Includes: article-level `view_count`, public/sidebar/admin stats semantics, duplicate pageview prevention, admin list filter/pagination honesty, import/export/settings honesty, and visit geo/browser/OS parsing.
+   - Scope guard: backend/admin may store and read detailed visit environment data, but public/frontend areas must not display privacy-adjacent details such as commenter location, browser, OS, or IP.
 
-9. SEARCH-STRATEGY-ELASTICSEARCH-BATCH-009
+9. REDIS-PG-DEBEZIUM-MQ-MINIMAL-BATCH-009
+   - Status: required portfolio/architecture batch.
+   - Includes: Redis hot article/read ranking, stats/settings cache, visit dedup/rate-limit, and one minimal real PG+Debezium+MQ flow comparable in spirit to MySQL+Canal+MQ.
+   - Scope guard: keep the MQ function tiny and verifiable; Kafka is only planned/proof unless explicitly selected.
+
+10. SEARCH-STRATEGY-DEPLOYMENT-HARDENING-BATCH-010
+   - Status: planned after core closure and the minimal portfolio stack are accepted.
+   - Includes: optional `SearchPort`/ES Strategy code with DB default, production-like deployment, environment variables, persistence, reverse proxy/static uploads, logs, backup, and health checks.
+   - Scope guard: do not require Elasticsearch service deployment for the default online path, and do not hide missing functional gaps behind deployment documentation.
+
+11. FLECBLOG-PARITY-RECHECK-BATCH-011
    - Status: planned.
-   - Includes: search strategy abstraction and optional Elasticsearch implementation if Batch 7 confirms it is worth doing before deployment.
-   - Scope guard: DB-backed search remains the default unless ES is explicitly enabled and verified.
+   - Includes: final FlecBlog parity recheck and explicit defer/implement decisions for any remaining gaps after pre-deployment functional and technology work.
 
-10. ASYNC-EVENT-PIPELINE-BATCH-010
-   - Status: planned, subject to Batch 7 audit.
-   - Initial candidates: outbox event model, article/comment/notification/mail/search-index events, RabbitMQ adapter, and a lightweight PostgreSQL CDC/Debezium proof path if it adds value without overloading deployment.
-   - Scope guard: every async path needs idempotency, retry/error visibility, and a synchronous fallback or explicit deferred risk.
-
-11. DEPLOYMENT-HARDENING-BATCH-011
-   - Status: planned.
-   - Includes: production-like deployment, environment variables, persistence, reverse proxy/static uploads, logs, backup, and health checks.
-   - Scope guard: do not hide missing functional gaps behind deployment documentation.
-
-12. FLECBLOG-PARITY-RECHECK-BATCH-012
-   - Status: planned.
-   - Includes: final FlecBlog parity recheck and explicit defer/implement decisions for any remaining gaps after the pre-deployment technical work.
+Optional architecture proof after the minimal MQ chain:
+- KAFKA-CDC-PROOF: explain Kafka first, then decide whether a Kafka-based CDC/event-stream proof is worth the extra deployment and conceptual cost.
 
 ### Open Roadmap
 
@@ -406,55 +475,82 @@ This is the fixed batch plan for the remaining work. Future agents must not regr
     - Must reconcile current implementation with the old backend refactor direction: Redis, RabbitMQ, optional Elasticsearch, PostgreSQL CDC/Debezium, lightweight DDD, Strategy/Adapter/Event/Outbox patterns.
     - Done when the roadmap is corrected, must-fix-before-deploy items are listed, and the user accepts the next implementation order.
 
-12. REDIS-FOUNDATION
-    - Planned, subject to Batch 7 audit.
-    - Initial candidates: article view count, hot articles/read ranking, site stats/cache, settings cache, idempotent/rate-limited visit collection.
-    - Done means Redis participates in real user-visible behavior and PostgreSQL remains the durable source or reconciliation target.
-    - Must avoid fake Redis usage where the application still works exactly the same without touching Redis.
+12. PRE-DEPLOYMENT-CORE-CLOSURE
+    - Open, recommended next.
+    - Combines the previously over-split article view/statistics, admin list honesty, import/export/settings honesty, and visit detail parsing work.
+    - Current evidence: article pages send `article_id` pageviews, but `articles.view_count` is not updated; site stats also need clear semantics to avoid double-counting article views and pageview events.
+    - Done means article/admin/sidebar/dashboard stats have one coherent counting model, visible filters are real or hidden, import/export/settings UI is honest, and visit geo/browser/OS details are stored/read in admin but not displayed publicly.
 
-13. SEARCH-STRATEGY-ELASTICSEARCH
-    - Planned, subject to Batch 7 audit.
-    - DB-backed search is accepted as the default v1 strategy.
-    - Elasticsearch may be added behind a `SearchPort`/strategy interface with explicit configuration, indexing, reindexing, and fallback behavior.
-    - Done means article create/update/delete affects both the active strategy and tests prove the selected strategy behavior.
+13. REDIS-PG-DEBEZIUM-MQ-MINIMAL
+    - Required portfolio/architecture work.
+    - Redis should support real ranking/cache/rate-limit behavior with PostgreSQL reconciliation and fallback.
+    - PG+Debezium+MQ should implement one simplest real flow now, comparable in spirit to min-lj Blog's MySQL+Canal+MQ, rather than staying planning-only.
+    - Kafka remains a later explain-and-proof item if the simple MQ path is not enough.
 
-14. ASYNC-EVENT-PIPELINE
-    - Planned, subject to Batch 7 audit.
-    - PostgreSQL counterpart to "MySQL + Canal + MQ" should be considered as PostgreSQL logical decoding/pgoutput or Debezium plus RabbitMQ/Kafka, but only in a lightweight, defensible scope.
-    - Initial candidates: outbox records for article/comment/notification/mail/search-index events, RabbitMQ consumer, error/retry visibility, and optional Debezium CDC proof path.
-    - Done means at least one real workflow benefits from async processing and has idempotency, retry/error handling, and verification.
+14. SEARCH-STRATEGY-DEPLOYMENT-HARDENING
+    - Open after core closure and minimal portfolio stack.
+    - Elasticsearch should be a configurable strategy with DB fallback, indexing, reindexing, and failure visibility, disabled by default for online deployment.
+    - Deployment hardening proves a clean environment can run the stack and survive restart with data/uploads intact.
 
-15. DEPLOYMENT-HARDENING
-    - Local Docker exists, but production-like deployment, persistence, reverse proxy, upload serving, logs, backup, and health checks need proof.
-    - Done when a clean environment can run the stack and survive restart with data/uploads intact.
-
-16. FLECBLOG-PARITY-RECHECK
+15. FLECBLOG-PARITY-RECHECK
     - Final audit pass against FlecBlog after the pre-deployment feature/technology work.
     - Done when every intentional difference is documented and every required missing capability is either implemented or explicitly deferred by the user.
+
+16. KAFKA-CDC-PROOF
+    - Optional proof after the minimal PG+Debezium+MQ chain is useful and the user understands whether Kafka is worth the added complexity.
 
 ## Next Locked Implementation Candidate
 
 ID: PRE-DEPLOYMENT-FEATURE-TECH-AUDIT-BATCH-007
 
-Status: ready, not started
+Status: audit complete, user review pending
 
 Reason:
-- Batch 6 is automated verified and user accepted.
-- The user observed that article `view_count` remains `0`, showing that at least one base feature may still be incomplete before deployment.
-- The old backend refactor plan includes Redis, RabbitMQ, optional Elasticsearch, PostgreSQL CDC/Debezium, lightweight DDD, Strategy/Adapter/Event/Outbox patterns, and these need objective re-evaluation against current code.
-- This next batch must stay limited to audit/roadmap correction; do not implement Redis, ES, MQ, CDC, or deployment code during the audit.
+- Batch 7 found that several broad loops are closed at baseline level, but the remaining work should be grouped into fewer, larger batches instead of many tiny slices.
+- The next implementation batch should close core user-visible gaps together: article view/statistics semantics, admin filter honesty, import/export/settings honesty, and backend/admin-only visit geo/browser/OS parsing.
+- Redis and a minimal PG+Debezium+MQ flow are required portfolio capabilities and should be implemented soon; Kafka can remain a later explain-and-proof item if it adds too much complexity.
 
-Before coding the next batch, fill this section:
-- Audit entry pages and API routes:
-- Current functional gaps:
-- Current technology gaps:
-- Redis candidate flows and recommendation:
-- Elasticsearch strategy recommendation:
-- PostgreSQL CDC / Debezium / RabbitMQ/Kafka recommendation:
-- Must-fix-before-deploy list:
-- Optional portfolio-enhancement list:
-- Post-deploy deferred list:
-- Updated batch order:
+Audit entry pages and API routes:
+- Public article detail: `/posts/[slug]`, `GET /api/v1/articles/{slug}`, `POST /api/v1/collect`.
+- Public stats/sidebar: `GET /api/v1/stats/site`.
+- Admin stats/visits: `GET /api/v1/admin/stats/dashboard`, `/trend`, `/visits`.
+- Admin article/comment/file lists and settings/import/export pages.
+- Admin/public notifications, feedback, subscriptions, RSS reader, and system pages.
+
+Current functional gaps:
+- See Active Work Slot `Current functional gaps` for the detailed list.
+
+Current technology gaps:
+- Redis, Elasticsearch, MQ, CDC, Debezium, and async outbox workers are not implemented in the active stack.
+
+Redis candidate flows and recommendation:
+- Candidate flows: hot articles/read ranking, stats/settings cache, visit idempotency/rate limiting, and optional non-critical Redis Pub/Sub via an `@RedisTopic`-style auto-subscription pattern.
+- Recommendation: include Redis in the near-term portfolio batch with real ranking/cache/rate-limit behavior and PostgreSQL reconciliation/fallback.
+
+Elasticsearch strategy recommendation:
+- DB-backed search remains default; ES should be implemented as configurable strategy code with indexing/reindex/fallback tests and disabled default deployment, likely together with deployment hardening unless pulled earlier.
+
+PostgreSQL CDC / Debezium / RabbitMQ/Kafka recommendation:
+- Implement one minimal real PG+Debezium+MQ flow soon, comparable in spirit to MySQL+Canal+MQ.
+- Kafka is for durable, high-throughput event streaming/replay and can stay as later explanation/proof if it is too complex now.
+
+Must-fix-before-deploy list:
+- PRE-DEPLOYMENT-CORE-CLOSURE: article stats, admin list honesty, import/export/settings honesty, and backend/admin-only visit geo/browser/OS parsing with public privacy masking.
+- REDIS-PG-DEBEZIUM-MQ-MINIMAL: Redis ranking/cache/rate-limit plus one tiny real PG+Debezium+MQ function.
+- SEARCH-STRATEGY-DEPLOYMENT-HARDENING: ES Strategy code if still desired, then production-like deployment proof.
+
+Required portfolio-enhancement list:
+- Redis ranking/cache/rate-limit and minimal PG+Debezium+MQ event chain.
+- Elasticsearch strategy code with DB default.
+
+Post-deploy deferred list:
+- True OAuth callbacks, scheduled RSS refresh, full remote/relative import assets, rich WeChat formatting, Kafka/full CDC proof.
+
+Updated batch order:
+- Batch 8: PRE-DEPLOYMENT-CORE-CLOSURE.
+- Batch 9: REDIS-PG-DEBEZIUM-MQ-MINIMAL.
+- Batch 10: SEARCH-STRATEGY-DEPLOYMENT-HARDENING.
+- Batch 11: FLECBLOG-PARITY-RECHECK.
 
 ## Handoff Protocol
 
