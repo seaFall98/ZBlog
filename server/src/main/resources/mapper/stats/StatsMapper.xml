@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.stats.infrastructure.mybatis.StatsMapper">
+
+  <select id="countPublishedArticles" resultType="long">
+    select count(*) from articles where status = 'PUBLISHED'
+  </select>
+
+  <select id="countVisibleComments" resultType="long">
+    select count(*) from comments where is_deleted = false
+  </select>
+
+  <select id="countVisibleFriends" resultType="long">
+    select count(*)
+    from friends f
+    left join friend_types ft on ft.id = f.type_id
+    where f.is_pending = false and (ft.is_visible = true or ft.id is null)
+  </select>
+
+  <select id="countPublishedCategories" resultType="long">
+    select count(distinct category_id)
+    from articles
+    where status = 'PUBLISHED' and category_id is not null
+  </select>
+
+  <select id="countPublishedTags" resultType="long">
+    select count(distinct at.tag_id)
+    from article_tags at
+    join articles a on a.id = at.article_id
+    where a.status = 'PUBLISHED'
+  </select>
+
+  <select id="countPageviewEvents" resultType="long">
+    select count(*) from visit_events where event_type = 'pageview'
+  </select>
+
+  <select id="countPublishedWords" resultType="long">
+    select coalesce(sum(length(content_text)), 0) from articles where status = 'PUBLISHED'
+  </select>
+
+  <select id="countVisitors" resultType="long">
+    select count(distinct visitor_id) from visit_events
+  </select>
+
+  <select id="countOnlineVisitors" resultType="long">
+    select count(distinct visitor_id) from visit_events where created_at &gt;= #{since}
+  </select>
+
+  <select id="countMoments" resultType="long">
+    select count(*) from moments
+  </select>
+
+  <select id="countVisitorsBetween" resultType="long">
+    select count(distinct visitor_id) from visit_events where created_at &gt;= #{start} and created_at &lt; #{end}
+  </select>
+
+  <select id="countPageviewsBetween" resultType="long">
+    select count(*) from visit_events where event_type = 'pageview' and created_at &gt;= #{start} and created_at &lt; #{end}
+  </select>
+
+  <select id="publishedArticleDates" resultType="map">
+    select published_at
+    from articles
+    where status = 'PUBLISHED' and published_at is not null
+    order by published_at desc
+  </select>
+
+  <select id="countActiveUsers" resultType="long">
+    select count(*) from users where deleted_at is null
+  </select>
+
+  <select id="countTodayComments" resultType="long">
+    select count(*) from comments where created_at &gt;= current_date
+  </select>
+
+  <select id="countTodayUsers" resultType="long">
+    select count(*) from users where created_at &gt;= current_date and deleted_at is null
+  </select>
+
+  <select id="dailyVisitGroups" resultType="map">
+    select cast(created_at as date) as period,
+      count(*) as pv,
+      count(distinct visitor_id) as uv
+    from visit_events
+    where event_type = 'pageview' and created_at &gt;= #{start} and created_at &lt; #{end}
+    group by cast(created_at as date)
+  </select>
+
+  <select id="monthlyVisitRows" resultType="map">
+    select visitor_id, created_at
+    from visit_events
+    where event_type = 'pageview' and created_at &gt;= #{start} and created_at &lt; #{end}
+  </select>
+
+  <select id="categoryStats" resultType="map">
+    select c.name, count(a.id) as count
+    from categories c
+    left join articles a on a.category_id = c.id and a.status = 'PUBLISHED'
+    group by c.id, c.name
+    order by count desc, c.id
+  </select>
+
+  <select id="tagStats" resultType="map">
+    select t.name, count(a.id) as count
+    from tags t
+    left join article_tags at on at.tag_id = t.id
+    left join articles a on a.id = at.article_id and a.status = 'PUBLISHED'
+    group by t.id, t.name
+    order by count desc, t.id
+  </select>
+
+  <select id="visitRows" resultType="map">
+    select id, visitor_id, ip, url, user_agent, referrer, event_type, event_name, created_at
+    from visit_events
+    <where>
+      <if test="keyword != null">
+        and (lower(url) like #{keyword} or lower(title) like #{keyword} or lower(referrer) like #{keyword})
+      </if>
+      <if test="visitorId != null">
+        and visitor_id = #{visitorId}
+      </if>
+      <if test="ip != null">
+        and ip = #{ip}
+      </if>
+      <if test="excludeIps != null and excludeIps.size() > 0">
+        <foreach collection="excludeIps" item="excluded">
+          and ip &lt;&gt; #{excluded}
+        </foreach>
+      </if>
+      <if test="startInclusive != null">
+        and created_at &gt;= #{startInclusive}
+      </if>
+      <if test="endExclusive != null">
+        and created_at &lt; #{endExclusive}
+      </if>
+    </where>
+    order by created_at desc, id desc
+  </select>
+</mapper>

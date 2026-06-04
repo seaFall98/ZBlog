@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.content.infrastructure.mybatis.ArticleHotArticleMapper">
+
+  <sql id="baseSelect">
+    select a.id, a.title, a.slug, '/posts/' || a.slug as url,
+      a.content_html as content, a.content_markdown, a.summary, a.cover_url as cover,
+      a.status, a.is_top, a.is_essence, a.is_outdated, a.view_count, a.comment_count,
+      a.location, a.published_at as publish_time, a.updated_at as update_time,
+      c.id as category_id, c.name as category_name, c.slug as category_slug
+    from articles a
+    left join categories c on c.id = a.category_id
+  </sql>
+
+  <select id="hotPublished" resultType="map" flushCache="true" useCache="false">
+    <include refid="baseSelect" />
+    where a.status = 'PUBLISHED'
+    order by a.view_count desc, a.published_at desc, a.id desc
+    limit #{limit}
+  </select>
+
+  <select id="findPublishedByIds" resultType="map" flushCache="true" useCache="false">
+    <include refid="baseSelect" />
+    where a.status = 'PUBLISHED'
+      and a.id in
+      <foreach collection="ids" item="id" open="(" separator="," close=")">
+        #{id}
+      </foreach>
+  </select>
+
+  <select id="findTagsByArticleIds" resultType="map" flushCache="true" useCache="false">
+    select at.article_id, t.id, t.name, '/tag/' || t.slug as url
+    from tags t
+    join article_tags at on at.tag_id = t.id
+    where at.article_id in
+    <foreach collection="articleIds" item="articleId" open="(" separator="," close=")">
+      #{articleId}
+    </foreach>
+    order by at.article_id, t.id
+  </select>
+</mapper>

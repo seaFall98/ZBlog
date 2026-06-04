@@ -1,0 +1,24 @@
+zblog:
+  cache:
+    site-stats-cache-seconds: 0
+  ai:
+    allow-private-network: true
+  tools:
+    allow-private-network: true
+  rss:
+    allow-private-network: true
+  security:
+    jwt-secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    token-ttl-minutes: 30
+    bootstrap-admin:
+      username: admin
+      password: admin123456
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:zblog;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  flyway:
+    enabled: true

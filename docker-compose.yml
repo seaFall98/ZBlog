@@ -1,0 +1,170 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zblog-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${ZBLOG_POSTGRES_DB:-zblog}
+      POSTGRES_USER: ${ZBLOG_POSTGRES_USER:-zblog}
+      POSTGRES_PASSWORD: ${ZBLOG_POSTGRES_PASSWORD:-zblog}
+    ports:
+      - "5432:5432"
+    volumes:
+      - zblog_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zblog -d zblog"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: zblog-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - zblog_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: zblog-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${ZBLOG_RABBITMQ_USERNAME:-zblog}
+      RABBITMQ_DEFAULT_PASS: ${ZBLOG_RABBITMQ_PASSWORD:-zblog}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - zblog_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.3
+    container_name: zblog-elasticsearch
+    restart: unless-stopped
+    profiles:
+      - search
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - zblog_elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  server:
+    build:
+      context: ./server
+    container_name: zblog-server
+    restart: unless-stopped
+    environment:
+      ZBLOG_DATASOURCE_URL: ${ZBLOG_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/zblog}
+      ZBLOG_DATASOURCE_USERNAME: ${ZBLOG_DATASOURCE_USERNAME:-zblog}
+      ZBLOG_DATASOURCE_PASSWORD: ${ZBLOG_DATASOURCE_PASSWORD:-zblog}
+      ZBLOG_REDIS_HOST: ${ZBLOG_REDIS_HOST:-redis}
+      ZBLOG_REDIS_PORT: ${ZBLOG_REDIS_PORT:-6379}
+      ZBLOG_REDIS_PASSWORD: ${ZBLOG_REDIS_PASSWORD:-}
+      ZBLOG_RABBITMQ_HOST: ${ZBLOG_RABBITMQ_HOST:-rabbitmq}
+      ZBLOG_RABBITMQ_PORT: ${ZBLOG_RABBITMQ_PORT:-5672}
+      ZBLOG_RABBITMQ_USERNAME: ${ZBLOG_RABBITMQ_USERNAME:-zblog}
+      ZBLOG_RABBITMQ_PASSWORD: ${ZBLOG_RABBITMQ_PASSWORD:-zblog}
+      ZBLOG_SEARCH_STRATEGY: ${ZBLOG_SEARCH_STRATEGY:-db}
+      ZBLOG_ELASTICSEARCH_URL: ${ZBLOG_ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      ZBLOG_ELASTICSEARCH_INDEX: ${ZBLOG_ELASTICSEARCH_INDEX:-zblog-articles}
+      ZBLOG_JWT_SECRET: ${ZBLOG_JWT_SECRET:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      ZBLOG_ADMIN_USERNAME: ${ZBLOG_ADMIN_USERNAME:-admin}
+      ZBLOG_ADMIN_PASSWORD: ${ZBLOG_ADMIN_PASSWORD:-admin123456}
+      ZBLOG_ARTICLE_VIEW_DEDUP_SECONDS: ${ZBLOG_ARTICLE_VIEW_DEDUP_SECONDS:-10}
+      ZBLOG_COLLECT_RATE_LIMIT_PER_MINUTE: ${ZBLOG_COLLECT_RATE_LIMIT_PER_MINUTE:-120}
+      ZBLOG_SITE_STATS_CACHE_SECONDS: ${ZBLOG_SITE_STATS_CACHE_SECONDS:-60}
+      ZBLOG_MQ_EXCHANGE: ${ZBLOG_MQ_EXCHANGE:-zblog.events}
+      ZBLOG_MQ_ARTICLE_PUBLISHED_ROUTING_KEY: ${ZBLOG_MQ_ARTICLE_PUBLISHED_ROUTING_KEY:-article.published}
+      ZBLOG_MQ_ARTICLE_PUBLISHED_QUEUE: ${ZBLOG_MQ_ARTICLE_PUBLISHED_QUEUE:-zblog.article.published}
+      ZBLOG_MQ_SEARCH_INDEX_ROUTING_KEY: ${ZBLOG_MQ_SEARCH_INDEX_ROUTING_KEY:-search.index}
+      ZBLOG_MQ_SEARCH_INDEX_QUEUE: ${ZBLOG_MQ_SEARCH_INDEX_QUEUE:-zblog.search.index}
+      ZBLOG_MAIL_MODE: ${ZBLOG_MAIL_MODE:-outbox}
+      ZBLOG_MAIL_FROM: ${ZBLOG_MAIL_FROM:-noreply@zblog.local}
+      ZBLOG_RSS_ALLOW_PRIVATE_NETWORK: ${ZBLOG_RSS_ALLOW_PRIVATE_NETWORK:-false}
+      ZBLOG_PUBLIC_SITE_URL: ${ZBLOG_PUBLIC_SITE_URL:-http://localhost:3000}
+    ports:
+      - "8080:8080"
+    volumes:
+      - zblog_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  blog:
+    build:
+      context: ./blog
+    container_name: zblog-blog
+    restart: unless-stopped
+    environment:
+      NUXT_PUBLIC_API_URL: ${NUXT_PUBLIC_API_URL:-http://localhost:8080/api/v1}
+      NUXT_API_SERVER_URL: ${NUXT_API_SERVER_URL:-http://server:8080/api/v1}
+      NUXT_PUBLIC_SITE_URL: ${NUXT_PUBLIC_SITE_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      server:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: ./admin
+    container_name: zblog-admin
+    restart: unless-stopped
+    environment:
+      API_URL: ${API_URL:-http://localhost:8080/api/v1}
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4000 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  zblog_postgres_data:
+  zblog_redis_data:
+  zblog_rabbitmq_data:
+  zblog_elasticsearch_data:
+  zblog_uploads:

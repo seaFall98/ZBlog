@@ -1,0 +1,32 @@
+/.idea/
+/server/.idea/
+/.vscode/
+/.DS_Store
+
+# Private workspace/documentation assets are kept outside the public repo.
+/.claude/
+/docs/
+/_reference/
+/CLAUDE.md
+/AGENTS.md
+
+# Runtime/build output
+node_modules/
+.nuxt/
+.output/
+dist/
+dev-dist/
+target/
+/logs/
+uploads/
+backup/
+!blog/server/routes/uploads/
+!blog/server/routes/uploads/[...path].ts
+temp_plan/
+*.tsbuildinfo
+*.log
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example

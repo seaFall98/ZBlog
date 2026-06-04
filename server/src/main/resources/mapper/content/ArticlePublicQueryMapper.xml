@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.content.infrastructure.mybatis.ArticlePublicQueryMapper">
+
+  <sql id="baseSelect">
+    select a.id, a.title, a.slug, '/posts/' || a.slug as url,
+      a.content_html as content, a.content_markdown, a.summary, a.cover_url as cover,
+      a.status, a.is_top, a.is_essence, a.is_outdated, a.view_count, a.comment_count,
+      a.location, a.published_at as publish_time, a.updated_at as update_time,
+      c.id as category_id, c.name as category_name, c.slug as category_slug
+    from articles a
+    left join categories c on c.id = a.category_id
+  </sql>
+
+  <sql id="publicWhere">
+    <where>
+      a.status = 'PUBLISHED'
+      <if test="category != null">
+        and c.slug = #{category}
+      </if>
+      <if test="tag != null">
+        and exists (select 1 from article_tags at2 join tags t2 on t2.id = at2.tag_id where at2.article_id = a.id and t2.slug = #{tag})
+      </if>
+      <if test="year != null">
+        and extract(year from a.published_at) = #{year}
+      </if>
+      <if test="month != null">
+        and extract(month from a.published_at) = #{month}
+      </if>
+    </where>
+  </sql>
+
+  <sql id="searchWhere">
+    <where>
+      a.status = 'PUBLISHED'
+      <if test="keyword != null">
+        and (lower(a.title) like #{keyword}
+          or lower(a.summary) like #{keyword}
+          or lower(a.content_text) like #{keyword})
+      </if>
+    </where>
+  </sql>
+
+  <select id="countPublic" resultType="long" flushCache="true" useCache="false">
+    select count(*)
+    from articles a
+    left join categories c on c.id = a.category_id
+    <include refid="publicWhere" />
+  </select>
+
+  <select id="listPublic" resultType="map" flushCache="true" useCache="false">
+    <include refid="baseSelect" />
+    <include refid="publicWhere" />
+    order by a.is_top desc, a.published_at desc, a.id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="findPublicBySlug" resultType="map" flushCache="true" useCache="false">
+    <include refid="baseSelect" />
+    where a.slug = #{slug} and a.status = 'PUBLISHED'
+  </select>
+
+  <select id="findFirstPublishedSlug" resultType="string" flushCache="true" useCache="false">
+    select slug
+    from articles
+    where status = 'PUBLISHED'
+    order by id
+    limit 1
+  </select>
+
+  <select id="countSearchPublic" resultType="long" flushCache="true" useCache="false">
+    select count(*)
+    from articles a
+    left join categories c on c.id = a.category_id
+    <include refid="searchWhere" />
+  </select>
+
+  <select id="searchPublic" resultType="map" flushCache="true" useCache="false">
+    <include refid="baseSelect" />
+    <include refid="searchWhere" />
+    order by a.published_at desc, a.id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="findTagsByArticleIds" resultType="map" flushCache="true" useCache="false">
+    select at.article_id, t.id, t.name, '/tag/' || t.slug as url
+    from tags t
+    join article_tags at on at.tag_id = t.id
+    where at.article_id in
+    <foreach collection="articleIds" item="articleId" open="(" separator="," close=")">
+      #{articleId}
+    </foreach>
+    order by at.article_id, t.id
+  </select>
+</mapper>

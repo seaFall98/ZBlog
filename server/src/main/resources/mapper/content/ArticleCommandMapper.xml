@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.content.infrastructure.mybatis.ArticleCommandMapper">
+
+  <insert id="insertArticle" parameterType="com.zblog.content.infrastructure.mybatis.ArticleCommandMapper$ArticleCommandInsertCommand" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into articles (
+      title, slug, content_markdown, content_html, content_text, summary, cover_url,
+      category_id, location, is_top, is_essence, is_outdated, status
+    ) values (
+      #{title}, #{slug}, #{markdown}, #{html}, #{text}, #{summary}, #{cover},
+      #{categoryId}, #{location}, #{top}, #{essence}, #{outdated}, 'DRAFT'
+    )
+  </insert>
+
+  <update id="updateArticle" parameterType="com.zblog.content.infrastructure.mybatis.ArticleCommandMapper$ArticleCommandUpdateCommand">
+    update articles
+    set title = #{title},
+        slug = #{slug},
+        content_markdown = #{markdown},
+        content_html = #{html},
+        content_text = #{text},
+        summary = #{summary},
+        cover_url = #{cover},
+        category_id = #{categoryId},
+        location = #{location},
+        is_top = #{top},
+        is_essence = #{essence},
+        is_outdated = #{outdated},
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="publishArticle">
+    update articles
+    set status = 'PUBLISHED',
+        published_at = coalesce(published_at, current_timestamp),
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="unpublishArticle">
+    update articles
+    set status = 'DRAFT',
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <delete id="deleteArticle">
+    delete from articles where id = #{id}
+  </delete>
+
+  <delete id="deleteTags">
+    delete from article_tags where article_id = #{articleId}
+  </delete>
+
+  <insert id="insertTag">
+    insert into article_tags (article_id, tag_id) values (#{articleId}, #{tagId})
+  </insert>
+</mapper>
