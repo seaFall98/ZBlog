@@ -3,7 +3,7 @@ package com.zblog.search.config;
 import com.zblog.search.application.port.SearchIndexer;
 import com.zblog.search.application.port.SearchPort;
 import com.zblog.search.infrastructure.elasticsearch.ElasticsearchSearchAdapter;
-import com.zblog.search.infrastructure.jdbc.DbSearchAdapter;
+import com.zblog.search.infrastructure.db.DbSearchAdapter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

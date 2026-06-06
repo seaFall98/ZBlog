@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.ops.infrastructure.mybatis.SystemDatabaseInfoMapper">
+  <select id="productName" resultType="string">
+    select case
+      when exists (select 1 from information_schema.schemata where schema_name = 'PUBLIC') then 'H2'
+      else 'PostgreSQL'
+    end
+  </select>
+
+  <select id="tableCount" resultType="long">
+    select count(*)
+    from information_schema.tables
+    where lower(table_schema) not in ('information_schema', 'pg_catalog')
+  </select>
+
+  <select id="ping" resultType="int">
+    select 1
+  </select>
+</mapper>

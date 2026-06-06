@@ -10,11 +10,11 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.util.StringUtils;
 
-final class UserAccountMapper {
+public final class UserAccountMapper {
 
   private UserAccountMapper() {}
 
-  static Map<String, Object> toUserMap(UserAccount user, boolean includeLinkedOauths) {
+  public static Map<String, Object> toUserMap(UserAccount user, boolean includeLinkedOauths) {
     Map<String, Object> map = new HashMap<>();
     map.put("id", user.id());
     map.put("email", user.email());

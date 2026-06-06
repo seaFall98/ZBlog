@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.content.infrastructure.mybatis.ArticleImportSupportMapper">
+  <select id="categoryIdsBySlug" resultType="long">
+    select id from categories where slug = #{slug}
+  </select>
+
+  <insert id="insertCategory" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into categories (name, slug, description, sort_order)
+    values (#{name}, #{slug}, '', 0)
+  </insert>
+
+  <select id="tagIdsBySlug" resultType="long">
+    select id from tags where slug = #{slug}
+  </select>
+
+  <insert id="insertTag" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into tags (name, slug, description)
+    values (#{name}, #{slug}, '')
+  </insert>
+
+  <select id="articleSlugExists" resultType="boolean">
+    select count(*) &gt; 0 from articles where slug = #{slug}
+  </select>
+</mapper>

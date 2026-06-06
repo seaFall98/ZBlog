@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.notification.infrastructure.mybatis.NotificationMapper">
+  <select id="countAll" resultType="long">
+    select count(*) from notifications
+  </select>
+
+  <select id="countUnread" resultType="long">
+    select count(*) from notifications where is_read = false
+  </select>
+
+  <select id="listRows" resultType="map">
+    select *
+    from notifications
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="rowsById" resultType="map">
+    select * from notifications where id = #{id}
+  </select>
+
+  <select id="countArticlePublished" resultType="long">
+    select count(*)
+    from notifications
+    where type = 'article_published' and target_id = #{articleId}
+  </select>
+
+  <select id="latestArticlePublished" resultType="map">
+    select *
+    from notifications
+    where type = 'article_published' and target_id = #{articleId}
+    order by id desc
+    limit 1
+  </select>
+
+  <insert id="insertNotification" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into notifications (type, title, content, link, data, target_id, sender)
+    values (#{type}, #{title}, #{content}, #{link}, #{data}, #{targetId}, #{sender})
+  </insert>
+
+  <update id="markRead">
+    update notifications
+    set is_read = true, read_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="markAllRead">
+    update notifications
+    set is_read = true, read_at = current_timestamp
+    where is_read = false
+  </update>
+</mapper>

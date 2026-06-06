@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.album.infrastructure.mybatis.AlbumMapper">
+  <select id="countPublicAlbums" resultType="long">
+    select count(*) from albums where is_public = true
+  </select>
+
+  <sql id="albumWithPhotoCount">
+    select a.*, coalesce(p.photo_count, 0) as photo_count
+    from albums a
+    left join (
+      select album_id, count(*) as photo_count
+      from album_photos
+      <if test="_parameter != null and publicPhotosOnly != null and publicPhotosOnly">where is_public = true</if>
+      group by album_id
+    ) p on p.album_id = a.id
+  </sql>
+
+  <select id="listPublicRows" resultType="map">
+    select a.*, coalesce(p.photo_count, 0) as photo_count
+    from albums a
+    left join (
+      select album_id, count(*) as photo_count
+      from album_photos
+      where is_public = true
+      group by album_id
+    ) p on p.album_id = a.id
+    where a.is_public = true
+    order by a.sort_order asc, a.created_at desc, a.id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="publicRowsBySlug" resultType="map">
+    select * from albums where slug = #{slug} and is_public = true
+  </select>
+
+  <sql id="adminAlbumWhere">
+    <where>
+      1 = 1
+      <if test="keyword != null">
+        and (lower(a.title) like #{keyword} or lower(a.slug) like #{keyword} or lower(coalesce(a.description, '')) like #{keyword})
+      </if>
+      <if test="isPublic != null">and a.is_public = #{isPublic}</if>
+    </where>
+  </sql>
+
+  <select id="countAdminRows" resultType="long">
+    select count(*) from albums a
+    <include refid="adminAlbumWhere"/>
+  </select>
+
+  <select id="listAdminRows" resultType="map">
+    select a.*, coalesce(p.photo_count, 0) as photo_count
+    from albums a
+    left join (
+      select album_id, count(*) as photo_count
+      from album_photos
+      group by album_id
+    ) p on p.album_id = a.id
+    <include refid="adminAlbumWhere"/>
+    order by a.sort_order asc, a.created_at desc, a.id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="albumById" resultType="map">
+    select * from albums where id = #{id}
+  </select>
+
+  <insert id="insertAlbum" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into albums (title, slug, description, cover_url, sort_order, is_public)
+    values (#{title}, #{slug}, #{description}, #{coverUrl}, #{sortOrder}, #{isPublic})
+  </insert>
+
+  <update id="updateAlbum" parameterType="map">
+    update albums
+    set title = #{title}, slug = #{slug}, description = #{description}, cover_url = #{coverUrl},
+      sort_order = #{sortOrder}, is_public = #{isPublic}, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <delete id="deleteAlbum">
+    delete from albums where id = #{id}
+  </delete>
+
+  <select id="listPhotoRows" resultType="map">
+    select * from album_photos
+    where album_id = #{albumId}
+      <if test="publicOnly">and is_public = true</if>
+    order by sort_order asc, created_at asc, id asc
+  </select>
+
+  <select id="photoById" resultType="map">
+    select * from album_photos where album_id = #{albumId} and id = #{photoId}
+  </select>
+
+  <insert id="insertPhoto" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into album_photos (album_id, file_id, image_url, title, description, sort_order, is_public, taken_at)
+    values (#{albumId}, #{fileId}, #{imageUrl}, #{title}, #{description}, #{sortOrder}, #{isPublic}, #{takenAt})
+  </insert>
+
+  <update id="updatePhoto" parameterType="map">
+    update album_photos
+    set file_id = #{fileId}, image_url = #{imageUrl}, title = #{title}, description = #{description},
+      sort_order = #{sortOrder}, is_public = #{isPublic}, taken_at = #{takenAt}, updated_at = current_timestamp
+    where id = #{photoId} and album_id = #{albumId}
+  </update>
+
+  <delete id="deletePhoto">
+    delete from album_photos where id = #{photoId} and album_id = #{albumId}
+  </delete>
+
+  <update id="updatePhotoSort">
+    update album_photos
+    set sort_order = #{sortOrder}, updated_at = current_timestamp
+    where album_id = #{albumId} and id = #{photoId}
+  </update>
+</mapper>

@@ -56,28 +56,7 @@ class BackendDddArchitectureTest {
           "com.zblog.seo.infrastructure.JdbcSeoFeedRepository",
           "com.zblog.search.infrastructure.jdbc.JdbcSearchStatusRepository");
 
-  private static final Set<String> RETAINED_JDBC_CLASSES =
-      Set.of(
-          "com.zblog.album.infrastructure.JdbcAlbumRepository",
-          "com.zblog.comment.infrastructure.JdbcCommentRepository",
-          "com.zblog.content.infrastructure.JdbcArticleImportSupportRepository",
-          "com.zblog.event.infrastructure.JdbcEventConsumptionRepository",
-          "com.zblog.event.infrastructure.JdbcEventOutboxRepository",
-          "com.zblog.feedback.infrastructure.JdbcFeedbackRepository",
-          "com.zblog.friend.infrastructure.JdbcFriendRepository",
-          "com.zblog.guestbook.infrastructure.JdbcGuestbookRepository",
-          "com.zblog.identity.infrastructure.JdbcPasswordResetTokenRepository",
-          "com.zblog.identity.infrastructure.JdbcUserRepository",
-          "com.zblog.mail.infrastructure.JdbcMailOutboxRepository",
-          "com.zblog.media.infrastructure.JdbcFileRepository",
-          "com.zblog.moment.infrastructure.JdbcMomentRepository",
-          "com.zblog.notification.infrastructure.JdbcNotificationRepository",
-          "com.zblog.ops.infrastructure.JdbcSystemDatabaseInfoRepository",
-          "com.zblog.rssfeed.infrastructure.JdbcRssFeedRepository",
-          "com.zblog.site.infrastructure.JdbcMenuRepository",
-          "com.zblog.site.infrastructure.JdbcSettingRepository",
-          "com.zblog.subscription.infrastructure.JdbcSubscriberRepository",
-          "com.zblog.taxonomy.infrastructure.JdbcTaxonomyRepository");
+  private static final Set<String> RETAINED_JDBC_CLASSES = Set.of();
 
   @Test
   void domainPackagesStayFreeOfFrameworkAndAdapterImports() throws IOException {
@@ -267,7 +246,7 @@ class BackendDddArchitectureTest {
 
   @Test
   void contentInfrastructureUsesFocusedArticleAdapters() throws Exception {
-    assertThat(Class.forName("com.zblog.content.infrastructure.JdbcArticleImportSupportRepository")).isNotNull();
+    assertThat(Class.forName("com.zblog.content.infrastructure.mybatis.MyBatisArticleImportSupportRepository")).isNotNull();
     assertThat(Class.forName("com.zblog.content.infrastructure.mybatis.MyBatisArticleAdminQueryRepository")).isNotNull();
     assertThat(Class.forName("com.zblog.content.infrastructure.mybatis.MyBatisArticlePublicQueryRepository")).isNotNull();
     assertThat(Class.forName("com.zblog.content.infrastructure.mybatis.MyBatisArticleHotArticleRepository")).isNotNull();
@@ -283,15 +262,14 @@ class BackendDddArchitectureTest {
   }
 
   @Test
-  void remainingJdbcAdaptersAreExplicitlyRetainedForFutureBatches() throws IOException {
+  void noJdbcRepositoriesRemainAfterBatch22() throws IOException {
     Set<String> jdbcClasses =
         javaSources().stream()
             .filter(source -> source.getFileName().toString().startsWith("Jdbc"))
             .map(source -> "com.zblog." + SOURCE_ROOT.relativize(source).toString().replace('\\', '.').replace(".java", ""))
             .collect(java.util.stream.Collectors.toSet());
 
-    assertThat(jdbcClasses).doesNotContainAnyElementsOf(OBSOLETE_BATCH21_JDBC_CLASSES);
-    assertThat(jdbcClasses).isSubsetOf(RETAINED_JDBC_CLASSES);
+    assertThat(jdbcClasses).isEmpty();
   }
 
   private static void assertConstructorParameterTypes(String className, String... expectedTypes)

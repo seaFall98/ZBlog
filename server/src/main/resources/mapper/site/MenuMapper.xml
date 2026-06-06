@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.site.infrastructure.mybatis.MenuMapper">
+  <sql id="menuColumns">
+    id, type, parent_id, title, url, icon, sort_order
+  </sql>
+
+  <select id="findAllRows" resultType="map">
+    select <include refid="menuColumns"/>
+    from menus
+    order by type, sort_order, id
+  </select>
+
+  <select id="rowsById" resultType="map">
+    select <include refid="menuColumns"/>
+    from menus
+    where id = #{id}
+  </select>
+
+  <insert id="insertMenu" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into menus (type, parent_id, title, url, icon, sort_order)
+    values (#{type}, #{parentId}, #{title}, #{url}, #{icon}, #{sort})
+  </insert>
+
+  <update id="updateMenu" parameterType="map">
+    update menus
+    set type = #{type}, parent_id = #{parentId}, title = #{title}, url = #{url}, icon = #{icon}, sort_order = #{sort}
+    where id = #{id}
+  </update>
+
+  <delete id="deleteChildren">
+    delete from menus where parent_id = #{id}
+  </delete>
+
+  <update id="detachChildren">
+    update menus set parent_id = null where parent_id = #{id}
+  </update>
+
+  <delete id="deleteMenu">
+    delete from menus where id = #{id}
+  </delete>
+</mapper>

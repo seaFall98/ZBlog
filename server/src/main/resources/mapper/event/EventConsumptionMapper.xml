@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.event.infrastructure.mybatis.EventConsumptionMapper">
+  <select id="countConsumed" resultType="long">
+    select count(*)
+    from event_consumptions
+    where event_id = #{eventId} and consumer_name = #{consumerName}
+  </select>
+
+  <insert id="insertConsumed">
+    insert into event_consumptions (event_id, consumer_name)
+    values (#{eventId}, #{consumerName})
+  </insert>
+</mapper>

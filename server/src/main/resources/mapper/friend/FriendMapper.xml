@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.friend.infrastructure.mybatis.FriendMapper">
+  <select id="listTypes" resultType="map">
+    select ft.id, ft.name, ft.sort_order as sort, ft.is_visible,
+      count(f.id) as count
+    from friend_types ft
+    left join friends f on f.type_id = ft.id
+    group by ft.id, ft.name, ft.sort_order, ft.is_visible
+    order by ft.sort_order, ft.id
+  </select>
+
+  <insert id="insertType" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into friend_types (name, sort_order, is_visible)
+    values (#{name}, #{sort}, #{visible})
+  </insert>
+
+  <select id="typeById" resultType="map">
+    select ft.id, ft.name, ft.sort_order as sort, ft.is_visible,
+      count(f.id) as count
+    from friend_types ft
+    left join friends f on f.type_id = ft.id
+    where ft.id = #{id}
+    group by ft.id, ft.name, ft.sort_order, ft.is_visible
+  </select>
+
+  <update id="updateType">
+    update friend_types
+    set name = #{name}, sort_order = #{sort}, is_visible = #{visible}
+    where id = #{id}
+  </update>
+
+  <delete id="deleteType">
+    delete from friend_types where id = #{id}
+  </delete>
+
+  <sql id="friendAdminProjection">
+    select f.id, f.name, f.url, f.description, f.avatar, f.screenshot,
+      f.sort_order as sort, f.type_id, ft.name as type_name,
+      f.is_invalid, f.is_pending, f.rss_url, f.accessible
+    from friends f
+    left join friend_types ft on ft.id = f.type_id
+  </sql>
+
+  <select id="listAdmin" resultType="map">
+    <include refid="friendAdminProjection"/>
+    order by f.is_pending desc, f.sort_order, f.id
+  </select>
+
+  <select id="friendById" resultType="map">
+    <include refid="friendAdminProjection"/>
+    where f.id = #{id}
+  </select>
+
+  <insert id="insertFriend" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into friends (
+      name, url, description, avatar, screenshot, sort_order, type_id,
+      is_invalid, is_pending, rss_url, accessible
+    ) values (
+      #{name}, #{url}, #{description}, #{avatar}, #{screenshot}, #{sort}, #{typeId},
+      #{invalid}, #{pending}, #{rssUrl}, #{accessible}
+    )
+  </insert>
+
+  <update id="updateFriend" parameterType="map">
+    update friends
+    set name = #{name}, url = #{url}, description = #{description}, avatar = #{avatar}, screenshot = #{screenshot},
+      sort_order = #{sort}, type_id = #{typeId}, is_invalid = #{invalid}, is_pending = #{pending},
+      rss_url = #{rssUrl}, accessible = #{accessible}, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <delete id="deleteFriend">
+    delete from friends where id = #{id}
+  </delete>
+
+  <select id="groupedPublicRows" resultType="map">
+    select f.id, f.name, f.url, f.description, f.avatar, f.screenshot,
+      f.sort_order as sort, f.type_id, ft.name as type_name, ft.sort_order as type_sort,
+      f.is_invalid
+    from friends f
+    left join friend_types ft on ft.id = f.type_id
+    where f.is_pending = false and (ft.is_visible = true or ft.id is null)
+    order by ft.sort_order, f.sort_order, f.id
+  </select>
+</mapper>

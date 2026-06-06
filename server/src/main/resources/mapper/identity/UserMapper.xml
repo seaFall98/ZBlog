@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.identity.infrastructure.mybatis.UserMapper">
+  <sql id="userColumns">
+    id, email, password_hash, nickname, avatar, badge, website, role, is_enabled,
+    deleted_at, last_login, github_id, google_id, qq_id, microsoft_id, feishu_open_id,
+    created_at, updated_at
+  </sql>
+
+  <select id="rowsByEmail" resultType="map">
+    select <include refid="userColumns"/>
+    from users
+    where email = #{email}
+  </select>
+
+  <select id="rowsById" resultType="map">
+    select <include refid="userColumns"/>
+    from users
+    where id = #{id}
+  </select>
+
+  <select id="countByEmail" resultType="int">
+    select count(*) from users where email = #{email}
+  </select>
+
+  <insert id="insertUser" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into users (email, password_hash, nickname, avatar, badge, website, role, is_enabled)
+    values (#{email}, #{passwordHash}, #{nickname}, #{avatar}, #{badge}, #{website}, #{role}, #{enabled})
+  </insert>
+
+  <update id="updateLastLogin">
+    update users set last_login = current_timestamp where id = #{id}
+  </update>
+
+  <update id="updateProfile">
+    update users
+    set email = #{email}, nickname = #{nickname}, avatar = #{avatar}, badge = #{badge}, website = #{website}, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="updatePassword">
+    update users set password_hash = #{passwordHash}, updated_at = current_timestamp where id = #{id}
+  </update>
+
+  <update id="softDelete">
+    update users set deleted_at = current_timestamp, is_enabled = false where id = #{id}
+  </update>
+
+  <update id="clearOauthProvider">
+    update users
+    <set>
+      <choose>
+        <when test="column == 'github_id'">github_id = '',</when>
+        <when test="column == 'google_id'">google_id = '',</when>
+        <when test="column == 'qq_id'">qq_id = '',</when>
+        <when test="column == 'microsoft_id'">microsoft_id = '',</when>
+        <when test="column == 'feishu_open_id'">feishu_open_id = '',</when>
+      </choose>
+      updated_at = current_timestamp
+    </set>
+    where id = #{id}
+  </update>
+
+  <sql id="adminWhere">
+    <where>
+      <choose>
+        <when test="deleted">deleted_at is not null</when>
+        <otherwise>deleted_at is null</otherwise>
+      </choose>
+      <if test="keyword != null">and (email like #{keyword} or nickname like #{keyword})</if>
+      <if test="role != null">and role = #{role}</if>
+      <if test="enabled != null">and is_enabled = #{enabled}</if>
+      <choose>
+        <when test="loginMethod == 'password'">and password_hash is not null and password_hash &lt;&gt; ''</when>
+        <when test="loginMethod == 'github'">and github_id &lt;&gt; ''</when>
+        <when test="loginMethod == 'google'">and google_id &lt;&gt; ''</when>
+        <when test="loginMethod == 'qq'">and qq_id &lt;&gt; ''</when>
+        <when test="loginMethod == 'microsoft'">and microsoft_id &lt;&gt; ''</when>
+      </choose>
+    </where>
+  </sql>
+
+  <select id="countAdminRows" resultType="long">
+    select count(*) from users
+    <include refid="adminWhere"/>
+  </select>
+
+  <select id="listAdminRows" resultType="map">
+    select <include refid="userColumns"/>
+    from users
+    <include refid="adminWhere"/>
+    order by id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <update id="updateAdmin" parameterType="map">
+    update users
+    set email = #{email}, nickname = #{nickname}, avatar = #{avatar}, badge = #{badge}, website = #{website},
+      role = #{role}, is_enabled = #{enabled}, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+</mapper>

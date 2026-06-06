@@ -30,11 +30,11 @@ class Batch21Phase5PersistenceCleanupTest {
   }
 
   @Test
-  void retainedJdbcImplementationsRemainIntentionalAndActiveWhereRequired() {
-    assertThat(classExists("com.zblog.content.infrastructure.JdbcArticleImportSupportRepository")).isTrue();
-    assertThat(classExists("com.zblog.ops.infrastructure.JdbcSystemDatabaseInfoRepository")).isTrue();
+  void formerRetainedJdbcImplementationsAreMigratedByBatch22() {
+    assertThat(classExists("com.zblog.content.infrastructure.JdbcArticleImportSupportRepository")).isFalse();
+    assertThat(classExists("com.zblog.ops.infrastructure.JdbcSystemDatabaseInfoRepository")).isFalse();
     assertThat(AopUtils.getTargetClass(articleImportSupportRepository).getName())
-        .isEqualTo("com.zblog.content.infrastructure.JdbcArticleImportSupportRepository");
+        .isEqualTo("com.zblog.content.infrastructure.mybatis.MyBatisArticleImportSupportRepository");
   }
 
   @Test
