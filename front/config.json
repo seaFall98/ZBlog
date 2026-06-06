@@ -1,0 +1,65 @@
+{
+  "routes": [
+    {
+      "path": "/",
+      "src": "src/pages/Index.tsx"
+    },
+    {
+      "path": "/blog",
+      "src": "src/pages/BlogList.tsx"
+    },
+    {
+      "path": "/blog/detail",
+      "src": "src/pages/BlogDetail.tsx"
+    },
+    {
+      "path": "/categories",
+      "src": "src/pages/Categories.tsx"
+    },
+    {
+      "path": "/tags",
+      "src": "src/pages/Tags.tsx"
+    },
+    {
+      "path": "/archive",
+      "src": "src/pages/Archive.tsx"
+    },
+    {
+      "path": "/search",
+      "src": "src/pages/Search.tsx"
+    },
+    {
+      "path": "/gallery",
+      "src": "src/pages/Gallery.tsx"
+    },
+    {
+      "path": "/gallery/detail",
+      "src": "src/pages/GalleryDetail.tsx"
+    },
+    {
+      "path": "/moments",
+      "src": "src/pages/Moments.tsx"
+    },
+    {
+      "path": "/guestbook",
+      "src": "src/pages/Guestbook.tsx"
+    },
+    {
+      "path": "/links",
+      "src": "src/pages/Links.tsx"
+    },
+    {
+      "path": "/about",
+      "src": "src/pages/About.tsx"
+    },
+    {
+      "path": "/stats",
+      "src": "src/pages/Stats.tsx"
+    },
+    {
+      "path": "/login",
+      "src": "src/pages/Login.tsx"
+    }
+  ],
+  "components": []
+}
