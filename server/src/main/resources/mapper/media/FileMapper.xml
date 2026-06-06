@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.media.infrastructure.mybatis.FileMapper">
+  <sql id="usedStatusSql">
+    case when f.status = 1
+      or exists (select 1 from articles a where a.cover_url = f.file_url or a.content_markdown like concat('%', f.file_url, '%') or a.content_html like concat('%', f.file_url, '%'))
+      or exists (select 1 from settings s where s.value_text like concat('%', f.file_url, '%'))
+      or exists (select 1 from comments c where c.content like concat('%', f.file_url, '%') or c.avatar = f.file_url)
+      or exists (select 1 from feedbacks fb where fb.form_content like concat('%', f.file_url, '%') or fb.admin_reply like concat('%', f.file_url, '%'))
+      or exists (select 1 from users u where u.avatar = f.file_url)
+      or exists (select 1 from friends fr where fr.avatar = f.file_url or fr.screenshot = f.file_url)
+      or exists (select 1 from moments m where m.content_json like concat('%', f.file_url, '%'))
+      or exists (select 1 from albums al where al.cover_url = f.file_url)
+      or exists (select 1 from album_photos ap where ap.image_url = f.file_url)
+    then 1 else 0 end
+  </sql>
+
+  <sql id="fileWhere">
+    <where>
+      f.deleted_at is null
+      <if test="keyword != null">
+        and (lower(f.filename) like #{keyword} or lower(f.original_name) like #{keyword})
+      </if>
+      <if test="fileTypeLike != null">and lower(f.file_type) like #{fileTypeLike}</if>
+      <if test="status != null">and <include refid="usedStatusSql"/> = #{status}</if>
+      <if test="uploadType != null">and f.upload_type = #{uploadType}</if>
+      <if test="minSize != null">and f.file_size &gt;= #{minSize}</if>
+      <if test="maxSize != null">and f.file_size &lt;= #{maxSize}</if>
+      <if test="start != null">and f.upload_time &gt;= #{start}</if>
+      <if test="end != null">and f.upload_time &lt; #{end}</if>
+    </where>
+  </sql>
+
+  <insert id="insertFile" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into files (filename, original_name, file_url, file_type, file_size, upload_type)
+    values (#{filename}, #{originalName}, #{fileUrl}, #{fileType}, #{fileSize}, #{uploadType})
+  </insert>
+
+  <select id="countRows" resultType="long">
+    select count(*) from files f
+    <include refid="fileWhere"/>
+  </select>
+
+  <select id="listRows" resultType="map">
+    select f.id, f.filename, f.original_name, f.file_url, f.file_type, f.file_size,
+      f.upload_type, f.upload_time,
+      <include refid="usedStatusSql"/> as status
+    from files f
+    <include refid="fileWhere"/>
+    order by f.upload_time desc, f.id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="activeFilenames" resultType="string">
+    select filename from files where id = #{id} and deleted_at is null
+  </select>
+
+  <update id="markDeleted">
+    update files set deleted_at = current_timestamp where id = #{id}
+  </update>
+</mapper>

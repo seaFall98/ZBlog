@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.guestbook.infrastructure.mybatis.GuestbookMapper">
+  <insert id="insertMessage" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into guestbook_messages (nickname, email, content, status, pinned, ip, user_agent)
+    values (#{nickname}, #{email}, #{content}, 'approved', false, #{ip}, #{userAgent})
+  </insert>
+
+  <select id="countPublic" resultType="long">
+    select count(*) from guestbook_messages where deleted = false and status = 'approved'
+  </select>
+
+  <select id="listPublic" resultType="map">
+    select *
+    from guestbook_messages
+    where deleted = false and status = 'approved'
+    order by pinned desc, created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <sql id="adminWhere">
+    <where>
+      deleted = false
+      <if test="keyword != null">
+        and (lower(nickname) like #{keyword} or lower(content) like #{keyword} or lower(coalesce(email, '')) like #{keyword})
+      </if>
+      <if test="status != null">and status = #{status}</if>
+      <if test="pinned != null">and pinned = #{pinned}</if>
+      <if test="start != null">and created_at &gt;= #{start}</if>
+      <if test="end != null">and created_at &lt; #{end}</if>
+    </where>
+  </sql>
+
+  <select id="countAdmin" resultType="long">
+    select count(*) from guestbook_messages
+    <include refid="adminWhere"/>
+  </select>
+
+  <select id="listAdmin" resultType="map">
+    select *
+    from guestbook_messages
+    <include refid="adminWhere"/>
+    order by pinned desc, created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <update id="updateStatus">
+    update guestbook_messages
+    set status = #{status}, admin_note = #{adminNote}, updated_at = current_timestamp
+    where id = #{id} and deleted = false
+  </update>
+
+  <update id="updatePinned">
+    update guestbook_messages
+    set pinned = #{pinned}, updated_at = current_timestamp
+    where id = #{id} and deleted = false
+  </update>
+
+  <update id="delete">
+    update guestbook_messages
+    set deleted = true, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <select id="rowsById" resultType="map">
+    select * from guestbook_messages where id = #{id} and deleted = false
+  </select>
+</mapper>

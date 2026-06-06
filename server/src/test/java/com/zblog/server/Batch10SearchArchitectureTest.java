@@ -19,7 +19,7 @@ class Batch10SearchArchitectureTest {
     assertThat(Class.forName("com.zblog.search.controller.SearchAdminController")).isNotNull();
     assertThat(Class.forName("com.zblog.search.domain.SearchDocument")).isNotNull();
     assertThat(Class.forName("com.zblog.search.domain.SearchStrategy")).isNotNull();
-    assertThat(Class.forName("com.zblog.search.infrastructure.jdbc.DbSearchAdapter")).isNotNull();
+    assertThat(Class.forName("com.zblog.search.infrastructure.db.DbSearchAdapter")).isNotNull();
     assertThat(Class.forName("com.zblog.search.infrastructure.elasticsearch.ElasticsearchSearchAdapter")).isNotNull();
     assertThat(Class.forName("com.zblog.search.infrastructure.messaging.SearchIndexEventConsumer")).isNotNull();
   }
@@ -32,7 +32,7 @@ class Batch10SearchArchitectureTest {
 
     assertThat(fieldTypes).contains("com.zblog.search.application.port.SearchPort");
     assertThat(fieldTypes).contains("com.zblog.search.application.port.SearchIndexer");
-    assertThat(fieldTypes).doesNotContain("com.zblog.search.infrastructure.jdbc.DbSearchAdapter");
+    assertThat(fieldTypes).doesNotContain("com.zblog.search.infrastructure.db.DbSearchAdapter");
     assertThat(fieldTypes).doesNotContain("com.zblog.search.infrastructure.elasticsearch.ElasticsearchSearchAdapter");
   }
 

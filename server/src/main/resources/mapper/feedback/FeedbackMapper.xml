@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.feedback.infrastructure.mybatis.FeedbackMapper">
+  <insert id="insertFeedback" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into feedbacks (ticket_no, report_url, report_type, form_content, email, user_agent, ip)
+    values (#{ticketNo}, #{reportUrl}, #{reportType}, #{formContentJson}, #{email}, #{userAgent}, #{ip})
+  </insert>
+
+  <select id="rowsByTicket" resultType="map">
+    select * from feedbacks where ticket_no = #{ticketNo} and deleted_at is null
+  </select>
+
+  <sql id="adminWhere">
+    <where>
+      deleted_at is null
+      <if test="keyword != null">
+        and (lower(ticket_no) like #{keyword} or lower(report_url) like #{keyword} or lower(email) like #{keyword})
+      </if>
+      <if test="reportType != null">and report_type = #{reportType}</if>
+      <if test="status != null">and status = #{status}</if>
+      <if test="start != null">and feedback_time &gt;= #{start}</if>
+      <if test="end != null">and feedback_time &lt; #{end}</if>
+    </where>
+  </sql>
+
+  <select id="countAdmin" resultType="long">
+    select count(*) from feedbacks
+    <include refid="adminWhere"/>
+  </select>
+
+  <select id="listAdmin" resultType="map">
+    select * from feedbacks
+    <include refid="adminWhere"/>
+    order by feedback_time desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="rowsById" resultType="map">
+    select * from feedbacks where id = #{id} and deleted_at is null
+  </select>
+
+  <update id="update">
+    update feedbacks
+    set status = #{status}, admin_reply = #{reply},
+      reply_time = case when #{reply} &lt;&gt; '' then current_timestamp else reply_time end
+    where id = #{id} and deleted_at is null
+  </update>
+
+  <update id="delete">
+    update feedbacks set deleted_at = current_timestamp where id = #{id}
+  </update>
+
+  <select id="ownerEmailValues" resultType="string">
+    select value_text from settings where key_name = 'basic.author_email'
+  </select>
+</mapper>

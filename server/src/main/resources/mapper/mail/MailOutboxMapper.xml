@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.mail.infrastructure.mybatis.MailOutboxMapper">
+  <insert id="insertMail" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into mail_outbox (audience, mail_type, recipient, subject, body, status)
+    values (#{audience}, #{type}, #{recipient}, #{subject}, #{body}, 'pending')
+  </insert>
+
+  <update id="markSent">
+    update mail_outbox
+    set status = 'sent', sent_at = current_timestamp, error_message = null, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="markFailed">
+    update mail_outbox
+    set status = 'failed', error_message = #{errorMessage}, next_attempt_at = current_timestamp, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <select id="countRows" resultType="long">
+    select count(*)
+    from mail_outbox
+    <where>
+      <if test="status != null">status = #{status}</if>
+    </where>
+  </select>
+
+  <select id="listRows" resultType="map">
+    select id, audience, mail_type, recipient, subject, status, error_message,
+      attempts, last_attempt_at, next_attempt_at, created_at, sent_at, updated_at
+    from mail_outbox
+    <where>
+      <if test="status != null">status = #{status}</if>
+    </where>
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="pendingForDelivery" resultType="map">
+    select id, recipient, subject, body
+    from mail_outbox
+    where status in ('pending', 'failed')
+      and (next_attempt_at is null or next_attempt_at &lt;= current_timestamp)
+    order by created_at asc, id asc
+    limit #{limit}
+  </select>
+
+  <update id="markAttempting">
+    update mail_outbox
+    set attempts = attempts + 1, last_attempt_at = current_timestamp, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+</mapper>

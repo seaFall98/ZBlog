@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.rssfeed.infrastructure.mybatis.RssFeedMapper">
+  <sql id="adminWhere">
+    <where>
+      1 = 1
+      <if test="keyword != null">
+        and (lower(r.title) like #{keyword} or lower(r.description) like #{keyword} or lower(f.name) like #{keyword})
+      </if>
+      <if test="friendId != null">and r.friend_id = #{friendId}</if>
+      <if test="read != null">and r.is_read = #{read}</if>
+      <if test="start != null">and r.published_at &gt;= #{start}</if>
+      <if test="end != null">and r.published_at &lt; #{end}</if>
+    </where>
+  </sql>
+
+  <select id="countAdmin" resultType="long">
+    select count(*)
+    from rss_feed_articles r
+    left join friends f on f.id = r.friend_id
+    <include refid="adminWhere"/>
+  </select>
+
+  <select id="unreadCount" resultType="long">
+    select count(*) from rss_feed_articles where is_read = false
+  </select>
+
+  <select id="listAdmin" resultType="map">
+    select r.id, r.friend_id, coalesce(f.name, '') as friend_name, coalesce(f.url, '') as friend_url,
+      r.title, r.link, r.description, r.published_at, r.is_read, r.created_at
+    from rss_feed_articles r
+    left join friends f on f.id = r.friend_id
+    <include refid="adminWhere"/>
+    order by coalesce(r.published_at, r.created_at) desc, r.id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="sourceRows" resultType="map">
+    select id, name, rss_url
+    from friends
+    where rss_url is not null and rss_url &lt;&gt; '' and is_pending = false
+    order by id
+  </select>
+
+  <select id="articleIdsByFriendAndLink" resultType="long">
+    select id from rss_feed_articles where friend_id = #{friendId} and link = #{link}
+  </select>
+
+  <insert id="insertItem" parameterType="map">
+    insert into rss_feed_articles (friend_id, title, link, description, published_at, is_read)
+    values (#{friendId}, #{title}, #{link}, #{description}, #{publishedAt}, false)
+  </insert>
+
+  <update id="markSourceSuccess">
+    update friends
+    set rss_status = 'success', rss_last_fetch_at = current_timestamp, rss_last_error = '', updated_at = current_timestamp
+    where id = #{friendId}
+  </update>
+
+  <update id="markSourceFailed">
+    update friends
+    set rss_status = 'failed', rss_last_fetch_at = current_timestamp, rss_last_error = #{errorMessage}, updated_at = current_timestamp
+    where id = #{friendId}
+  </update>
+
+  <update id="markRead">
+    update rss_feed_articles set is_read = true where id = #{id}
+  </update>
+
+  <update id="markAllRead">
+    update rss_feed_articles set is_read = true where is_read = false
+  </update>
+</mapper>

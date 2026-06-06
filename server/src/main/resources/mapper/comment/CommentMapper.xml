@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.comment.infrastructure.mybatis.CommentMapper">
+  <select id="listPublicRows" resultType="map">
+    select *
+    from comments
+    where target_type = #{targetType}
+      and target_key = #{targetKey}
+      and status = 1
+      and is_deleted = false
+    order by created_at desc, id desc
+  </select>
+
+  <sql id="adminWhere">
+    <where>
+      1 = 1
+      <if test="keyword != null">
+        and (lower(content) like #{keyword}
+          or lower(nickname) like #{keyword}
+          or lower(email) like #{keyword}
+          or lower(target_key) like #{keyword})
+      </if>
+      <if test="status != null">and status = #{status}</if>
+      <if test="deleted != null">and is_deleted = #{deleted}</if>
+      <if test="sub != null and sub">and parent_id is not null</if>
+      <if test="sub != null and !sub">and parent_id is null</if>
+      <if test="start != null">and created_at &gt;= #{start}</if>
+      <if test="end != null">and created_at &lt; #{end}</if>
+    </where>
+  </sql>
+
+  <select id="countAdminRows" resultType="long">
+    select count(*) from comments
+    <include refid="adminWhere"/>
+  </select>
+
+  <select id="listAdminRows" resultType="map">
+    select * from comments
+    <include refid="adminWhere"/>
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <insert id="insertComment" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into comments (target_type, target_key, parent_id, content, nickname, email, website, avatar)
+    values (#{targetType}, #{targetKey}, #{parentId}, #{content}, #{nickname}, #{email}, #{website}, #{avatar})
+  </insert>
+
+  <insert id="insertImportedComment" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into comments (
+      target_type, target_key, parent_id, content, nickname, email, website, avatar, location, browser, os
+    ) values (
+      #{targetType}, #{targetKey}, #{parentId}, #{content}, #{nickname}, #{email}, #{website}, #{avatar},
+      #{location}, #{browser}, #{os}
+    )
+  </insert>
+
+  <update id="toggleStatus">
+    update comments
+    set status = case when status = 1 then 0 else 1 end
+    where id = #{id}
+  </update>
+
+  <update id="delete">
+    update comments
+    set is_deleted = true, deleted_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <select id="rowsById" resultType="map">
+    select * from comments where id = #{id}
+  </select>
+</mapper>

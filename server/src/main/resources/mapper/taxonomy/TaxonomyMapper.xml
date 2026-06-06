@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.taxonomy.infrastructure.mybatis.TaxonomyMapper">
+  <sql id="categoryProjection">
+    select c.id, c.name, c.slug, c.description, c.sort_order as sort,
+      count(a.id) as count,
+      '/category/' || c.slug as url
+    from categories c
+    left join articles a on a.category_id = c.id and a.status = 'PUBLISHED'
+  </sql>
+
+  <select id="listCategories" resultType="map">
+    <include refid="categoryProjection"/>
+    group by c.id, c.name, c.slug, c.description, c.sort_order
+    order by c.sort_order, c.id
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="countCategories" resultType="long">
+    select count(*) from categories
+  </select>
+
+  <select id="categoryByIdOrSlug" resultType="map">
+    <include refid="categoryProjection"/>
+    where c.slug = #{idOrSlug} or cast(c.id as varchar) = #{idOrSlug}
+    group by c.id, c.name, c.slug, c.description, c.sort_order
+  </select>
+
+  <insert id="insertCategory" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into categories (name, slug, description, sort_order)
+    values (#{name}, #{slug}, #{description}, #{sort})
+  </insert>
+
+  <update id="updateCategory">
+    update categories
+    set name = #{name}, slug = #{slug}, description = #{description}, sort_order = #{sort}, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <delete id="deleteCategory">
+    delete from categories where id = #{id}
+  </delete>
+
+  <sql id="tagProjection">
+    select t.id, t.name, t.slug, t.description,
+      count(at.article_id) as count,
+      '/tag/' || t.slug as url
+    from tags t
+    left join article_tags at on at.tag_id = t.id
+    left join articles a on a.id = at.article_id and a.status = 'PUBLISHED'
+  </sql>
+
+  <select id="listTags" resultType="map">
+    <include refid="tagProjection"/>
+    group by t.id, t.name, t.slug, t.description
+    order by t.id
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="countTags" resultType="long">
+    select count(*) from tags
+  </select>
+
+  <select id="tagByIdOrSlug" resultType="map">
+    <include refid="tagProjection"/>
+    where t.slug = #{idOrSlug} or cast(t.id as varchar) = #{idOrSlug}
+    group by t.id, t.name, t.slug, t.description
+  </select>
+
+  <insert id="insertTag" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into tags (name, slug, description)
+    values (#{name}, #{slug}, #{description})
+  </insert>
+
+  <update id="updateTag">
+    update tags
+    set name = #{name}, slug = #{slug}, description = #{description}, updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <delete id="deleteTag">
+    delete from tags where id = #{id}
+  </delete>
+</mapper>

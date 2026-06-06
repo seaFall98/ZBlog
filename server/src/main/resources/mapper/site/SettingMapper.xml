@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.site.infrastructure.mybatis.SettingMapper">
+  <select id="groupRows" resultType="map">
+    select key_name, value_text
+    from settings
+    where group_name = #{group}
+    order by key_name
+  </select>
+
+  <update id="updateValue">
+    update settings
+    set value_text = #{value}, updated_at = current_timestamp
+    where group_name = #{group} and key_name = #{key}
+  </update>
+
+  <insert id="insertValue">
+    insert into settings (group_name, key_name, value_text)
+    values (#{group}, #{key}, #{value})
+  </insert>
+</mapper>

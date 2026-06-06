@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.event.infrastructure.mybatis.EventOutboxMapper">
+  <insert id="insertArticleEvent">
+    insert into event_outbox (event_type, aggregate_type, aggregate_id, payload, status)
+    values (#{eventType}, 'article', #{aggregateId}, #{payload}, 'pending')
+  </insert>
+
+  <select id="countRows" resultType="long">
+    select count(*)
+    from event_outbox
+    <where>
+      <if test="status != null">status = #{status}</if>
+    </where>
+  </select>
+
+  <select id="listRows" resultType="map">
+    select *
+    from event_outbox
+    <where>
+      <if test="status != null">status = #{status}</if>
+    </where>
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="pendingForPublish" resultType="map">
+    select *
+    from event_outbox
+    where status in ('pending', 'failed') and attempts &lt; 3
+    order by created_at asc, id asc
+    limit 20
+  </select>
+
+  <update id="markProcessing">
+    update event_outbox
+    set status = 'processing', attempts = attempts + 1, updated_at = current_timestamp
+    where id = #{eventId}
+  </update>
+
+  <update id="markSent">
+    update event_outbox
+    set status = 'sent', sent_at = current_timestamp, error_message = null, updated_at = current_timestamp
+    where id = #{eventId}
+  </update>
+
+  <update id="markFailed">
+    update event_outbox
+    set status = 'failed', error_message = #{errorMessage}, updated_at = current_timestamp
+    where id = #{eventId}
+  </update>
+</mapper>
