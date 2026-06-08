@@ -1,30 +1,42 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import type { FormEvent } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { SearchIcon, CalendarIcon, ClockIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { posts } from "../data/mockData";
+import { queryFromSearchParams } from "../features/blog/search";
+import { usePosts } from "../features/blog/usePosts";
+import { escapeHtml, toDateText } from "../lib/text";
 
 export default function Search() {
-  const [query, setQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = queryFromSearchParams(searchParams);
+  const trimmedQuery = query.trim();
+  const { posts: results, loading } = usePosts({ keyword: trimmedQuery, pageSize: 50 });
+  const visibleResults = trimmedQuery.length > 0 ? results : [];
 
-  const results = query.trim().length > 0
-    ? posts.filter(
-        (p) =>
-          p.title.toLowerCase().includes(query.toLowerCase()) ||
-          p.excerpt.toLowerCase().includes(query.toLowerCase()) ||
-          p.tags.some((t) => t.toLowerCase().includes(query.toLowerCase())) ||
-          p.category.toLowerCase().includes(query.toLowerCase())
-      )
-    : [];
+  const updateQuery = (value: string) => {
+    const trimmedValue = value.trim();
+    if (trimmedValue) {
+      setSearchParams({ q: trimmedValue });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    updateQuery(query);
+  };
 
   const highlight = (text: string) => {
-    if (!query.trim()) return text;
-    const idx = text.toLowerCase().indexOf(query.toLowerCase());
-    if (idx === -1) return text;
+    if (!trimmedQuery) return escapeHtml(text);
+    const lowerText = text.toLowerCase();
+    const lowerQuery = trimmedQuery.toLowerCase();
+    const idx = lowerText.indexOf(lowerQuery);
+    if (idx === -1) return escapeHtml(text);
     return (
-      text.slice(0, idx) +
-      `<mark style="background:var(--section-bg);color:var(--olive);padding:0 2px;">${text.slice(idx, idx + query.length)}</mark>` +
-      text.slice(idx + query.length)
+      escapeHtml(text.slice(0, idx)) +
+      `<mark style="background:var(--section-bg);color:var(--olive);padding:0 2px;">${escapeHtml(text.slice(idx, idx + trimmedQuery.length))}</mark>` +
+      escapeHtml(text.slice(idx + trimmedQuery.length))
     );
   };
 
@@ -40,7 +52,8 @@ export default function Search() {
         </div>
 
         {/* Search box */}
-        <div
+        <form
+          onSubmit={handleSubmit}
           className="flex items-center gap-4 px-6 py-4 mb-12 max-w-2xl"
           style={{ border: "1px solid var(--warm-border)", background: "var(--warm-white)" }}
         >
@@ -48,7 +61,7 @@ export default function Search() {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => updateQuery(e.target.value)}
             placeholder="输入关键词搜索文章..."
             className="flex-1 bg-transparent outline-none text-base"
             style={{ fontFamily: "var(--fontSans)", color: "var(--ink)" }}
@@ -56,86 +69,95 @@ export default function Search() {
           />
           {query && (
             <button
-              onClick={() => setQuery("")}
+              type="button"
+              onClick={() => updateQuery("")}
               className="text-xs px-2 py-1 hover:opacity-60 transition-opacity"
               style={{ color: "var(--muted-ink)" }}
             >
               清除
             </button>
           )}
-        </div>
+        </form>
 
         {/* Results */}
-        {query.trim().length > 0 && (
+        {trimmedQuery.length > 0 && (
           <div>
             <p className="text-xs mb-6" style={{ color: "var(--muted-ink)" }}>
-              「{query}」的搜索结果：{results.length} 篇
+              「{trimmedQuery}」的搜索结果：{loading ? "正在检索..." : `${visibleResults.length} 篇`}
             </p>
 
-            {results.length === 0 && (
+            {visibleResults.length === 0 && (
               <div className="py-20 text-center">
                 <div className="text-5xl mb-6" style={{ opacity: 0.15 }}>∅</div>
-                <p style={{ color: "var(--muted-ink)" }}>未找到相关文章</p>
-                <p className="text-sm mt-2" style={{ color: "var(--muted-ink)" }}>请尝试其他关键词</p>
+                <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅索引..." : "未找到相关文章"}</p>
+                {!loading && <p className="text-sm mt-2" style={{ color: "var(--muted-ink)" }}>请尝试其他关键词</p>}
               </div>
             )}
 
             <div className="flex flex-col gap-0">
-              {results.map((post) => (
-                <Link
-                  key={post.id}
-                  to={`/blog/${post.id}`}
-                  className="flex gap-6 py-6 border-b group hover:opacity-80 transition-opacity"
-                  style={{ borderColor: "var(--warm-border)" }}
-                >
-                  {post.coverImage && (
-                    <div className="shrink-0 overflow-hidden w-24 h-16">
-                      <img
-                        src={post.coverImage.replace("w=1200", "w=200")}
-                        alt=""
-                        loading="lazy"
-                        className="w-full h-full object-cover"
+              {visibleResults.map((post) => {
+                const summary = post.summary;
+                return (
+                  <Link
+                    key={post.id}
+                    to={`/posts/${post.slug}`}
+                    className="flex gap-6 py-6 border-b group hover:opacity-80 transition-opacity"
+                    style={{ borderColor: "var(--warm-border)" }}
+                  >
+                    {post.coverUrl && (
+                      <div className="shrink-0 overflow-hidden w-24 h-16">
+                        <img
+                          src={post.coverUrl.replace("w=1200", "w=200")}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
+                        {post.category && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-sm"
+                            style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}
+                          >
+                            {post.category.name}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-ink)" }}>
+                          <CalendarIcon size={11} />{toDateText(post.publishedAt)}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-ink)" }}>
+                          <ClockIcon size={11} />{post.readTime} 分钟
+                        </span>
+                      </div>
+                      <h2
+                        className="leading-snug mb-1"
+                        style={{ fontFamily: "var(--fontDisplay)", fontSize: "17px", color: "var(--ink)" }}
+                        dangerouslySetInnerHTML={{ __html: highlight(post.title) }}
+                      />
+                      <p
+                        className="text-sm line-clamp-2"
+                        style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}
+                        dangerouslySetInnerHTML={{ __html: highlight(summary) }}
                       />
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-sm"
-                        style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}
-                      >
-                        {post.category}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-ink)" }}>
-                        <CalendarIcon size={11} />{post.date}
-                      </span>
-                    </div>
-                    <h2
-                      className="leading-snug mb-1"
-                      style={{ fontFamily: "var(--fontDisplay)", fontSize: "17px", color: "var(--ink)" }}
-                      dangerouslySetInnerHTML={{ __html: highlight(post.title) }}
-                    />
-                    <p
-                      className="text-sm line-clamp-2"
-                      style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}
-                      dangerouslySetInnerHTML={{ __html: highlight(post.excerpt) }}
-                    />
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Suggestions when empty */}
-        {query.trim().length === 0 && (
+        {trimmedQuery.length === 0 && (
           <div>
             <div className="text-xs tracking-widest uppercase mb-5" style={{ color: "var(--muted-ink)" }}>热门搜索</div>
             <div className="flex flex-wrap gap-2">
               {["旅行", "摄影", "阅读", "生活", "日本", "音乐", "咖啡"].map((kw) => (
                 <button
                   key={kw}
-                  onClick={() => setQuery(kw)}
+                  onClick={() => updateQuery(kw)}
                   className="px-4 py-2 text-sm border rounded-full hover:border-primary transition-colors"
                   style={{
                     borderColor: "var(--warm-border)",
