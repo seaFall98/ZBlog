@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log*
+.DS_Store
+.env
+.env.*
+!.env.example
+dist
+dev-dist
+coverage
+.vite
+*.tsbuildinfo
+.git
+.gitignore
