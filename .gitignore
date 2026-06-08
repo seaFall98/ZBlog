@@ -12,6 +12,11 @@
 /CLAUDE.md
 /AGENTS.md
 
+# V1 Nuxt public frontend is preserved by the v1.0.0 release.
+# Keep a local untracked copy for V2 front migration reference.
+# Do not recommit it to V2.
+/blog/
+
 # Runtime/build output
 node_modules/
 .nuxt/
@@ -22,8 +27,6 @@ target/
 /logs/
 uploads/
 backup/
-!blog/server/routes/uploads/
-!blog/server/routes/uploads/[...path].ts
 temp_plan/
 *.tsbuildinfo
 *.log

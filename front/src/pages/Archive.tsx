@@ -1,36 +1,28 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { ChevronDownIcon, ChevronUpIcon, CalendarIcon, ClockIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { posts } from "../data/mockData";
-
-type YearGroup = {
-  year: string;
-  posts: typeof posts;
-};
-
-function groupByYear(allPosts: typeof posts): YearGroup[] {
-  const map: Record<string, typeof posts> = {};
-  allPosts.forEach((p) => {
-    const year = p.date.split("-")[0] ?? "未知";
-    if (!map[year]) map[year] = [];
-    map[year].push(p);
-  });
-  return Object.keys(map)
-    .sort((a, b) => parseInt(b) - parseInt(a))
-    .map((year) => ({ year, posts: map[year] ?? [] }));
-}
+import { buildArchive } from "../features/blog/archive";
+import { usePosts } from "../features/blog/usePosts";
+import { toDateText } from "../lib/text";
 
 export default function Archive() {
-  const yearGroups = groupByYear(posts);
-  const [openYears, setOpenYears] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {};
-    yearGroups.forEach((g, i) => { init[g.year] = i === 0; });
-    return init;
-  });
+  const { year, month } = useParams();
+  const isMonthArchive = Boolean(year && month);
+  const { posts, source, loading } = usePosts(isMonthArchive ? { year, month, pageSize: 100 } : { pageSize: 100 }, { initialFallback: false });
+  const archiveYears = useMemo(() => buildArchive(posts), [posts]);
+  const defaultOpenYears = useMemo(() => {
+    const next: Record<string, boolean> = {};
+    archiveYears.forEach((group, index) => {
+      next[String(group.year)] = index === 0;
+    });
+    return next;
+  }, [archiveYears]);
+  const [openYears, setOpenYears] = useState<Record<string, boolean>>({});
 
-  const toggleYear = (year: string) => {
-    setOpenYears((prev) => ({ ...prev, [year]: !prev[year] }));
+  const toggleYear = (archiveYear: number) => {
+    const key = String(archiveYear);
+    setOpenYears((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   return (
@@ -40,99 +32,166 @@ export default function Archive() {
         <div className="mb-14">
           <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>Archive</p>
           <h1 style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(36px,4vw,56px)", fontWeight: 400, color: "var(--ink)" }}>
-            归档
+            {isMonthArchive ? `${year} 年 ${String(month).padStart(2, "0")} 月` : "归档"}
           </h1>
-          <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>共 {posts.length} 篇文章，跨越 {yearGroups.length} 年</p>
+          <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>
+            {isMonthArchive ? `${loading ? "正在整理" : "共"} ${posts.length} 篇文章` : `共 ${posts.length} 篇文章，跨越 ${archiveYears.length} 年`}
+          </p>
+          {source === "fallback" && (
+            <p className="mt-3 text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
+              正在以本地种子文章维持归档动线
+            </p>
+          )}
         </div>
 
-        {/* Timeline */}
         <div className="max-w-3xl">
-          {yearGroups.map((group) => (
-            <div key={group.year} className="mb-2">
-              {/* Year header / accordion toggle */}
-              <button
-                onClick={() => toggleYear(group.year)}
-                className="w-full flex items-center justify-between py-4 px-6 border hover:opacity-80 transition-opacity"
-                style={{
-                  background: openYears[group.year] ? "var(--ink)" : "var(--warm-white)",
-                  borderColor: "var(--warm-border)",
-                  color: openYears[group.year] ? "var(--warm-white)" : "var(--ink)",
-                }}
-              >
-                <span style={{ fontFamily: "var(--fontDisplay)", fontSize: "24px", fontWeight: 400 }}>
-                  {group.year}
-                </span>
-                <div className="flex items-center gap-3">
-                  <span
-                    className="text-xs"
-                    style={{ opacity: 0.7 }}
-                  >
-                    {group.posts.length} 篇
-                  </span>
-                  {openYears[group.year] ? (
-                    <ChevronUpIcon size={16} />
-                  ) : (
-                    <ChevronDownIcon size={16} />
-                  )}
-                </div>
-              </button>
-
-              {/* Post list */}
-              <div className={openYears[group.year] ? "block" : "hidden"}>
-                <div
-                  className="border border-t-0"
-                  style={{ borderColor: "var(--warm-border)", background: "var(--warm-white)" }}
+          {isMonthArchive ? (
+            <div className="flex flex-col gap-0">
+              {posts.map((post, idx) => (
+                <Link
+                  key={post.id}
+                  to={`/posts/${post.slug}`}
+                  className="flex items-center gap-4 px-6 py-4 border-b group hover:bg-section-bg transition-colors"
+                  style={{
+                    borderColor: "var(--warm-border)",
+                    borderTopWidth: idx === 0 ? "1px" : "0",
+                  }}
                 >
-                  {group.posts.map((post, idx) => (
-                    <Link
-                      key={post.id}
-                      to={`/blog/${post.id}`}
-                      className="flex items-center gap-4 px-6 py-4 border-b group hover:bg-section-bg transition-colors"
+                  <div className="shrink-0 text-center w-12">
+                    <div
+                      className="text-xs"
+                      style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)", lineHeight: 1.2 }}
+                    >
+                      {toDateText(post.publishedAt).slice(5).replace("-", "/")}
+                    </div>
+                  </div>
+
+                  <div className="w-px h-6 shrink-0" style={{ background: "var(--warm-border)" }} />
+
+                  <div className="flex-1 min-w-0">
+                    <h3
+                      className="leading-snug group-hover:opacity-70 transition-opacity"
+                      style={{ fontFamily: "var(--fontDisplay)", fontSize: "15px", color: "var(--ink)" }}
+                    >
+                      {post.title}
+                    </h3>
+                  </div>
+
+                  <div className="hidden md:flex items-center gap-3 shrink-0">
+                    {post.category && (
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-sm"
+                        style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}
+                      >
+                        {post.category.name}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-ink)" }}>
+                      <ClockIcon size={11} />{post.readTime}min
+                    </span>
+                  </div>
+                </Link>
+              ))}
+
+              {posts.length === 0 && (
+                <div className="py-20 text-center">
+                  <CalendarIcon size={32} className="mx-auto mb-4" style={{ color: "var(--warm-border)" }} />
+                  <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅归档..." : "这个月份暂时还没有文章"}</p>
+                  <Link to="/archive" className="inline-block mt-4 text-xs underline" style={{ color: "var(--muted-ink)", textUnderlineOffset: "4px" }}>
+                    返回总归档
+                  </Link>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {archiveYears.map((group) => {
+                const isOpen = openYears[String(group.year)] ?? defaultOpenYears[String(group.year)] ?? false;
+                return (
+                  <div key={group.year} className="mb-2">
+                    {/* Year header / accordion toggle */}
+                    <button
+                      onClick={() => toggleYear(group.year)}
+                      className="w-full flex items-center justify-between py-4 px-6 border hover:opacity-80 transition-opacity"
                       style={{
+                        background: isOpen ? "var(--ink)" : "var(--warm-white)",
                         borderColor: "var(--warm-border)",
-                        borderBottomWidth: idx === group.posts.length - 1 ? "0" : "1px",
+                        color: isOpen ? "var(--warm-white)" : "var(--ink)",
                       }}
                     >
-                      {/* Month/day */}
-                      <div className="shrink-0 text-center w-10">
-                        <div
-                          className="text-xs"
-                          style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)", lineHeight: 1.2 }}
-                        >
-                          {post.date.slice(5).replace("-", "/")}
-                        </div>
-                      </div>
-
-                      <div className="w-px h-6 shrink-0" style={{ background: "var(--warm-border)" }} />
-
-                      {/* Title */}
-                      <div className="flex-1 min-w-0">
-                        <h3
-                          className="leading-snug group-hover:opacity-70 transition-opacity"
-                          style={{ fontFamily: "var(--fontDisplay)", fontSize: "15px", color: "var(--ink)" }}
-                        >
-                          {post.title}
-                        </h3>
-                      </div>
-
-                      {/* Meta */}
-                      <div className="hidden md:flex items-center gap-3 shrink-0">
+                      <span style={{ fontFamily: "var(--fontDisplay)", fontSize: "24px", fontWeight: 400 }}>
+                        {group.year}
+                      </span>
+                      <div className="flex items-center gap-3">
                         <span
-                          className="text-xs px-2 py-0.5 rounded-sm"
-                          style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}
+                          className="text-xs"
+                          style={{ opacity: 0.7 }}
                         >
-                          {post.category}
+                          {group.count} 篇
                         </span>
-                        <span className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-ink)" }}>
-                          <ClockIcon size={11} />{post.readTime}min
-                        </span>
+                        {isOpen ? (
+                          <ChevronUpIcon size={16} />
+                        ) : (
+                          <ChevronDownIcon size={16} />
+                        )}
                       </div>
-                    </Link>
-                  ))}
+                    </button>
+
+                    {/* Month list */}
+                    <div className={isOpen ? "block" : "hidden"}>
+                      <div
+                        className="border border-t-0"
+                        style={{ borderColor: "var(--warm-border)", background: "var(--warm-white)" }}
+                      >
+                        {group.months.map((item, idx) => (
+                          <Link
+                            key={item.slug}
+                            to={`/archive/${group.year}/${String(item.month).padStart(2, "0")}`}
+                            className="flex items-center gap-4 px-6 py-4 border-b group hover:bg-section-bg transition-colors"
+                            style={{
+                              borderColor: "var(--warm-border)",
+                              borderBottomWidth: idx === group.months.length - 1 ? "0" : "1px",
+                            }}
+                          >
+                            <div className="shrink-0 text-center w-10">
+                              <div
+                                className="text-xs"
+                                style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)", lineHeight: 1.2 }}
+                              >
+                                {String(item.month).padStart(2, "0")} 月
+                              </div>
+                            </div>
+
+                            <div className="w-px h-6 shrink-0" style={{ background: "var(--warm-border)" }} />
+
+                            <div className="flex-1 min-w-0">
+                              <h3
+                                className="leading-snug group-hover:opacity-70 transition-opacity"
+                                style={{ fontFamily: "var(--fontDisplay)", fontSize: "15px", color: "var(--ink)" }}
+                              >
+                                {group.year} 年 {item.month} 月
+                              </h3>
+                            </div>
+
+                            <span className="text-xs shrink-0" style={{ color: "var(--muted-ink)" }}>
+                              {item.count} 篇
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {archiveYears.length === 0 && (
+                <div className="py-20 text-center">
+                  <CalendarIcon size={32} className="mx-auto mb-4" style={{ color: "var(--warm-border)" }} />
+                  <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅归档..." : "归档暂时还是空白"}</p>
                 </div>
-              </div>
-            </div>
-          ))}
+              )}
+            </>
+          )}
         </div>
       </div>
     </PageLayout>
