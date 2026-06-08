@@ -2,6 +2,8 @@
 /server/.idea/
 /.vscode/
 /.DS_Store
+/.codegraph/
+/smart-reply/
 
 # Private workspace/documentation assets are kept outside the public repo.
 /.claude/
