@@ -30,6 +30,10 @@ public interface StatsMapper {
 
   long countMoments();
 
+  long countAlbumPhotos();
+
+  long countGuestbookMessages();
+
   long countVisitorsBetween(@Param("start") LocalDate start, @Param("end") LocalDate end);
 
   long countPageviewsBetween(@Param("start") LocalDate start, @Param("end") LocalDate end);

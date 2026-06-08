@@ -10,7 +10,7 @@ export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = queryFromSearchParams(searchParams);
   const trimmedQuery = query.trim();
-  const { posts: results, loading } = usePosts({ keyword: trimmedQuery, pageSize: 50 }, { initialFallback: false });
+  const { posts: results, loading } = usePosts({ keyword: trimmedQuery, pageSize: 50 });
   const visibleResults = trimmedQuery.length > 0 ? results : [];
 
   const updateQuery = (value: string) => {

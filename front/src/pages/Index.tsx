@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRightIcon, CalendarIcon, ClockIcon } from "lucide-react";
+import { ArrowRightIcon, CalendarIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { siteStats } from "../data/mockData";
 import { selectFeaturedPosts } from "../features/blog/homeSelectors";
 import { usePosts } from "../features/blog/usePosts";
+import { useAlbums } from "../features/gallery/useAlbums";
+import { useMoments } from "../features/moments/useMoments";
+import { useSiteStats } from "../features/stats/useSiteStats";
 import { toDateText } from "../lib/text";
 
 // Number counter hook
@@ -56,15 +58,13 @@ export default function Index() {
     return () => observer.disconnect();
   }, []);
 
-  const { posts, source } = usePosts({ pageSize: 50 });
+  const { posts } = usePosts({ pageSize: 50 });
+  const { albums } = useAlbums(4);
+  const { moments } = useMoments(3);
+  const stats = useSiteStats();
   const featuredPosts = selectFeaturedPosts(posts, 3);
   const latestPosts = posts.slice(0, 3);
-  const galleryImages = [
-    "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&q=80",
-    "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=600&q=80",
-    "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&q=80",
-    "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=600&q=80",
-  ];
+  const galleryImages = albums.map((album) => album.coverUrl).filter(Boolean).slice(0, 4);
 
   return (
     <PageLayout>
@@ -85,13 +85,8 @@ export default function Index() {
               <em style={{ fontStyle: "italic", color: "var(--clay)" }}>之河</em>
             </h1>
             <p className="text-sm mb-3" style={{ color: "var(--muted-ink)" }}>
-              {posts.length || siteStats.totalPosts} 篇文章 · 最近更新于 {latestPosts[0] ? toDateText(latestPosts[0].publishedAt) : "2024年10月24日"}
+              {(stats.totalArticles || posts.length).toLocaleString()} 篇文章 · 最近更新于 {latestPosts[0] ? toDateText(latestPosts[0].publishedAt) : "未发布"}
             </p>
-            {source === "fallback" && (
-              <p className="text-xs mb-10" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-                以本地种子文章维持寂静之书的阅读氛围
-              </p>
-            )}
           </div>
           <Link
             to="/blog"
@@ -198,95 +193,90 @@ export default function Index() {
       </section>
 
       {/* ── Gallery strip ────────────────────────────── */}
-      <section style={{ background: "var(--ink)" }} className="overflow-hidden">
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 style={{ fontFamily: "var(--fontDisplay)", fontSize: "22px", fontWeight: 400, color: "var(--warm-white)" }}>
-              近期影像
-            </h2>
-            <Link to="/gallery" className="text-sm transition-opacity hover:opacity-60" style={{ color: "rgba(255,255,255,0.5)" }}>
-              查看相册 →
-            </Link>
+      {galleryImages.length > 0 && (
+        <section style={{ background: "var(--ink)" }} className="overflow-hidden">
+          <div className="max-w-7xl mx-auto px-8 py-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 style={{ fontFamily: "var(--fontDisplay)", fontSize: "22px", fontWeight: 400, color: "var(--warm-white)" }}>
+                近期影像
+              </h2>
+              <Link to="/gallery" className="text-sm transition-opacity hover:opacity-60" style={{ color: "rgba(255,255,255,0.5)" }}>
+                查看相册 →
+              </Link>
+            </div>
+            <div className="flex gap-0.5 h-72">
+              {galleryImages.map((src, idx) => {
+                const widths = ["30%", "25%", "22%", "23%"];
+                return (
+                  <Link
+                    key={src}
+                    to="/gallery"
+                    className="overflow-hidden group cursor-pointer"
+                    style={{ width: widths[idx] ?? "25%", flexShrink: 0 }}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex gap-0.5 h-72">
-            {galleryImages.map((src, idx) => {
-              const widths = ["30%", "25%", "22%", "23%"];
-              return (
-                <Link
-                  key={idx}
-                  to="/gallery"
-                  className="overflow-hidden group cursor-pointer"
-                  style={{ width: widths[idx], flexShrink: 0 }}
-                >
-                  <img
-                    src={src}
-                    alt=""
-                    loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── Moments preview ──────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-8 py-20">
-        <div className="flex items-baseline justify-between mb-10">
-          <h2 style={{ fontFamily: "var(--fontDisplay)", fontSize: "28px", fontWeight: 400, color: "var(--ink)" }}>生活瞬间</h2>
-          <Link to="/moments" className="text-sm hover:opacity-60 transition-opacity" style={{ color: "var(--muted-ink)" }}>
-            更多瞬间 →
-          </Link>
-        </div>
-        <div className="flex gap-6 flex-wrap md:flex-nowrap">
-          {/* Left: long card */}
-          <Link
-            to="/moments"
-            className="group flex-1 min-w-60 block p-8 hover:-translate-y-1 transition-transform duration-300"
-            style={{ background: "var(--warm-white)", border: "1px solid var(--warm-border)" }}
-          >
-            <div className="text-xs mb-4" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-              2024·10·25 · 慵懒
-            </div>
-            <p
-              className="leading-relaxed"
-              style={{ fontFamily: "var(--fontBody)", fontSize: "15px", color: "var(--ink)", lineHeight: 1.9 }}
-            >
-              今天的咖啡泡得很好，奶泡细腻，在光线里像一片云。窗外下着小雨，不想出门，不想做事，只是坐着，很满足。
-            </p>
-            {[].length > 0 && (
-              <div className="mt-4 h-32 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&q=80" alt="" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </Link>
-
-          {/* Right: two short cards */}
-          <div className="flex flex-col gap-4" style={{ flexBasis: "40%", minWidth: "220px" }}>
-            <Link
-              to="/moments"
-              className="group block p-6 hover:-translate-y-0.5 transition-transform duration-300"
-              style={{ background: "var(--warm-white)", border: "1px solid var(--warm-border)" }}
-            >
-              <div className="text-xs mb-2" style={{ color: "var(--muted-ink)" }}>2024·10·20 · 满足</div>
-              <p className="text-sm leading-relaxed" style={{ fontFamily: "var(--fontBody)", color: "var(--ink)" }}>
-                在旧书市场发现一本1973年的《植物图鉴》，手绘插图，纸张已经泛黄。
-              </p>
-            </Link>
-            <Link
-              to="/moments"
-              className="group block p-6 hover:-translate-y-0.5 transition-transform duration-300"
-              style={{ background: "var(--section-bg)", border: "1px solid var(--warm-border)" }}
-            >
-              <div className="text-xs mb-2" style={{ color: "var(--muted-ink)" }}>2024·10·15 · 平静</div>
-              <p className="text-sm leading-relaxed" style={{ fontFamily: "var(--fontBody)", color: "var(--ink)" }}>
-                今晚散步，路过一家卖花的小店，老板在给白色的花束系丝带，动作很慢，很仔细。
-              </p>
+      {moments.length > 0 && (
+        <section className="max-w-7xl mx-auto px-8 py-20">
+          <div className="flex items-baseline justify-between mb-10">
+            <h2 style={{ fontFamily: "var(--fontDisplay)", fontSize: "28px", fontWeight: 400, color: "var(--ink)" }}>生活瞬间</h2>
+            <Link to="/moments" className="text-sm hover:opacity-60 transition-opacity" style={{ color: "var(--muted-ink)" }}>
+              更多瞬间 →
             </Link>
           </div>
-        </div>
-      </section>
+          <div className="flex gap-6 flex-wrap md:flex-nowrap">
+            <Link
+              to="/moments"
+              className="group flex-1 min-w-60 block p-8 hover:-translate-y-1 transition-transform duration-300"
+              style={{ background: "var(--warm-white)", border: "1px solid var(--warm-border)" }}
+            >
+              <div className="text-xs mb-4" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
+                {toDateText(moments[0].date).replace(/-/g, "·")} · {moments[0].mood}
+              </div>
+              <p
+                className="leading-relaxed"
+                style={{ fontFamily: "var(--fontBody)", fontSize: "15px", color: "var(--ink)", lineHeight: 1.9 }}
+              >
+                {moments[0].text}
+              </p>
+              {moments[0].images[0] && (
+                <div className="mt-4 h-32 overflow-hidden">
+                  <img src={moments[0].images[0]} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </Link>
+
+            <div className="flex flex-col gap-4" style={{ flexBasis: "40%", minWidth: "220px" }}>
+              {moments.slice(1, 3).map((moment, index) => (
+                <Link
+                  key={moment.id}
+                  to="/moments"
+                  className="group block p-6 hover:-translate-y-0.5 transition-transform duration-300"
+                  style={{ background: index === 0 ? "var(--warm-white)" : "var(--section-bg)", border: "1px solid var(--warm-border)" }}
+                >
+                  <div className="text-xs mb-2" style={{ color: "var(--muted-ink)" }}>{toDateText(moment.date).replace(/-/g, "·")} · {moment.mood}</div>
+                  <p className="text-sm leading-relaxed line-clamp-2" style={{ fontFamily: "var(--fontBody)", color: "var(--ink)" }}>
+                    {moment.text}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Stats strip ──────────────────────────────── */}
       <section
@@ -294,13 +284,13 @@ export default function Index() {
         style={{ background: "var(--section-bg)", borderTop: "1px solid var(--warm-border)", borderBottom: "1px solid var(--warm-border)" }}
       >
         <div className="max-w-7xl mx-auto px-8 py-16 flex flex-wrap gap-12 justify-around items-center">
-          <StatItem value={siteStats.totalPosts} label="篇文章" trigger={statsVisible} />
+          <StatItem value={stats.totalArticles} label="篇文章" trigger={statsVisible} />
           <div style={{ width: "1px", height: "60px", background: "var(--warm-border)" }} className="hidden md:block" />
-          <StatItem value={siteStats.totalVisits} label="次访问" trigger={statsVisible} />
+          <StatItem value={stats.totalVisits} label="次访问" trigger={statsVisible} />
           <div style={{ width: "1px", height: "60px", background: "var(--warm-border)" }} className="hidden md:block" />
-          <StatItem value={siteStats.totalPhotos} label="张照片" trigger={statsVisible} />
+          <StatItem value={stats.totalPhotos} label="张照片" trigger={statsVisible} />
           <div style={{ width: "1px", height: "60px", background: "var(--warm-border)" }} className="hidden md:block" />
-          <StatItem value={siteStats.totalMessages} label="条留言" trigger={statsVisible} />
+          <StatItem value={stats.totalMessages} label="条留言" trigger={statsVisible} />
         </div>
       </section>
     </PageLayout>

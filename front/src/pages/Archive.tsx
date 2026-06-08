@@ -9,7 +9,7 @@ import { toDateText } from "../lib/text";
 export default function Archive() {
   const { year, month } = useParams();
   const isMonthArchive = Boolean(year && month);
-  const { posts, source, loading } = usePosts(isMonthArchive ? { year, month, pageSize: 100 } : { pageSize: 100 }, { initialFallback: false });
+  const { posts, loading } = usePosts(isMonthArchive ? { year, month, pageSize: 100 } : { pageSize: 100 });
   const archiveYears = useMemo(() => buildArchive(posts), [posts]);
   const defaultOpenYears = useMemo(() => {
     const next: Record<string, boolean> = {};
@@ -37,11 +37,6 @@ export default function Archive() {
           <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>
             {isMonthArchive ? `${loading ? "正在整理" : "共"} ${posts.length} 篇文章` : `共 ${posts.length} 篇文章，跨越 ${archiveYears.length} 年`}
           </p>
-          {source === "fallback" && (
-            <p className="mt-3 text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-              正在以本地种子文章维持归档动线
-            </p>
-          )}
         </div>
 
         <div className="max-w-3xl">

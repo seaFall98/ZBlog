@@ -10,7 +10,7 @@ import { toast } from "sonner";
 export default function BlogDetail() {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const { post, related, source, loading } = usePost(slug ?? "");
+  const { post, related, loading } = usePost(slug ?? "");
   const [bookmarked, setBookmarked] = useState(false);
 
   const handleShare = () => {
@@ -33,12 +33,6 @@ export default function BlogDetail() {
         >
           <ArrowLeftIcon size={14} /> 返回文章列表
         </button>
-
-        {source === "fallback" && (
-          <p className="text-xs mb-6" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-            正在以本地种子文章维持阅读动线
-          </p>
-        )}
 
         {!post && (
           <div className="py-24 max-w-2xl">

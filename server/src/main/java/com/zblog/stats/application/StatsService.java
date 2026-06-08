@@ -58,6 +58,8 @@ public class StatsService {
     stats.put("total_comments", statsRepository.countVisibleComments());
     stats.put("total_friends", statsRepository.countVisibleFriends());
     stats.put("total_moments", statsRepository.countMoments());
+    stats.put("total_photos", statsRepository.countAlbumPhotos());
+    stats.put("total_guestbook_messages", statsRepository.countGuestbookMessages());
     stats.put("total_categories", statsRepository.countPublishedCategories());
     stats.put("total_tags", statsRepository.countPublishedTags());
     stats.put("today_visitors", statsRepository.countVisitors(today, today.plusDays(1)));

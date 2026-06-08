@@ -47,7 +47,8 @@ export default function App() {
         <Route path="/archive/:year/:month" element={<Archive />} />
         <Route path="/search" element={<Search />} />
         <Route path="/gallery" element={<Gallery />} />
-        <Route path="/gallery/detail" element={<GalleryDetail />} />
+        <Route path="/gallery/detail" element={<Gallery />} />
+        <Route path="/gallery/:slug" element={<GalleryDetail />} />
         <Route path="/moments" element={<Moments />} />
         <Route path="/guestbook" element={<Guestbook />} />
         <Route path="/links" element={<Links />} />

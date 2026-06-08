@@ -1,11 +1,10 @@
 import { Link } from "react-router-dom";
 import { ArrowRightIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { categories as mockCategories } from "../data/mockData";
 import { useCategories } from "../features/taxonomy/useTaxonomy";
 
 export default function Categories() {
-  const { items: categories, source, loading } = useCategories();
+  const { items: categories, loading } = useCategories();
   const totalPosts = categories.reduce((sum, category) => sum + category.count, 0);
 
   return (
@@ -20,18 +19,12 @@ export default function Categories() {
           <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>
             {categories.length} 个分类 · {totalPosts} 篇文章{loading ? " · 正在更新" : ""}
           </p>
-          {source === "fallback" && (
-            <p className="mt-2 text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-              暂以本地种子分类保持浏览入口
-            </p>
-          )}
         </div>
 
         {/* Grid */}
         <div className="flex flex-wrap gap-6">
-          {categories.map((cat, index) => {
+          {categories.map((cat) => {
             const categorySlug = cat.slug || cat.name;
-            const visual = mockCategories.find((item) => item.id === categorySlug || item.name === cat.name) ?? mockCategories[index % mockCategories.length];
             return (
               <Link
                 key={cat.id || categorySlug}
@@ -40,10 +33,10 @@ export default function Categories() {
                 style={{ border: "1px solid var(--warm-border)" }}
               >
                 {/* Cover */}
-                {visual && (
+                {cat.coverUrl && (
                   <div className="overflow-hidden h-44">
                     <img
-                      src={visual.coverImage}
+                      src={cat.coverUrl}
                       alt={cat.name}
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -65,7 +58,7 @@ export default function Categories() {
                     <ArrowRightIcon size={16} className="mt-1.5 group-hover:translate-x-1 transition-transform" style={{ color: "var(--muted-ink)" }} />
                   </div>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-                    {visual?.description ?? "沿着这一类文字，慢慢翻到更深处。"}
+                    {cat.description || "沿着这一类文字，慢慢翻到更深处。"}
                   </p>
                 </div>
               </Link>

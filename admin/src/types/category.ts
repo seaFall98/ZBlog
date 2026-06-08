@@ -4,6 +4,7 @@ export interface Category {
   name: string;
   slug: string;
   description: string;
+  cover_url?: string;
   count: number;
   sort: number;
 }

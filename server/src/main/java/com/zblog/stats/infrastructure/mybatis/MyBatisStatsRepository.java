@@ -61,6 +61,14 @@ public class MyBatisStatsRepository implements StatsRepository {
     return statsMapper.countMoments();
   }
 
+  public long countAlbumPhotos() {
+    return statsMapper.countAlbumPhotos();
+  }
+
+  public long countGuestbookMessages() {
+    return statsMapper.countGuestbookMessages();
+  }
+
   public long countVisitors(LocalDate start, LocalDate end) {
     return statsMapper.countVisitorsBetween(start, end);
   }

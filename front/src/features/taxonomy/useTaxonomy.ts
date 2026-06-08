@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { fetchCategories, fetchTags } from "./taxonomyApi";
-import { fallbackCategories, fallbackTags, mergeFallbackAndApiTaxonomy } from "./taxonomyFallback";
 import type { TaxonomyItem, TaxonomyResult } from "./types";
 
 type TaxonomyKind = "categories" | "tags";
@@ -10,15 +9,10 @@ const taxonomyLoaders: Record<TaxonomyKind, () => Promise<TaxonomyItem[]>> = {
   tags: fetchTags,
 };
 
-const taxonomyFallbacks: Record<TaxonomyKind, () => TaxonomyItem[]> = {
-  categories: fallbackCategories,
-  tags: fallbackTags,
-};
-
 function useTaxonomy(kind: TaxonomyKind): TaxonomyResult {
   const [result, setResult] = useState<TaxonomyResult>(() => ({
-    items: taxonomyFallbacks[kind](),
-    source: "fallback",
+    items: [],
+    source: "api",
     loading: true,
     error: null,
   }));
@@ -26,22 +20,16 @@ function useTaxonomy(kind: TaxonomyKind): TaxonomyResult {
   useEffect(() => {
     let cancelled = false;
     const load = taxonomyLoaders[kind];
-    const fallback = taxonomyFallbacks[kind];
 
     async function loadTaxonomy(): Promise<void> {
+      setResult({ items: [], source: "api", loading: true, error: null });
       try {
         const items = await load();
         if (cancelled) return;
-
-        if (items.length > 0) {
-          setResult({ items: mergeFallbackAndApiTaxonomy(fallback(), items), source: "api", loading: false, error: null });
-          return;
-        }
-
-        setResult({ items: fallback(), source: "fallback", loading: false, error: null });
+        setResult({ items, source: "api", loading: false, error: null });
       } catch (error) {
         if (!cancelled) {
-          setResult({ items: fallback(), source: "fallback", loading: false, error: error as Error });
+          setResult({ items: [], source: "api", loading: false, error: error as Error });
         }
       }
     }
