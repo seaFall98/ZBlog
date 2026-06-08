@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRightIcon, CalendarIcon, ClockIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { posts, siteStats } from "../data/mockData";
+import { siteStats } from "../data/mockData";
+import { selectFeaturedPosts } from "../features/blog/homeSelectors";
+import { usePosts } from "../features/blog/usePosts";
+import { toDateText } from "../lib/text";
 
 // Number counter hook
 function useCountUp(target: number, trigger: boolean, duration = 1200) {
@@ -53,8 +56,9 @@ export default function Index() {
     return () => observer.disconnect();
   }, []);
 
-  const featured = posts.filter((p) => p.featured);
-  const recentPosts = posts.slice(0, 3);
+  const { posts, source } = usePosts({ pageSize: 50 });
+  const featuredPosts = selectFeaturedPosts(posts, 3);
+  const latestPosts = posts.slice(0, 3);
   const galleryImages = [
     "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&q=80",
     "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=600&q=80",
@@ -80,9 +84,14 @@ export default function Index() {
               渡光阴<br />
               <em style={{ fontStyle: "italic", color: "var(--clay)" }}>之河</em>
             </h1>
-            <p className="text-sm mb-10" style={{ color: "var(--muted-ink)" }}>
-              {siteStats.totalPosts} 篇文章 · 最近更新于 2024年10月24日
+            <p className="text-sm mb-3" style={{ color: "var(--muted-ink)" }}>
+              {posts.length || siteStats.totalPosts} 篇文章 · 最近更新于 {latestPosts[0] ? toDateText(latestPosts[0].publishedAt) : "2024年10月24日"}
             </p>
+            {source === "fallback" && (
+              <p className="text-xs mb-10" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
+                以本地种子文章维持寂静之书的阅读氛围
+              </p>
+            )}
           </div>
           <Link
             to="/blog"
@@ -100,10 +109,10 @@ export default function Index() {
           style={{ flexBasis: "42%", borderLeft: "1px solid var(--warm-border)", paddingLeft: "40px" }}
         >
           <div className="text-xs tracking-widest uppercase mb-5" style={{ color: "var(--muted-ink)" }}>精选</div>
-          {featured.map((post, idx) => (
+          {featuredPosts.map((post, idx) => (
             <Link
               key={post.id}
-              to={`/blog/${post.id}`}
+              to={`/posts/${post.slug}`}
               className="group block py-5 border-b hover:opacity-70 transition-opacity"
               style={{ borderColor: "var(--warm-border)" }}
             >
@@ -119,7 +128,7 @@ export default function Index() {
                     className="inline-block text-xs mb-1.5 px-2 py-0.5 rounded-sm"
                     style={{ background: "var(--section-bg)", color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}
                   >
-                    {post.category}
+                    {post.category?.name ?? "未分类"}
                   </span>
                   <h3
                     className="leading-snug"
@@ -148,31 +157,33 @@ export default function Index() {
           </Link>
         </div>
         <div className="flex gap-8 flex-wrap md:flex-nowrap">
-          {recentPosts.map((post, idx) => (
+          {latestPosts.map((post, idx) => (
             <Link
               key={post.id}
-              to={`/blog/${post.id}`}
+              to={`/posts/${post.slug}`}
               className="group flex-1 min-w-60 block hover:-translate-y-1 transition-transform duration-300"
             >
-              <div
-                className="overflow-hidden mb-4"
-                style={{ height: idx === 1 ? "280px" : "220px" }}
-              >
-                <img
-                  src={post.coverImage}
-                  alt={post.title}
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
-                  style={{ transition: "transform 0.5s ease" }}
-                />
-              </div>
+              {post.coverUrl && (
+                <div
+                  className="overflow-hidden mb-4"
+                  style={{ height: idx === 1 ? "280px" : "220px" }}
+                >
+                  <img
+                    src={post.coverUrl}
+                    alt={post.title}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
+                    style={{ transition: "transform 0.5s ease" }}
+                  />
+                </div>
+              )}
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-                  {post.category}
+                  {post.category?.name ?? "未分类"}
                 </span>
                 <span className="text-xs" style={{ color: "var(--warm-border)" }}>·</span>
                 <span className="text-xs flex items-center gap-1" style={{ color: "var(--muted-ink)" }}>
-                  <CalendarIcon size={11} />{post.date}
+                  <CalendarIcon size={11} />{toDateText(post.publishedAt)}
                 </span>
               </div>
               <h3

@@ -37,9 +37,14 @@ export default function App() {
         <Route path="/" element={<Index />} />
         <Route path="/blog" element={<BlogList />} />
         <Route path="/blog/detail" element={<BlogDetail />} />
+        <Route path="/posts/:slug" element={<BlogDetail />} />
+        <Route path="/blog/:slug" element={<BlogDetail />} />
+        <Route path="/category/:slug" element={<BlogList />} />
+        <Route path="/tag/:slug" element={<BlogList />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/tags" element={<Tags />} />
         <Route path="/archive" element={<Archive />} />
+        <Route path="/archive/:year/:month" element={<Archive />} />
         <Route path="/search" element={<Search />} />
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/gallery/detail" element={<GalleryDetail />} />
