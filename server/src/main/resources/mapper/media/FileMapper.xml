@@ -6,6 +6,7 @@
   <sql id="usedStatusSql">
     case when f.status = 1
       or exists (select 1 from articles a where a.cover_url = f.file_url or a.content_markdown like concat('%', f.file_url, '%') or a.content_html like concat('%', f.file_url, '%'))
+      or exists (select 1 from categories c where c.cover_url = f.file_url)
       or exists (select 1 from settings s where s.value_text like concat('%', f.file_url, '%'))
       or exists (select 1 from comments c where c.content like concat('%', f.file_url, '%') or c.avatar = f.file_url)
       or exists (select 1 from feedbacks fb where fb.form_content like concat('%', f.file_url, '%') or fb.admin_reply like concat('%', f.file_url, '%'))

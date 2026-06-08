@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { ArrowLeftIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { albums, galleryPhotos } from "../data/mockData";
-
-const DEMO_ALBUM = albums[0];
+import { useAlbum } from "../features/gallery/useAlbum";
+import { toDateText } from "../lib/text";
 
 export default function GalleryDetail() {
-  const album = DEMO_ALBUM;
-  const photos = galleryPhotos.filter((p) => p.albumId === album.id);
+  const { slug } = useParams();
+  const { album, loading } = useAlbum(slug ?? "");
+  const photos = album?.photos ?? [];
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const selectedPhoto = selectedIndex !== null ? (photos[selectedIndex] ?? null) : null;
@@ -37,11 +37,11 @@ export default function GalleryDetail() {
 
         {/* Album header */}
         <div className="mb-12">
-          <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>{album.date}</p>
+          <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>{album ? toDateText(album.createdAt).slice(0, 7) : "Gallery"}</p>
           <h1 style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(30px,3.5vw,48px)", fontWeight: 400, color: "var(--ink)" }}>
-            {album.title}
+            {album?.title ?? (loading ? "正在加载相册" : "相册不存在")}
           </h1>
-          <p className="mt-3 text-sm" style={{ color: "var(--muted-ink)" }}>{album.description} · {photos.length} 张</p>
+          <p className="mt-3 text-sm" style={{ color: "var(--muted-ink)" }}>{album ? `${album.description} · ${photos.length} 张` : ""}</p>
         </div>
 
         {/* Photo grid */}
@@ -63,7 +63,7 @@ export default function GalleryDetail() {
                 }}
               >
                 <img
-                  src={photo.src}
+                  src={photo.imageUrl}
                   alt={photo.title}
                   loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -102,7 +102,7 @@ export default function GalleryDetail() {
               <XIcon size={13} /> 关闭
             </button>
             <div className="text-xs tracking-widest uppercase mb-4" style={{ color: "var(--muted-ink)" }}>
-              {album.title}
+              {album?.title ?? ""}
             </div>
             <h2
               className="mb-4"
@@ -116,7 +116,7 @@ export default function GalleryDetail() {
           </div>
 
           <div>
-            <div className="text-xs mb-1" style={{ color: "var(--muted-ink)" }}>{selectedPhoto?.date ?? ""}</div>
+            <div className="text-xs mb-1" style={{ color: "var(--muted-ink)" }}>{toDateText(selectedPhoto?.takenAt ?? "")}</div>
             <div className="text-xs" style={{ color: "var(--muted-ink)" }}>{selectedPhoto?.filename ?? ""}</div>
             {/* Nav */}
             <div className="flex gap-2 mt-6">
@@ -152,7 +152,7 @@ export default function GalleryDetail() {
         >
           {selectedPhoto && (
             <img
-              src={selectedPhoto.src.replace("w=800", "w=1200")}
+              src={selectedPhoto.imageUrl}
               alt={selectedPhoto.title}
               className="max-h-screen max-w-full object-contain"
               style={{ maxWidth: "calc(100vw - 320px)", maxHeight: "100vh" }}

@@ -1,4 +1,4 @@
-export type DataSource = "api" | "fallback";
+export type DataSource = "api";
 
 export type TaxonomyView = {
   id: string;

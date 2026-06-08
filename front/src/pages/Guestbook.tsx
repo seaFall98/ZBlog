@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SendIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { guestMessages } from "../data/mockData";
+import { submitGuestbookMessage } from "../features/guestbook/guestbookApi";
+import { useGuestbookMessages } from "../features/guestbook/useGuestbookMessages";
+import { toDateText } from "../lib/text";
 import { toast } from "sonner";
 
 interface Danmaku {
@@ -18,52 +20,51 @@ const DANMAKU_COLORS = ["var(--olive)", "var(--clay)", "var(--slate-blue)", "var
 export default function Guestbook() {
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
-  const [messages, setMessages] = useState(guestMessages);
+  const { messages, loading, reload } = useGuestbookMessages(50);
   const [danmakus, setDanmakus] = useState<Danmaku[]>([]);
   const danmakuIdRef = useRef(1000);
 
   // Init danmaku from existing messages
   useEffect(() => {
-    const initial: Danmaku[] = guestMessages.slice(0, 12).map((m, i) => ({
+    const initial: Danmaku[] = messages.slice(0, 12).map((m, i) => ({
       id: i,
       text: `${m.name}: ${m.content.slice(0, 30)}`,
-      top: Math.floor(Math.random() * 70) + 5,
-      speed: 18 + Math.random() * 14,
-      left: Math.random() * 80,
+      top: ((i * 17) % 70) + 5,
+      speed: 18 + (i % 5) * 3,
+      left: (i * 23) % 80,
       color: DANMAKU_COLORS[i % DANMAKU_COLORS.length] ?? "var(--ink)",
     }));
     setDanmakus(initial);
-  }, []);
+  }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !content.trim()) {
       toast.error("请填写昵称和留言内容");
       return;
     }
-    const newMsg = {
-      id: String(Date.now()),
-      name: name.trim(),
-      content: content.trim(),
-      date: new Date().toLocaleDateString("zh-CN").replace(/\//g, "-"),
-      avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${name}`,
-    };
-    setMessages((prev) => [newMsg, ...prev]);
 
-    // Add danmaku
-    const newDanmaku: Danmaku = {
-      id: ++danmakuIdRef.current,
-      text: `${name}: ${content.slice(0, 30)}`,
-      top: Math.floor(Math.random() * 70) + 5,
-      speed: 14 + Math.random() * 8,
-      left: 100,
-      color: DANMAKU_COLORS[Math.floor(Math.random() * DANMAKU_COLORS.length)] ?? "var(--ink)",
-    };
-    setDanmakus((prev) => [...prev, newDanmaku]);
+    try {
+      await submitGuestbookMessage({ nickname: name.trim(), content: content.trim() });
 
-    setName("");
-    setContent("");
-    toast.success("留言成功 ✨");
+      // Add danmaku
+      const newDanmaku: Danmaku = {
+        id: ++danmakuIdRef.current,
+        text: `${name}: ${content.slice(0, 30)}`,
+        top: ((danmakuIdRef.current * 17) % 70) + 5,
+        speed: 14 + (danmakuIdRef.current % 5) * 2,
+        left: 100,
+        color: DANMAKU_COLORS[danmakuIdRef.current % DANMAKU_COLORS.length] ?? "var(--ink)",
+      };
+      setDanmakus((prev) => [...prev, newDanmaku]);
+
+      setName("");
+      setContent("");
+      toast.success("留言成功 ✨");
+      void reload();
+    } catch {
+      toast.error("留言发送失败，请稍后再试");
+    }
   };
 
   return (
@@ -182,7 +183,7 @@ export default function Guestbook() {
           <h2 style={{ fontFamily: "var(--fontDisplay)", fontSize: "26px", fontWeight: 400, color: "var(--ink)" }}>
             留言墙
           </h2>
-          <span className="text-xs" style={{ color: "var(--muted-ink)" }}>{messages.length} 条留言</span>
+          <span className="text-xs" style={{ color: "var(--muted-ink)" }}>{loading ? "正在加载" : `${messages.length} 条留言`}</span>
         </div>
 
         <div className="flex flex-wrap gap-5">
@@ -211,7 +212,7 @@ export default function Guestbook() {
                   >
                     {msg.name}
                   </div>
-                  <div className="text-xs" style={{ color: "var(--muted-ink)" }}>{msg.date}</div>
+                  <div className="text-xs" style={{ color: "var(--muted-ink)" }}>{toDateText(msg.date)}</div>
                 </div>
               </div>
               <p
@@ -223,6 +224,12 @@ export default function Guestbook() {
             </div>
           ))}
         </div>
+
+        {messages.length === 0 && (
+          <div className="py-20 text-center">
+            <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅留言..." : "留言墙暂时还是空白"}</p>
+          </div>
+        )}
       </div>
     </PageLayout>
   );

@@ -1,5 +1,6 @@
 import PageLayout from "../components/layout/PageLayout";
-import { moments } from "../data/mockData";
+import { useMoments } from "../features/moments/useMoments";
+import { toDateText } from "../lib/text";
 
 const moodColors: Record<string, string> = {
   慵懒: "#B5956A",
@@ -10,6 +11,8 @@ const moodColors: Record<string, string> = {
 };
 
 export default function Moments() {
+  const { moments, loading } = useMoments(30);
+
   return (
     <PageLayout>
       <div className="max-w-5xl mx-auto px-8 pt-16 pb-24">
@@ -19,7 +22,7 @@ export default function Moments() {
           <h1 style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(36px,4vw,56px)", fontWeight: 400, color: "var(--ink)" }}>
             生活瞬间
           </h1>
-          <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>记录生命中不想遗忘的碎片</p>
+          <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>{loading ? "正在加载生活瞬间..." : "记录生命中不想遗忘的碎片"}</p>
         </div>
 
         {/* Feed */}
@@ -47,7 +50,7 @@ export default function Moments() {
                       }}
                     />
                     <div className="text-xs mt-2 text-center" style={{ color: "var(--muted-ink)" }}>
-                      {moment.date.slice(5)}
+                      {toDateText(moment.date).slice(5)}
                     </div>
                   </div>
 
@@ -61,7 +64,7 @@ export default function Moments() {
                   >
                     {/* Mobile date */}
                     <div className="flex items-center gap-3 mb-3 md:hidden">
-                      <span className="text-xs" style={{ color: "var(--muted-ink)" }}>{moment.date}</span>
+                      <span className="text-xs" style={{ color: "var(--muted-ink)" }}>{toDateText(moment.date)}</span>
                     </div>
 
                     {/* Mood badge */}
@@ -92,11 +95,11 @@ export default function Moments() {
                     </p>
 
                     {/* Images */}
-                    {(moment.images ?? []).length > 0 && (
+                    {moment.images.length > 0 && (
                       <div className="flex gap-2 mt-5 flex-wrap">
-                        {(moment.images ?? []).map((src, imgIdx) => (
+                        {moment.images.map((src, imgIdx) => (
                           <div
-                            key={imgIdx}
+                            key={src}
                             className="overflow-hidden"
                             style={{
                               width: moment.images.length === 1 ? "100%" : "calc(50% - 4px)",
@@ -116,7 +119,7 @@ export default function Moments() {
 
                     {/* Footer */}
                     <div className="flex items-center justify-between mt-4">
-                      <span className="text-xs md:block hidden" style={{ color: "var(--muted-ink)" }}>{moment.date}</span>
+                      <span className="text-xs md:block hidden" style={{ color: "var(--muted-ink)" }}>{toDateText(moment.date)}</span>
                       <span className="text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
                         第 {idx + 1} 个瞬间
                       </span>
@@ -126,6 +129,12 @@ export default function Moments() {
               );
             })}
           </div>
+
+          {moments.length === 0 && (
+            <div className="py-20 text-center">
+              <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅生活瞬间..." : "生活瞬间暂时还是空白"}</p>
+            </div>
+          )}
         </div>
       </div>
     </PageLayout>

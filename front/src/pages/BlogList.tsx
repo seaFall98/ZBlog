@@ -12,7 +12,7 @@ export default function BlogList() {
   const isTagRoute = location.pathname.startsWith("/tag/");
   const selectedCategory = !isTagRoute ? decodedSlug : undefined;
   const selectedTag = isTagRoute ? decodedSlug : undefined;
-  const { posts: filtered, source, loading } = usePosts({ category: selectedCategory, tag: selectedTag, pageSize: 100 }, { initialFallback: false });
+  const { posts: filtered, loading } = usePosts({ category: selectedCategory, tag: selectedTag, pageSize: 100 });
   const { items: categories } = useCategories();
   const pageTitle = selectedTag ? `标签：${selectedTag}` : selectedCategory ? `分类：${selectedCategory}` : "文章";
 
@@ -25,11 +25,6 @@ export default function BlogList() {
           <h1 style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(36px,4vw,56px)", fontWeight: 400, color: "var(--ink)" }}>
             {pageTitle}
           </h1>
-          {source === "fallback" && (
-            <p className="mt-4 text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-              正在以本地种子文章维持阅读动线
-            </p>
-          )}
         </div>
 
         {/* Filter bar */}

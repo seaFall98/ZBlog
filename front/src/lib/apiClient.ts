@@ -68,6 +68,26 @@ export function createApiClient(options: ApiClientOptions = {}) {
 
       return parseApiEnvelope<T>(json);
     },
+
+    async post<T>(path: string, body?: unknown): Promise<T> {
+      const response = await fetcher(buildApiUrl(baseUrl, path), {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      });
+
+      const json = response.ok ? ((await response.json()) as unknown) : await tryReadJson(response);
+
+      if (!response.ok) {
+        if (isApiEnvelope(json) && json.code !== 0) {
+          throw new ApiEnvelopeError(json.code, json.message);
+        }
+
+        throw new ApiHttpError(response.status, `HTTP ${response.status}`);
+      }
+
+      return parseApiEnvelope<T>(json);
+    },
   };
 }
 

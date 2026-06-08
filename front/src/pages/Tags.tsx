@@ -3,7 +3,7 @@ import PageLayout from "../components/layout/PageLayout";
 import { useTags } from "../features/taxonomy/useTaxonomy";
 
 export default function Tags() {
-  const { items: tags, source, loading } = useTags();
+  const { items: tags, loading } = useTags();
   const maxCount = Math.max(...tags.map((t) => t.count), 1);
   const minSize = 13;
   const maxSize = 30;
@@ -20,11 +20,6 @@ export default function Tags() {
           <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>
             {tags.length} 个标签{loading ? " · 正在更新" : ""}
           </p>
-          {source === "fallback" && (
-            <p className="mt-2 text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-              暂以本地种子标签维持云图
-            </p>
-          )}
         </div>
 
         {/* Tag cloud */}

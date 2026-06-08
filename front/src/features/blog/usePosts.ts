@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
 import { blogApi } from "./blogApi";
-import { getFallbackPosts, mergeFallbackAndApiPosts } from "./blogFallback";
 import type { PostFilterParams, PostListResult } from "./types";
 
 type UsePostsState = PostListResult & {
   loading: boolean;
   error: unknown;
-};
-
-type UsePostsOptions = {
-  initialFallback?: boolean;
 };
 
 function emptyPosts(params: PostFilterParams = {}): PostListResult {
@@ -18,17 +13,14 @@ function emptyPosts(params: PostFilterParams = {}): PostListResult {
     total: 0,
     page: Number(params.page) || 1,
     pageSize: Number(params.pageSize) || 0,
-    source: "fallback",
+    source: "api",
   };
 }
 
-export function usePosts(params: PostFilterParams = {}, options: UsePostsOptions = {}): UsePostsState {
-  const { initialFallback = true } = options;
+export function usePosts(params: PostFilterParams = {}): UsePostsState {
   const { category, tag, year, month, keyword, page, pageSize } = params;
   const [state, setState] = useState<UsePostsState>(() => ({
-    ...(initialFallback
-      ? getFallbackPosts({ category, tag, year, month, keyword, page, pageSize })
-      : emptyPosts({ category, tag, year, month, keyword, page, pageSize })),
+    ...emptyPosts({ category, tag, year, month, keyword, page, pageSize }),
     loading: true,
     error: null,
   }));
@@ -38,19 +30,15 @@ export function usePosts(params: PostFilterParams = {}, options: UsePostsOptions
     let active = true;
 
     async function load() {
-      setState((current) => ({
-        ...(initialFallback ? current : emptyPosts(requestParams)),
-        loading: true,
-        error: null,
-      }));
+      setState({ ...emptyPosts(requestParams), loading: true, error: null });
       try {
         const result = keyword ? await blogApi.searchPosts(requestParams) : await blogApi.listPosts(requestParams);
 
         if (!active) return;
-        setState({ ...mergeFallbackAndApiPosts(result, requestParams), loading: false, error: null });
+        setState({ ...result, loading: false, error: null });
       } catch (error) {
         if (!active) return;
-        setState({ ...getFallbackPosts(requestParams), loading: false, error });
+        setState({ ...emptyPosts(requestParams), loading: false, error });
       }
     }
 
@@ -59,7 +47,7 @@ export function usePosts(params: PostFilterParams = {}, options: UsePostsOptions
     return () => {
       active = false;
     };
-  }, [category, tag, year, month, keyword, page, pageSize, initialFallback]);
+  }, [category, tag, year, month, keyword, page, pageSize]);
 
   return state;
 }

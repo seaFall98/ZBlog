@@ -29,6 +29,10 @@ public interface StatsRepository {
 
   long countMoments();
 
+  long countAlbumPhotos();
+
+  long countGuestbookMessages();
+
   long countVisitors(LocalDate start, LocalDate end);
 
   long countPageviews(LocalDate start, LocalDate end);

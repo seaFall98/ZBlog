@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { blogApi } from "./blogApi";
-import { findFallbackPostBySlug, getRelatedFallbackPosts } from "./blogFallback";
 import type { DataSource, PostView } from "./types";
 
 type UsePostState = {
@@ -11,45 +10,44 @@ type UsePostState = {
   source: DataSource;
 };
 
-function fallbackState(slug: string): UsePostState {
-  const post = findFallbackPostBySlug(slug) ?? null;
+function emptyState(): UsePostState {
   return {
-    post,
-    related: post ? getRelatedFallbackPosts(post) : [],
+    post: null,
+    related: [],
     loading: false,
     error: null,
-    source: "fallback",
+    source: "api",
   };
 }
 
 export function usePost(slug: string): UsePostState {
   const stableSlug = useMemo(() => slug, [slug]);
-  const [state, setState] = useState<UsePostState>(() => ({ ...fallbackState(stableSlug), loading: true }));
+  const [state, setState] = useState<UsePostState>(() => ({ ...emptyState(), loading: true }));
 
   useEffect(() => {
     let active = true;
 
     async function load() {
+      if (!stableSlug) {
+        setState(emptyState());
+        return;
+      }
+
       setState((current) => ({ ...current, loading: true, error: null }));
       try {
         const post = await blogApi.getPost(stableSlug);
         if (!active) return;
 
-        if (post) {
-          setState({
-            post,
-            related: getRelatedFallbackPosts(post),
-            loading: false,
-            error: null,
-            source: "api",
-          });
-          return;
-        }
-
-        setState(fallbackState(stableSlug));
+        setState({
+          post,
+          related: [],
+          loading: false,
+          error: null,
+          source: "api",
+        });
       } catch (error) {
         if (!active) return;
-        setState({ ...fallbackState(stableSlug), error });
+        setState({ ...emptyState(), error });
       }
     }
 

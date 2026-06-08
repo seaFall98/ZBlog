@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { ExternalLinkIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { friendLinks } from "../data/mockData";
+import { useFriendLinks } from "../features/links/useFriendLinks";
 
 export default function Links() {
-  const categories = Array.from(new Set(friendLinks.map((l) => l.category)));
+  const { links, loading } = useFriendLinks();
+  const categories = Array.from(new Set(links.map((l) => l.category)));
   const [activeCategory, setActiveCategory] = useState("全部");
 
   const filtered = activeCategory === "全部"
-    ? friendLinks
-    : friendLinks.filter((l) => l.category === activeCategory);
+    ? links
+    : links.filter((l) => l.category === activeCategory);
 
   return (
     <PageLayout>
@@ -20,7 +21,7 @@ export default function Links() {
           <h1 style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(36px,4vw,56px)", fontWeight: 400, color: "var(--ink)" }}>
             友情链接
           </h1>
-          <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>认识有趣的人，看见不一样的风景</p>
+          <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>{loading ? "正在加载友链..." : "认识有趣的人，看见不一样的风景"}</p>
         </div>
 
         {/* Category filter */}
@@ -63,18 +64,22 @@ export default function Links() {
                 className="w-12 h-12 shrink-0 overflow-hidden flex items-center justify-center rounded-full"
                 style={{ background: "var(--section-bg)" }}
               >
-                <img
-                  src={link.logo}
-                  alt={link.name}
-                  loading="lazy"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    target.style.display = "none";
-                    const parent = target.parentElement;
-                    if (parent) parent.innerHTML = link.name.slice(0, 2);
-                  }}
-                />
+                {link.logo ? (
+                  <img
+                    src={link.logo}
+                    alt={link.name}
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = "none";
+                      const parent = target.parentElement;
+                      if (parent) parent.innerHTML = link.name.slice(0, 2);
+                    }}
+                  />
+                ) : (
+                  link.name.slice(0, 2)
+                )}
               </div>
 
               <div className="flex-1 min-w-0">
@@ -104,6 +109,12 @@ export default function Links() {
             </a>
           ))}
         </div>
+
+        {filtered.length === 0 && (
+          <div className="py-20 text-center">
+            <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅友链..." : "友情链接暂时还是空白"}</p>
+          </div>
+        )}
 
         {/* Apply section */}
         <div

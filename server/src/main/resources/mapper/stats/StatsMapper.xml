@@ -49,7 +49,18 @@
   </select>
 
   <select id="countMoments" resultType="long">
-    select count(*) from moments
+    select count(*) from moments where is_publish = true
+  </select>
+
+  <select id="countAlbumPhotos" resultType="long">
+    select count(*)
+    from album_photos ap
+    join albums al on al.id = ap.album_id
+    where ap.is_public = true and al.is_public = true
+  </select>
+
+  <select id="countGuestbookMessages" resultType="long">
+    select count(*) from guestbook_messages where deleted = false and status = 'approved'
   </select>
 
   <select id="countVisitorsBetween" resultType="long">

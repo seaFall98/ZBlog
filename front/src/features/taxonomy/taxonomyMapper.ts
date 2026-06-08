@@ -40,12 +40,17 @@ export function mapTaxonomyItem(record: TaxonomyRecord): TaxonomyItem {
   const slug = explicitSlug || code || urlSlug || (!isPureNumeric(rawId) ? rawId : "") || nameSlug;
   const id = rawId && (explicitSlug || code) ? rawId : !isPureNumeric(rawId) && rawId ? rawId : slug;
 
-  return {
+  const item: TaxonomyItem = {
     id,
     name,
     slug,
     count: toNumberValue(firstValue(record, ["article_count", "articleCount", "count"])),
   };
+  const description = toStringValue(firstValue(record, ["description", "summary"]));
+  const coverUrl = toStringValue(firstValue(record, ["cover_url", "coverUrl", "cover_image", "coverImage"]));
+  if (description) item.description = description;
+  if (coverUrl) item.coverUrl = coverUrl;
+  return item;
 }
 
 function taxonomyRecordsFromResponse(response: unknown): unknown[] {
