@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchCategories, fetchTags } from "./taxonomyApi";
-import { fallbackCategories, fallbackTags } from "./taxonomyFallback";
+import { fallbackCategories, fallbackTags, mergeFallbackAndApiTaxonomy } from "./taxonomyFallback";
 import type { TaxonomyItem, TaxonomyResult } from "./types";
 
 type TaxonomyKind = "categories" | "tags";
@@ -34,7 +34,7 @@ function useTaxonomy(kind: TaxonomyKind): TaxonomyResult {
         if (cancelled) return;
 
         if (items.length > 0) {
-          setResult({ items, source: "api", loading: false, error: null });
+          setResult({ items: mergeFallbackAndApiTaxonomy(fallback(), items), source: "api", loading: false, error: null });
           return;
         }
 

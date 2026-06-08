@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { blogApi } from "./blogApi";
-import { getFallbackPosts } from "./blogFallback";
+import { getFallbackPosts, mergeFallbackAndApiPosts } from "./blogFallback";
 import type { PostFilterParams, PostListResult } from "./types";
 
 type UsePostsState = PostListResult & {
@@ -8,20 +8,27 @@ type UsePostsState = PostListResult & {
   error: unknown;
 };
 
-type FallbackDecisionInput = {
-  postsLength: number;
-  params: PostFilterParams;
+type UsePostsOptions = {
+  initialFallback?: boolean;
 };
 
-export function shouldUseFallbackPosts({ postsLength, params }: FallbackDecisionInput): boolean {
-  if (postsLength > 0) return false;
-  return !params.category && !params.tag && !params.year && !params.month && !params.keyword;
+function emptyPosts(params: PostFilterParams = {}): PostListResult {
+  return {
+    posts: [],
+    total: 0,
+    page: Number(params.page) || 1,
+    pageSize: Number(params.pageSize) || 0,
+    source: "fallback",
+  };
 }
 
-export function usePosts(params: PostFilterParams = {}): UsePostsState {
+export function usePosts(params: PostFilterParams = {}, options: UsePostsOptions = {}): UsePostsState {
+  const { initialFallback = true } = options;
   const { category, tag, year, month, keyword, page, pageSize } = params;
   const [state, setState] = useState<UsePostsState>(() => ({
-    ...getFallbackPosts({ category, tag, year, month, keyword, page, pageSize }),
+    ...(initialFallback
+      ? getFallbackPosts({ category, tag, year, month, keyword, page, pageSize })
+      : emptyPosts({ category, tag, year, month, keyword, page, pageSize })),
     loading: true,
     error: null,
   }));
@@ -31,17 +38,16 @@ export function usePosts(params: PostFilterParams = {}): UsePostsState {
     let active = true;
 
     async function load() {
-      setState((current) => ({ ...current, loading: true, error: null }));
+      setState((current) => ({
+        ...(initialFallback ? current : emptyPosts(requestParams)),
+        loading: true,
+        error: null,
+      }));
       try {
         const result = keyword ? await blogApi.searchPosts(requestParams) : await blogApi.listPosts(requestParams);
 
         if (!active) return;
-        if (!shouldUseFallbackPosts({ postsLength: result.posts.length, params: requestParams })) {
-          setState({ ...result, loading: false, error: null });
-          return;
-        }
-
-        setState({ ...getFallbackPosts(requestParams), loading: false, error: null });
+        setState({ ...mergeFallbackAndApiPosts(result, requestParams), loading: false, error: null });
       } catch (error) {
         if (!active) return;
         setState({ ...getFallbackPosts(requestParams), loading: false, error });
@@ -53,7 +59,7 @@ export function usePosts(params: PostFilterParams = {}): UsePostsState {
     return () => {
       active = false;
     };
-  }, [category, tag, year, month, keyword, page, pageSize]);
+  }, [category, tag, year, month, keyword, page, pageSize, initialFallback]);
 
   return state;
 }

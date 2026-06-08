@@ -9,7 +9,7 @@ import { toDateText } from "../lib/text";
 export default function Archive() {
   const { year, month } = useParams();
   const isMonthArchive = Boolean(year && month);
-  const { posts, source, loading } = usePosts(isMonthArchive ? { year, month, pageSize: 100 } : { pageSize: 100 });
+  const { posts, source, loading } = usePosts(isMonthArchive ? { year, month, pageSize: 100 } : { pageSize: 100 }, { initialFallback: false });
   const archiveYears = useMemo(() => buildArchive(posts), [posts]);
   const defaultOpenYears = useMemo(() => {
     const next: Record<string, boolean> = {};

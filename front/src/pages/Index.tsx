@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRightIcon, CalendarIcon, ClockIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import { siteStats } from "../data/mockData";
-import { selectFeaturedPosts, selectRecentPosts } from "../features/blog/homeSelectors";
+import { selectFeaturedPosts } from "../features/blog/homeSelectors";
 import { usePosts } from "../features/blog/usePosts";
 import { toDateText } from "../lib/text";
 
@@ -58,7 +58,7 @@ export default function Index() {
 
   const { posts, source } = usePosts({ pageSize: 50 });
   const featuredPosts = selectFeaturedPosts(posts, 3);
-  const latestPosts = selectRecentPosts(posts, 6);
+  const latestPosts = posts.slice(0, 3);
   const galleryImages = [
     "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&q=80",
     "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=600&q=80",
@@ -163,18 +163,20 @@ export default function Index() {
               to={`/posts/${post.slug}`}
               className="group flex-1 min-w-60 block hover:-translate-y-1 transition-transform duration-300"
             >
-              <div
-                className="overflow-hidden mb-4"
-                style={{ height: idx === 1 ? "280px" : "220px" }}
-              >
-                <img
-                  src={post.coverUrl}
-                  alt={post.title}
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
-                  style={{ transition: "transform 0.5s ease" }}
-                />
-              </div>
+              {post.coverUrl && (
+                <div
+                  className="overflow-hidden mb-4"
+                  style={{ height: idx === 1 ? "280px" : "220px" }}
+                >
+                  <img
+                    src={post.coverUrl}
+                    alt={post.title}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
+                    style={{ transition: "transform 0.5s ease" }}
+                  />
+                </div>
+              )}
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
                   {post.category?.name ?? "未分类"}

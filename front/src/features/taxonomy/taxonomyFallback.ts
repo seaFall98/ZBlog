@@ -38,3 +38,19 @@ export function fallbackTags(): TaxonomyItem[] {
 
   return [...tags.values()];
 }
+
+export function mergeFallbackAndApiTaxonomy(fallbackItems: TaxonomyItem[], apiItems: TaxonomyItem[]): TaxonomyItem[] {
+  const items = new Map<string, TaxonomyItem>();
+
+  fallbackItems.forEach((item) => {
+    const key = item.slug || item.name || item.id;
+    items.set(key, item);
+  });
+
+  apiItems.forEach((item) => {
+    const key = item.slug || item.name || item.id;
+    items.set(key, item);
+  });
+
+  return [...items.values()];
+}

@@ -12,7 +12,7 @@ export default function BlogList() {
   const isTagRoute = location.pathname.startsWith("/tag/");
   const selectedCategory = !isTagRoute ? decodedSlug : undefined;
   const selectedTag = isTagRoute ? decodedSlug : undefined;
-  const { posts: filtered, source, loading } = usePosts({ category: selectedCategory, tag: selectedTag, pageSize: 100 });
+  const { posts: filtered, source, loading } = usePosts({ category: selectedCategory, tag: selectedTag, pageSize: 100 }, { initialFallback: false });
   const { items: categories } = useCategories();
   const pageTitle = selectedTag ? `标签：${selectedTag}` : selectedCategory ? `分类：${selectedCategory}` : "文章";
 

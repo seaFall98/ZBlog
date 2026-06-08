@@ -81,10 +81,14 @@ function matchesFilter(post: PostView, params: PostFilterParams): boolean {
   return true;
 }
 
+function filterFallbackPosts(params: PostFilterParams = {}): PostView[] {
+  return fallbackPosts.filter((post) => matchesFilter(post, params));
+}
+
 export function getFallbackPosts(params: PostFilterParams = {}): PostListResult {
   const page = Number(params.page) || 1;
   const pageSize = Number(params.pageSize) || fallbackPosts.length;
-  const filtered = fallbackPosts.filter((post) => matchesFilter(post, params));
+  const filtered = filterFallbackPosts(params);
   const start = (page - 1) * pageSize;
   const paged = filtered.slice(start, start + pageSize);
 
@@ -94,6 +98,45 @@ export function getFallbackPosts(params: PostFilterParams = {}): PostListResult 
     page,
     pageSize,
     source: "fallback",
+  };
+}
+
+function timeValue(post: PostView): number {
+  const value = Date.parse(post.publishedAt);
+  return Number.isNaN(value) ? Number.NEGATIVE_INFINITY : value;
+}
+
+export function mergeFallbackAndApiPosts(apiResult: PostListResult, params: PostFilterParams = {}): PostListResult {
+  const page = Number(params.page) || apiResult.page || 1;
+  if (page > 1) return apiResult;
+
+  const apiPosts = apiResult.posts.filter((post) => matchesFilter(post, params));
+  const pageSize = apiResult.pageSize || Number(params.pageSize) || apiPosts.length || fallbackPosts.length;
+  const apiSlugs = new Set(apiPosts.map((post) => post.slug));
+  const fallbackSlots = Math.max(pageSize - apiPosts.length, 0);
+  const fallbackForMerge = filterFallbackPosts(params)
+    .filter((post) => !apiSlugs.has(post.slug))
+    .slice(0, fallbackSlots);
+  const postsForMerge = apiPosts.length > 0 ? [...fallbackForMerge, ...apiPosts] : filterFallbackPosts(params).slice(0, pageSize);
+  const orderBySlug = new Map<string, number>();
+
+  postsForMerge.forEach((post, index) => {
+    orderBySlug.set(post.slug, index);
+  });
+
+  const merged = postsForMerge.sort((left, right) => {
+    const dateOrder = timeValue(right) - timeValue(left);
+    if (dateOrder !== 0) return dateOrder;
+    return (orderBySlug.get(left.slug) ?? 0) - (orderBySlug.get(right.slug) ?? 0);
+  });
+  const hasApiPosts = apiPosts.length > 0;
+
+  return {
+    posts: merged,
+    total: hasApiPosts ? apiResult.total : filterFallbackPosts(params).length,
+    page: apiResult.page || page,
+    pageSize,
+    source: hasApiPosts ? "api" : "fallback",
   };
 }
 
