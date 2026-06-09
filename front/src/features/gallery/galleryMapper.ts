@@ -1,3 +1,4 @@
+import { normalizeMediaUrl } from "../../lib/mediaUrl";
 import type { AlbumListResult, AlbumPhotoView, AlbumView } from "./types";
 
 type RawRecord = Record<string, unknown>;
@@ -28,7 +29,7 @@ function filenameFromUrl(url: string): string {
 
 function mapPhoto(value: unknown): AlbumPhotoView | null {
   if (!isRecord(value)) return null;
-  const imageUrl = toStringValue(firstValue(value, ["image_url", "imageUrl", "src", "url"]));
+  const imageUrl = normalizeMediaUrl(toStringValue(firstValue(value, ["image_url", "imageUrl", "src", "url"])));
   if (!imageUrl) return null;
   const id = toStringValue(firstValue(value, ["id", "image_url", "imageUrl"])) || imageUrl;
   const albumId = toStringValue(firstValue(value, ["album_id", "albumId"]));
@@ -58,7 +59,7 @@ export function mapAlbum(value: unknown): AlbumView | null {
     slug,
     title,
     description: toStringValue(firstValue(value, ["description", "summary"])),
-    coverUrl: toStringValue(firstValue(value, ["cover_url", "coverUrl", "coverImage"])),
+    coverUrl: normalizeMediaUrl(toStringValue(firstValue(value, ["cover_url", "coverUrl", "coverImage"]))),
     photoCount: toNumberValue(firstValue(value, ["photo_count", "photoCount"])) || photos.length,
     createdAt: toStringValue(firstValue(value, ["created_at", "createdAt", "date"])),
     photos,
