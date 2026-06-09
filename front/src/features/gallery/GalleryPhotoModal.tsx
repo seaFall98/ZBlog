@@ -76,26 +76,18 @@ export default function GalleryPhotoModal({
           <p className="gallery-photo-modal__album">{albumTitle}</p>
           <h2>{displayTitle}</h2>
           {photo.description && <p className="gallery-photo-modal__description">{photo.description}</p>}
-          {(displayDate || photo.filename) && (
-            <div className="gallery-photo-modal__meta" aria-label="照片信息">
-              {displayDate && (
-                <div>
-                  <span>时间</span>
-                  <strong>{displayDate}</strong>
-                </div>
-              )}
-              {photo.filename && (
-                <div>
-                  <span>文件</span>
-                  <strong>{photo.filename}</strong>
-                </div>
-              )}
-              <div>
-                <span>位置</span>
-                <strong>{selectedIndex !== null ? selectedIndex + 1 : 0} / {photoCount}</strong>
-              </div>
+          <div className="gallery-photo-modal__meta" aria-label="照片信息">
+            <div>
+              <span>位置</span>
+              <strong>{selectedIndex !== null ? selectedIndex + 1 : 0} / {photoCount}</strong>
             </div>
-          )}
+            {displayDate && (
+              <div>
+                <span>时间</span>
+                <strong>{displayDate}</strong>
+              </div>
+            )}
+          </div>
         </figcaption>
       </figure>
       <button className="gallery-photo-modal__nav gallery-photo-modal__nav--next" type="button" aria-label="下一张" onClick={(event) => { event.stopPropagation(); onNext(); }}>

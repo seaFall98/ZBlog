@@ -198,20 +198,20 @@
 
     <el-divider content-position="left">关于页面配置</el-divider>
 
-    <el-form-item label="个人描述">
+    <el-form-item label="站长简介">
       <el-input
         v-model="form.about_describe"
         type="textarea"
-        :rows="3"
-        placeholder="关于页面的个人描述"
+        :rows="5"
+        placeholder="关于页左侧站长简介；支持换行分段"
         :disabled="loading"
       />
     </el-form-item>
 
-    <el-form-item label="描述提示">
+    <el-form-item label="简介提示">
       <el-input
         v-model="form.about_describe_tips"
-        placeholder="例如：前端工程师 · 业余 · 专注 · 享受生活"
+        placeholder="关于页简介辅助提示，可留空"
         :disabled="loading"
       />
     </el-form-item>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchGuestbookMessages } from "./guestbookApi";
 import type { GuestbookMessageView } from "./types";
 
@@ -7,7 +7,7 @@ export function useGuestbookMessages(pageSize = 50) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
-  async function reload() {
+  const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -19,11 +19,11 @@ export function useGuestbookMessages(pageSize = 50) {
       setError(loadError);
       setLoading(false);
     }
-  }
+  }, [pageSize]);
 
   useEffect(() => {
-    void reload();
-  }, [pageSize]);
+    queueMicrotask(() => { void reload(); });
+  }, [reload]);
 
   return { messages, loading, error, reload };
 }

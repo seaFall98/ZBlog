@@ -2,7 +2,8 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { CalendarIcon, ClockIcon, SearchIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import { usePosts } from "../features/blog/usePosts";
-import { useCategories } from "../features/taxonomy/useTaxonomy";
+import { useCategories, useTags } from "../features/taxonomy/useTaxonomy";
+import { findTaxonomyItemByRouteParam } from "../features/taxonomy/taxonomyMapper";
 import { toDateText } from "../lib/text";
 
 export default function BlogList() {
@@ -14,7 +15,10 @@ export default function BlogList() {
   const selectedTag = isTagRoute ? decodedSlug : undefined;
   const { posts: filtered, loading } = usePosts({ category: selectedCategory, tag: selectedTag, pageSize: 100 });
   const { items: categories } = useCategories();
-  const pageTitle = selectedTag ? `标签：${selectedTag}` : selectedCategory ? `分类：${selectedCategory}` : "文章";
+  const { items: tags } = useTags();
+  const matchedTag = isTagRoute ? findTaxonomyItemByRouteParam(tags, decodedSlug) : undefined;
+  const tagDisplayName = matchedTag?.name || selectedTag;
+  const pageTitle = tagDisplayName ? `标签：${tagDisplayName}` : selectedCategory ? `分类：${selectedCategory}` : "文章";
 
   return (
     <PageLayout>

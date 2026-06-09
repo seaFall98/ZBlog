@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 
 // Pages
@@ -51,6 +51,7 @@ export default function App() {
         <Route path="/gallery/:slug" element={<GalleryDetail />} />
         <Route path="/moments" element={<Moments />} />
         <Route path="/guestbook" element={<Guestbook />} />
+        <Route path="/message" element={<Navigate to="/guestbook" replace />} />
         <Route path="/links" element={<Links />} />
         <Route path="/about" element={<About />} />
         <Route path="/stats" element={<Stats />} />

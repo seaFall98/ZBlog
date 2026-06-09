@@ -90,11 +90,8 @@ export default function Links() {
 
         <div className="mt-16 p-10 text-center" style={{ background: "var(--section-bg)", border: "1px solid var(--warm-border)" }}>
           <h2 className="mb-3" style={{ fontFamily: "var(--fontDisplay)", fontSize: "22px", fontWeight: 400, color: "var(--ink)" }}>申请友链</h2>
-          <p className="text-sm mb-2" style={{ color: "var(--muted-ink)" }}>
-            欢迎志同道合的朋友申请友链，请先在留言墙留下你的博客信息。
-          </p>
-          <p className="text-xs mb-6" style={{ color: "var(--muted-ink)" }}>
-            完整友链申请流程将在后续交互阶段完善，本轮不假装已经完成完整审核流程。
+          <p className="text-sm mb-6" style={{ color: "var(--muted-ink)" }}>
+            欢迎志同道合的朋友申请友链，请在留言墙留下你的博客信息
           </p>
           <a href="/guestbook" className="inline-flex items-center gap-2 text-sm px-6 py-3 transition-opacity hover:opacity-80" style={{ background: "var(--ink)", color: "var(--warm-white)", fontFamily: "var(--fontSans)" }}>
             前往留言墙 →

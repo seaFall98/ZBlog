@@ -27,7 +27,6 @@ export default function SpatialGallery({ photos, albumTitle, onSelectPhoto }: Sp
 
   return (
     <section className="spatial-gallery" aria-label={`${albumTitle} 照片空间`}>
-      <div className="spatial-gallery__rail" aria-hidden="true" />
       {layout.map((item) => {
         const photo = photos[item.index];
         if (!photo) return null;
@@ -40,18 +39,16 @@ export default function SpatialGallery({ photos, albumTitle, onSelectPhoto }: Sp
             style={{
               left: `${item.x}%`,
               top: `${item.y}%`,
-              transform: `rotate(${item.rotate}deg)`,
+              transform: `translate3d(-50%, -50%, ${item.depth}px) rotateY(${item.rotateY}deg) rotate(${item.rotate}deg) scale(${item.scale})`,
               zIndex: item.zIndex,
             }}
             onClick={() => onSelectPhoto(item.index)}
             aria-label={`查看照片：${photo.title || albumTitle}`}
           >
-            <span className="spatial-gallery__pin" aria-hidden="true" />
             <img src={photo.imageUrl} alt={photo.title || albumTitle} loading={item.index === 0 ? "eager" : "lazy"} />
           </button>
         );
       })}
-      <p className="spatial-gallery__footer">Photos are placed like quiet notes in a bright room.</p>
     </section>
   );
 }

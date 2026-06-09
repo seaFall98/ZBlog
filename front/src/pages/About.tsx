@@ -2,28 +2,98 @@ import { Link } from "react-router-dom";
 import { BookOpenIcon, CameraIcon, HeartIcon, MailIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import { useSiteProfile } from "../features/site/useSiteProfile";
-import { useSiteStats } from "../features/stats/useSiteStats";
 
-const skills = [
-  { name: "写作", level: 90 },
-  { name: "摄影", level: 75 },
-  { name: "阅读", level: 95 },
-  { name: "旅行", level: 80 },
-  { name: "设计", level: 65 },
+type ProfileItem = {
+  label: string;
+  value: string;
+  color?: string;
+};
+
+type TimelineItem = {
+  year: string;
+  event: string;
+};
+
+const defaultProfileItems: ProfileItem[] = [
+  { label: "正在读", value: "《百年孤独》" },
+  { label: "最近在拍", value: "秋日街景" },
+  { label: "最近喜欢", value: "煮咖啡" },
+  { label: "写作", value: "90" },
+  { label: "摄影", value: "75" },
+  { label: "阅读", value: "95" },
+  { label: "旅行", value: "80" },
 ];
 
-const timeline = [
+const defaultTimeline: TimelineItem[] = [
   { year: "2024", event: "开始认真记录，坚持每周更新" },
   { year: "2023", event: "第一次独自旅行，去了日本京都" },
   { year: "2022", event: "买了第一台相机，开始认真学摄影" },
   { year: "2021", event: "建立这个博客，写下第一篇文章" },
 ];
 
+function splitParagraphs(value: string): string[] {
+  return value
+    .split(/\n\s*\n|\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseJsonArray<T>(value: string): T[] {
+  if (!value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeProfileItems(value: string): ProfileItem[] {
+  return parseJsonArray<Partial<ProfileItem>>(value)
+    .map((item) => ({
+      label: String(item.label ?? "").trim(),
+      value: String(item.value ?? "").trim(),
+      color: String(item.color ?? "").trim(),
+    }))
+    .filter((item) => item.label && item.value);
+}
+
+function normalizeTimeline(value: string): TimelineItem[] {
+  const parsed = parseJsonArray<Partial<TimelineItem> & { label?: unknown; value?: unknown }>(value)
+    .map((item) => ({ year: String(item.year ?? item.label ?? "").trim(), event: String(item.event ?? item.value ?? "").trim() }))
+    .filter((item) => item.year && item.event);
+  if (parsed.length > 0) return parsed;
+
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [year, ...eventParts] = line.split(/[:：]/);
+      return { year: year?.trim() ?? "", event: eventParts.join("：").trim() };
+    })
+    .filter((item) => item.year && item.event);
+}
+
+function statusIcon(label: string) {
+  if (label.includes("拍")) return CameraIcon;
+  if (label.includes("喜欢")) return HeartIcon;
+  return BookOpenIcon;
+}
+
 export default function About() {
   const { profile } = useSiteProfile();
-  const stats = useSiteStats();
   const displayName = profile.title || "寂静之书";
-  const aboutIntro = profile.aboutIntro || "一个喜欢在平凡生活里寻找微小美好的人。";
+  const introSource = profile.aboutDescribe || profile.aboutIntro || "一个喜欢在平凡生活里寻找微小美好的人。";
+  const introParagraphs = splitParagraphs(introSource);
+  const configuredProfileItems = normalizeProfileItems(profile.aboutProfile);
+  const profileItems = configuredProfileItems.length > 0 ? configuredProfileItems : defaultProfileItems;
+  const statusItems = profileItems.slice(0, 3);
+  const skillItems = profileItems.slice(3).length > 0 ? profileItems.slice(3) : profileItems;
+  const timeline = normalizeTimeline(profile.aboutStory);
+  const timelineItems = timeline.length > 0 ? timeline : defaultTimeline;
+  const mottoLines = parseJsonArray<string>(profile.aboutMottoMain).filter(Boolean);
+  const quoteText = mottoLines.length > 0 ? mottoLines.join(" ") : (profile.aboutMottoSub || "生活就是很多很多个平凡的日子，偶尔有一些光。");
 
   return (
     <PageLayout>
@@ -35,15 +105,10 @@ export default function About() {
               你好，<br />
               这里是<em style={{ fontStyle: "italic", color: "var(--clay)" }}>{displayName}</em>
             </h1>
-            <div className="leading-relaxed mb-6 text-base" style={{ fontFamily: "var(--fontBody)", color: "var(--ink)", lineHeight: 2, maxWidth: "520px" }}>
-              <p className="mb-4">{aboutIntro}</p>
-              <p className="mb-4">这个博客是我的私人空间，记录读书的感悟、旅途的光景、日常的碎碎念，以及那些一闪而过、如果不写下来就会忘记的瞬间。</p>
-              <p>相信文字有重量，相信好照片能留住时间，相信生活值得被认真对待。</p>
-            </div>
-            <div className="flex flex-wrap gap-3 mb-8">
-              <span className="text-xs px-3 py-1.5" style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}>{stats.totalArticles} 篇文章</span>
-              <span className="text-xs px-3 py-1.5" style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}>{stats.totalPhotos} 张照片</span>
-              <span className="text-xs px-3 py-1.5" style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}>{stats.totalMoments} 个瞬间</span>
+            <div className="leading-relaxed mb-8 text-base" style={{ fontFamily: "var(--fontBody)", color: "var(--ink)", lineHeight: 2, maxWidth: "560px" }}>
+              {introParagraphs.map((paragraph) => (
+                <p key={paragraph} className="mb-4 last:mb-0">{paragraph}</p>
+              ))}
             </div>
             <div className="flex items-center gap-4">
               <a href={`mailto:${profile.email || "hello@quietbook.me"}`} className="inline-flex items-center gap-2 text-sm px-5 py-2.5 transition-opacity hover:opacity-80" style={{ background: "var(--ink)", color: "var(--warm-white)", fontFamily: "var(--fontSans)" }}>
@@ -61,9 +126,14 @@ export default function About() {
             </div>
             <div className="p-5 text-sm" style={{ background: "var(--section-bg)", border: "1px solid var(--warm-border)" }}>
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2" style={{ color: "var(--muted-ink)" }}><BookOpenIcon size={13} /> 正在读：《百年孤独》</div>
-                <div className="flex items-center gap-2" style={{ color: "var(--muted-ink)" }}><CameraIcon size={13} /> 最近在拍：秋日街景</div>
-                <div className="flex items-center gap-2" style={{ color: "var(--muted-ink)" }}><HeartIcon size={13} /> 最近喜欢：煮咖啡</div>
+                {statusItems.map((item) => {
+                  const Icon = statusIcon(item.label);
+                  return (
+                    <div key={`${item.label}-${item.value}`} className="flex items-center gap-2" style={{ color: "var(--muted-ink)" }}>
+                      <Icon size={13} /> {item.label}：{item.value}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -75,12 +145,16 @@ export default function About() {
           <div className="flex-1 min-w-64">
             <h2 className="mb-8" style={{ fontFamily: "var(--fontDisplay)", fontSize: "22px", fontWeight: 400, color: "var(--ink)" }}>特长 & 爱好</h2>
             <div className="flex flex-col gap-5">
-              {skills.map((s) => (
-                <div key={s.name}>
-                  <div className="flex justify-between mb-2"><span className="text-sm" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>{s.name}</span><span className="text-xs" style={{ color: "var(--muted-ink)" }}>{s.level}%</span></div>
-                  <div className="w-full h-1.5 overflow-hidden" style={{ background: "var(--section-bg)", borderRadius: 0 }}><div className="h-full" style={{ width: `${s.level}%`, background: "var(--ink)", borderRadius: 0 }} /></div>
-                </div>
-              ))}
+              {skillItems.map((item) => {
+                const numeric = Number(item.value);
+                const percent = Number.isFinite(numeric) ? Math.max(0, Math.min(100, numeric)) : 72;
+                return (
+                  <div key={`${item.label}-${item.value}`}>
+                    <div className="flex justify-between mb-2"><span className="text-sm" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>{item.label}</span><span className="text-xs" style={{ color: "var(--muted-ink)" }}>{Number.isFinite(numeric) ? `${percent}%` : item.value}</span></div>
+                    <div className="w-full h-1.5 overflow-hidden" style={{ background: "var(--section-bg)", borderRadius: 0 }}><div className="h-full" style={{ width: `${percent}%`, background: item.color || "var(--ink)", borderRadius: 0 }} /></div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -89,11 +163,11 @@ export default function About() {
             <div className="relative">
               <div className="absolute left-12 top-0 bottom-0 w-px" style={{ background: "var(--warm-border)" }} />
               <div className="flex flex-col gap-8">
-                {timeline.map((t) => (
-                  <div key={t.year} className="flex gap-6 items-start">
-                    <div className="shrink-0 w-24 text-right text-xs pt-0.5" style={{ fontFamily: "var(--fontDisplay)", fontSize: "15px", color: "var(--clay)", fontWeight: 600 }}>{t.year}</div>
+                {timelineItems.map((item) => (
+                  <div key={`${item.year}-${item.event}`} className="flex gap-6 items-start">
+                    <div className="shrink-0 w-24 text-right text-xs pt-0.5" style={{ fontFamily: "var(--fontDisplay)", fontSize: "15px", color: "var(--clay)", fontWeight: 600 }}>{item.year}</div>
                     <div className="shrink-0 w-2.5 h-2.5 rounded-full mt-0.5" style={{ background: "var(--clay)", outline: "3px solid var(--ivory)", outlineOffset: "1px" }} />
-                    <p className="text-sm leading-relaxed" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>{t.event}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>{item.event}</p>
                   </div>
                 ))}
               </div>
@@ -102,7 +176,10 @@ export default function About() {
         </div>
 
         <div className="mt-16 py-8 text-center border-t" style={{ borderColor: "var(--warm-border)" }}>
-          <p className="text-sm" style={{ fontFamily: "var(--fontDisplay)", fontStyle: "italic", color: "var(--muted-ink)", fontSize: "16px" }}>"生活就是很多很多个平凡的日子，偶尔有一些光。"</p>
+          <p className="text-sm" style={{ fontFamily: "var(--fontDisplay)", fontStyle: "italic", color: "var(--muted-ink)", fontSize: "16px" }}>"{quoteText}"</p>
+          {profile.aboutMottoSub && mottoLines.length > 0 && (
+            <p className="mt-3 text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>{profile.aboutMottoSub}</p>
+          )}
         </div>
       </div>
     </PageLayout>

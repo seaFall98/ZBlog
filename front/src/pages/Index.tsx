@@ -6,6 +6,7 @@ import { selectFeaturedPosts } from "../features/blog/homeSelectors";
 import { usePosts } from "../features/blog/usePosts";
 import { useAlbums } from "../features/gallery/useAlbums";
 import { useMoments } from "../features/moments/useMoments";
+import { useSiteProfile } from "../features/site/useSiteProfile";
 import { useSiteStats } from "../features/stats/useSiteStats";
 import { toDateText } from "../lib/text";
 
@@ -61,10 +62,13 @@ export default function Index() {
   const { posts } = usePosts({ pageSize: 50 });
   const { albums } = useAlbums(4);
   const { moments } = useMoments(3);
+  const { profile } = useSiteProfile();
   const stats = useSiteStats();
   const featuredPosts = selectFeaturedPosts(posts, 3);
   const latestPosts = posts.slice(0, 3);
   const galleryImages = albums.map((album) => album.coverUrl).filter(Boolean).slice(0, 4);
+  const heroEyebrow = [profile.heroEyebrow || "个人出版物", profile.established].filter(Boolean).join(" · ");
+  const heroTitleLines = (profile.heroTitle || "以文字作舟，\n渡光阴\n之河").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 
   return (
     <PageLayout>
@@ -74,15 +78,18 @@ export default function Index() {
         <div className="flex-1 min-w-64 flex flex-col justify-between" style={{ flexBasis: "55%" }}>
           <div>
             <p className="text-xs tracking-widest uppercase mb-6" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-              个人出版物 · 2024
+              {heroEyebrow}
             </p>
             <h1
               className="leading-tight mb-6"
               style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(40px,6vw,80px)", fontWeight: 400, color: "var(--ink)", lineHeight: 1.15 }}
             >
-              以文字作舟，<br />
-              渡光阴<br />
-              <em style={{ fontStyle: "italic", color: "var(--clay)" }}>之河</em>
+              {heroTitleLines.map((line, index) => (
+                <span key={`${line}-${index}`}>
+                  {index === heroTitleLines.length - 1 ? <em style={{ fontStyle: "italic", color: "var(--clay)" }}>{line}</em> : line}
+                  {index < heroTitleLines.length - 1 && <br />}
+                </span>
+              ))}
             </h1>
             <p className="text-sm mb-3" style={{ color: "var(--muted-ink)" }}>
               {(stats.totalArticles || posts.length).toLocaleString()} 篇文章 · 最近更新于 {latestPosts[0] ? toDateText(latestPosts[0].publishedAt) : "未发布"}
@@ -90,7 +97,7 @@ export default function Index() {
           </div>
           <Link
             to="/blog"
-            className="inline-flex items-center gap-2 text-sm group"
+            className="inline-flex items-center gap-2 text-sm group mt-12 md:mt-16"
             style={{ color: "var(--olive)", fontFamily: "var(--fontSans)" }}
           >
             阅读文章

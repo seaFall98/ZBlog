@@ -60,4 +60,20 @@ describe("ArticleContent", () => {
     expect(html).toContain('id="重复标题"');
     expect(html).toContain('id="重复标题-2"');
   });
+
+  it("renders mermaid fenced blocks as diagram containers instead of black code blocks", () => {
+    const html = renderToStaticMarkup(
+      <ArticleContent
+        post={postWith({
+          contentMarkdown: "```mermaid\ngraph TD\n  A-->B\n```",
+          toc: [],
+        })}
+      />,
+    );
+
+    expect(html).toContain('class="prose-blog__mermaid"');
+    expect(html).toContain("graph TD");
+    expect(html).not.toContain("language-mermaid");
+    expect(html).not.toContain("<pre");
+  });
 });
