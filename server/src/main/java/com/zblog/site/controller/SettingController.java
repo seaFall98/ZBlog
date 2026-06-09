@@ -20,6 +20,11 @@ public class SettingController {
     return ApiResponse.ok(settingService.getGroup(group));
   }
 
+  @GetMapping("/settings/public-profile")
+  public ApiResponse<Map<String, String>> publicProfile() {
+    return ApiResponse.ok(settingService.publicProfile());
+  }
+
   @RequestMapping(
       value = "/admin/settings/{group}",
       method = {RequestMethod.PATCH, RequestMethod.PUT})

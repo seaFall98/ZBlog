@@ -29,4 +29,11 @@ describe("Markdown TOC", () => {
     expect(headingId("秋日 Light & Shadow")).toBe("秋日-light-shadow");
     expect(headingId("   ###   ")).toBe("section");
   });
+
+  it("keeps language names ending with # in heading titles", () => {
+    expect(extractMarkdownToc("## C#\n\n## F# ###")).toEqual([
+      { id: "c", title: "C#", level: 2 },
+      { id: "f", title: "F#", level: 2 },
+    ]);
+  });
 });

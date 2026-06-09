@@ -26,12 +26,17 @@ function flattenSettings(value: unknown): RawRecord {
 export function mapSafeSiteProfile(value: unknown): SiteProfileView {
   const record = flattenSettings(value);
   return {
-    title: stringValue(record.site_title ?? record.title),
-    subtitle: stringValue(record.site_subtitle ?? record.subtitle),
-    aboutIntro: stringValue(record.about_intro ?? record.about),
-    email: stringValue(record.contact_email ?? record.email),
-    avatarUrl: normalizeMediaUrl(stringValue(record.avatar_url ?? record.avatar)),
+    title: stringValue(record.title ?? record.site_title ?? record.site_name),
+    subtitle: stringValue(record.subtitle ?? record.site_subtitle ?? record.site_description),
+    aboutIntro: stringValue(record.aboutIntro ?? record.about_intro ?? record["basic.author_desc"] ?? record.author_desc ?? record.about),
+    email: stringValue(record.email ?? record.contact_email ?? record["basic.author_email"] ?? record.author_email),
+    avatarUrl: normalizeMediaUrl(stringValue(record.avatarUrl ?? record.avatar_url ?? record["basic.author_avatar"] ?? record.author_avatar ?? record.avatar)),
   };
+}
+
+function normalizeMenuHref(value: unknown): string {
+  const href = stringValue(value).trim() || "/";
+  return href === "/album" ? "/gallery" : href;
 }
 
 export function mapMenus(value: unknown): SiteMenuView[] {
@@ -41,14 +46,14 @@ export function mapMenus(value: unknown): SiteMenuView[] {
     .filter((item) => item.enabled !== false && item.visible !== false && item.status !== "DISABLED")
     .map((item) => ({
       label: stringValue(item.title ?? item.name ?? item.label),
-      href: stringValue(item.path ?? item.url ?? item.href) || "/",
+      href: normalizeMenuHref(item.path ?? item.url ?? item.href),
       children: mapMenus(item.children),
     }))
     .filter((item) => item.label && item.href);
 }
 
 export async function fetchSiteProfile(): Promise<SiteProfileView> {
-  const data = await apiClient.get<RawRecord>("/settings/basic");
+  const data = await apiClient.get<RawRecord>("/settings/public-profile");
   return mapSafeSiteProfile(data);
 }
 

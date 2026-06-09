@@ -4,7 +4,7 @@ export type TocItem = {
   level: 2 | 3;
 };
 
-const headingMarker = /^(#{2,3})\s+(.+?)\s*#*\s*$/;
+const headingMarker = /^(#{2,3})\s+(.+?)(?:\s+#+)?\s*$/;
 
 export function headingId(text: string): string {
   const slug = text
