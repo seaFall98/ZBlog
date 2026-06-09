@@ -29,7 +29,7 @@ export function extractMarkdownToc(markdown: string): TocItem[] {
   let inFence = false;
 
   for (const line of markdown.split(/\r?\n/)) {
-    if (/^\s*```/.test(line)) {
+    if (/^\s*(```|~~~)/.test(line)) {
       inFence = !inFence;
       continue;
     }

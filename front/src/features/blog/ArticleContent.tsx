@@ -3,6 +3,13 @@ import remarkGfm from "remark-gfm";
 import { headingId } from "./toc";
 import type { PostView } from "./types";
 
+function nextFallbackHeadingId(text: string, seen: Map<string, number>): string {
+  const baseId = headingId(text);
+  const count = seen.get(baseId) ?? 0;
+  seen.set(baseId, count + 1);
+  return count === 0 ? baseId : `${baseId}-${count + 1}`;
+}
+
 type ArticleContentProps = {
   post: PostView;
 };
@@ -13,13 +20,16 @@ export default function ArticleContent({ post }: ArticleContentProps) {
   }
 
   let headingIndex = 0;
+  const fallbackHeadingIds = new Map<string, number>();
   const components: Components = {
     h2({ children, node: _node, ...props }) {
-      const id = post.toc[headingIndex++]?.id ?? headingId(String(children));
+      const text = String(children);
+      const id = post.toc[headingIndex++]?.id ?? nextFallbackHeadingId(text, fallbackHeadingIds);
       return <h2 id={id} {...props}>{children}</h2>;
     },
     h3({ children, node: _node, ...props }) {
-      const id = post.toc[headingIndex++]?.id ?? headingId(String(children));
+      const text = String(children);
+      const id = post.toc[headingIndex++]?.id ?? nextFallbackHeadingId(text, fallbackHeadingIds);
       return <h3 id={id} {...props}>{children}</h3>;
     },
   };

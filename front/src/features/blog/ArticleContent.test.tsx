@@ -46,4 +46,18 @@ describe("ArticleContent", () => {
 
     expect(html).toContain("<p>HTML fallback</p>");
   });
+
+  it("keeps fallback heading ids unique when toc is shorter than rendered headings", () => {
+    const html = renderToStaticMarkup(
+      <ArticleContent
+        post={postWith({
+          contentMarkdown: "## 重复标题\n\n## 重复标题",
+          toc: [],
+        })}
+      />,
+    );
+
+    expect(html).toContain('id="重复标题"');
+    expect(html).toContain('id="重复标题-2"');
+  });
 });
