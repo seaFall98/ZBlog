@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { CalendarIcon, ClockIcon, TagIcon, ArrowLeftIcon, Share2Icon, BookmarkIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import ArticleContent from "../features/blog/ArticleContent";
+import ArticleToc from "../features/blog/ArticleToc";
 import { usePost } from "../features/blog/usePost";
 import { toDateText } from "../lib/text";
 import { toast } from "sonner";
@@ -175,21 +176,8 @@ export default function BlogDetail() {
                 </button>
               </div>
 
-              {/* TOC (static) */}
-              <div
-                className="p-5"
-                style={{ background: "var(--section-bg)", border: "1px solid var(--warm-border)" }}
-              >
-                <div className="text-xs tracking-widest uppercase mb-4" style={{ color: "var(--muted-ink)" }}>目录</div>
-                <div className="flex flex-col gap-3">
-                  <div className="text-xs" style={{ color: "var(--ink)" }}>一、序言</div>
-                  <div className="text-xs pl-3" style={{ color: "var(--muted-ink)" }}>· 引子</div>
-                  <div className="text-xs" style={{ color: "var(--ink)" }}>二、正文展开</div>
-                  <div className="text-xs pl-3" style={{ color: "var(--muted-ink)" }}>· 细节描述</div>
-                  <div className="text-xs pl-3" style={{ color: "var(--muted-ink)" }}>· 深入探讨</div>
-                  <div className="text-xs" style={{ color: "var(--ink)" }}>三、尾声</div>
-                </div>
-              </div>
+              {/* TOC */}
+              <ArticleToc toc={post.toc} />
 
               {/* All posts link */}
               <Link

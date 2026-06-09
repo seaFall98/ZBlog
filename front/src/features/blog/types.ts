@@ -1,3 +1,5 @@
+import type { TocItem } from "./toc";
+
 export type DataSource = "api";
 
 export type TaxonomyView = {
@@ -12,6 +14,8 @@ export type PostView = {
   title: string;
   summary: string;
   contentHtml: string;
+  contentMarkdown: string;
+  toc: TocItem[];
   category: TaxonomyView | null;
   tags: TaxonomyView[];
   publishedAt: string;
