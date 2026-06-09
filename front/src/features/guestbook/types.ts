@@ -5,3 +5,9 @@ export type GuestbookMessageView = {
   date: string;
   avatar: string;
 };
+
+export type GuestbookSubmitResult = {
+  id: string;
+  status: string;
+  message: string;
+};
