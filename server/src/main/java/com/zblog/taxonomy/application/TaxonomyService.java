@@ -28,7 +28,8 @@ public class TaxonomyService {
     String slug = textOrDefault(request, "slug", Slugify.from(name));
     String description = textOrDefault(request, "description", "");
     int sort = numberOrDefault(request, "sort", 0);
-    return taxonomyRepository.createCategory(name, slug, description, sort);
+    String coverUrl = textOrDefault(request, "cover_url", textOrDefault(request, "coverUrl", ""));
+    return taxonomyRepository.createCategory(name, slug, description, sort, coverUrl);
   }
 
   public Map<String, Object> updateCategory(long id, Map<String, Object> request) {
@@ -37,7 +38,8 @@ public class TaxonomyService {
         text(request, "name"),
         textOrDefault(request, "slug", Slugify.from(text(request, "name"))),
         textOrDefault(request, "description", ""),
-        numberOrDefault(request, "sort", 0));
+        numberOrDefault(request, "sort", 0),
+        textOrDefault(request, "cover_url", textOrDefault(request, "coverUrl", "")));
   }
 
   public void deleteCategory(long id) {

@@ -20,7 +20,8 @@ public interface TaxonomyMapper {
       @Param("name") String name,
       @Param("slug") String slug,
       @Param("description") String description,
-      @Param("sort") int sort);
+      @Param("sort") int sort,
+      @Param("coverUrl") String coverUrl);
 
   void deleteCategory(@Param("id") long id);
 

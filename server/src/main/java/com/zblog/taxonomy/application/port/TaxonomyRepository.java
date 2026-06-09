@@ -9,9 +9,9 @@ public interface TaxonomyRepository {
 
   Map<String, Object> getCategory(String idOrSlug);
 
-  Map<String, Object> createCategory(String name, String slug, String description, int sort);
+  Map<String, Object> createCategory(String name, String slug, String description, int sort, String coverUrl);
 
-  Map<String, Object> updateCategory(long id, String name, String slug, String description, int sort);
+  Map<String, Object> updateCategory(long id, String name, String slug, String description, int sort, String coverUrl);
 
   void deleteCategory(long id);
 

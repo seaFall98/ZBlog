@@ -17,6 +17,12 @@ describe("mapTaxonomyItem", () => {
   it("keeps tag name and extracts tag slug from url", () => {
     expect(mapTaxonomyItem({ id: 1, name: "秋日", url: "/tag/autumn", article_count: 2 })).toEqual({ id: "autumn", name: "秋日", slug: "autumn", count: 2 });
   });
+
+  it("maps category cover URL", () => {
+    expect(mapTaxonomyItem({ id: 1, name: "写作", slug: "writing", cover_url: "https://example.com/writing.jpg" })).toMatchObject({
+      coverUrl: "https://example.com/writing.jpg",
+    });
+  });
 });
 
 describe("mapTaxonomyItems", () => {

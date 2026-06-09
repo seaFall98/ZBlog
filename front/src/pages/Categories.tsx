@@ -33,16 +33,20 @@ export default function Categories() {
                 style={{ border: "1px solid var(--warm-border)" }}
               >
                 {/* Cover */}
-                {cat.coverUrl && (
-                  <div className="overflow-hidden h-44">
+                <div className="overflow-hidden h-44" style={{ background: "var(--section-bg)" }}>
+                  {cat.coverUrl ? (
                     <img
                       src={cat.coverUrl}
                       alt={cat.name}
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center px-6 text-center text-xs tracking-widest uppercase" style={{ color: "var(--muted-ink)" }}>
+                      {cat.name}
+                    </div>
+                  )}
+                </div>
 
                 {/* Body */}
                 <div className="p-6" style={{ background: "var(--warm-white)" }}>

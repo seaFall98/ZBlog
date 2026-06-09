@@ -9,6 +9,7 @@
     <el-table v-loading="loading" :data="list" style="margin: 20px 0" max-height="350">
       <el-table-column prop="name" label="分类名称" min-width="100" show-overflow-tooltip />
       <el-table-column prop="description" label="描述" min-width="120" show-overflow-tooltip />
+      <el-table-column prop="cover_url" label="封面" min-width="120" show-overflow-tooltip />
       <el-table-column prop="count" label="文章数" width="80" align="center" />
       <el-table-column prop="sort" label="排序" width="80" align="center" />
       <el-table-column label="操作" width="100" align="center" fixed="right">
@@ -35,6 +36,12 @@
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="current.description" type="textarea" placeholder="请输入描述" />
+        </el-form-item>
+        <el-form-item label="封面">
+          <el-input v-model="current.cover_url" placeholder="请输入封面图片 URL" />
+          <div v-if="current.cover_url" style="margin-top: 8px">
+            <img :src="current.cover_url" alt="分类封面预览" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px" />
+          </div>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="current.sort" :min="0" />
@@ -70,6 +77,7 @@ const current = ref<Partial<Category>>({
   name: '',
   description: '',
   sort: 0,
+  cover_url: '',
 });
 
 // 弹窗打开时加载数据（immediate 确保懒挂载组件首次打开时也能加载）
@@ -99,7 +107,7 @@ function openForm(row?: Category) {
   if (row) {
     current.value = { ...row };
   } else {
-    current.value = { id: 0, name: '', description: '', sort: 0 };
+    current.value = { id: 0, name: '', description: '', sort: 0, cover_url: '' };
   }
   formVisible.value = true;
 }
