@@ -1,9 +1,12 @@
 package com.zblog.site.application;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zblog.site.application.port.SettingRepository;
 import java.security.SecureRandom;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,10 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class SettingService {
 
   private final SettingRepository settingRepository;
+  private final ObjectMapper objectMapper;
   private final SecureRandom secureRandom = new SecureRandom();
 
-  public SettingService(SettingRepository settingRepository) {
+  public SettingService(SettingRepository settingRepository, ObjectMapper objectMapper) {
     this.settingRepository = settingRepository;
+    this.objectMapper = objectMapper;
   }
 
   public Map<String, String> getGroup(String group) {
@@ -51,6 +56,42 @@ public class SettingService {
     profile.put("aboutMottoSub", firstNonBlank(blog, basic, "about_motto_sub"));
     profile.put("aboutStory", firstNonBlank(blog, basic, "about_story"));
     return profile;
+  }
+
+  public FrontConfigView frontConfig() {
+    Map<String, String> identity = settingRepository.getGroup("v2_identity");
+    Map<String, String> home = settingRepository.getGroup("v2_home");
+    Map<String, String> about = settingRepository.getGroup("v2_about");
+    Map<String, String> guestbook = settingRepository.getGroup("v2_guestbook");
+    Map<String, String> footer = settingRepository.getGroup("v2_footer");
+
+    return new FrontConfigView(
+        new IdentityView(
+            read(identity, "site_title"),
+            read(identity, "owner_display_name"),
+            read(identity, "email"),
+            read(identity, "primary_image_url"),
+            read(identity, "favicon_url"),
+            read(identity, "icp_record"),
+            read(identity, "police_record")),
+        new HomeView(
+            read(home, "hero_eyebrow"),
+            read(home, "hero_title"),
+            read(home, "hero_meta"),
+            read(home, "hero_cta_label"),
+            read(home, "hero_cta_target")),
+        new AboutView(
+            read(about, "intro_text"),
+            parseStatusItems(read(about, "status_items")),
+            parseSkillItems(read(about, "skill_items")),
+            parseTimelineItems(read(about, "timeline_items")),
+            read(about, "bottom_quote")),
+        new GuestbookView(read(guestbook, "intro_text"), read(guestbook, "background_image")),
+        new FooterView(
+            read(footer, "description"),
+            read(footer, "copyright_text"),
+            read(footer, "slogan"),
+            parseSocialLinks(read(footer, "social_links"))));
   }
 
   @Transactional
@@ -89,4 +130,143 @@ public class SettingService {
     }
     return "";
   }
+
+  private String read(Map<String, String> values, String key) {
+    String direct = values.get(key);
+    if (direct != null) {
+      return direct;
+    }
+
+    for (String prefix : List.of("v2_identity.", "v2_home.", "v2_about.", "v2_guestbook.", "v2_footer.")) {
+      String prefixed = values.get(prefix + key);
+      if (prefixed != null) {
+        return prefixed;
+      }
+    }
+    return "";
+  }
+
+  private List<StatusItemView> parseStatusItems(String raw) {
+    return readJsonList(raw).stream()
+        .map(
+            item ->
+                new StatusItemView(
+                    text(item.get("icon")),
+                    text(item.get("label")),
+                    text(item.get("content")),
+                    number(item.get("sort"))))
+        .filter(item -> !item.label().isBlank() && !item.content().isBlank())
+        .toList();
+  }
+
+  private List<SkillItemView> parseSkillItems(String raw) {
+    return readJsonList(raw).stream()
+        .map(
+            item ->
+                new SkillItemView(
+                    text(item.get("name")), text(item.get("value")), number(item.get("sort"))))
+        .filter(item -> !item.name().isBlank() && !item.value().isBlank())
+        .toList();
+  }
+
+  private List<TimelineItemView> parseTimelineItems(String raw) {
+    return readJsonList(raw).stream()
+        .map(
+            item ->
+                new TimelineItemView(
+                    text(item.get("year")), text(item.get("event")), number(item.get("sort"))))
+        .filter(item -> !item.year().isBlank() && !item.event().isBlank())
+        .toList();
+  }
+
+  private List<SocialLinkView> parseSocialLinks(String raw) {
+    return readJsonList(raw).stream()
+        .map(
+            item ->
+                new SocialLinkView(
+                    text(item.get("icon")),
+                    text(item.get("name")),
+                    text(item.get("url")),
+                    number(item.get("sort"))))
+        .filter(item -> !item.name().isBlank() && !item.url().isBlank())
+        .toList();
+  }
+
+  private List<Map<String, Object>> readJsonList(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return List.of();
+    }
+
+    try {
+      return objectMapper.readValue(raw, new TypeReference<List<Map<String, Object>>>() {});
+    } catch (Exception ignored) {
+      return List.of();
+    }
+  }
+
+  private String text(Object value) {
+    return value == null ? "" : value.toString().trim();
+  }
+
+  private int number(Object value) {
+    if (value instanceof Number number) {
+      return number.intValue();
+    }
+
+    if (value instanceof String text) {
+      try {
+        return Integer.parseInt(text.trim());
+      } catch (NumberFormatException ignored) {
+        return 0;
+      }
+    }
+
+    return 0;
+  }
+
+  public record FrontConfigView(
+      IdentityView identity,
+      HomeView home,
+      AboutView about,
+      GuestbookView guestbook,
+      FooterView footer) {}
+
+  public record IdentityView(
+      String siteTitle,
+      String ownerDisplayName,
+      String email,
+      String primaryImageUrl,
+      String faviconUrl,
+      String icpRecord,
+      String policeRecord) {}
+
+  public record HomeView(
+      String heroEyebrow,
+      String heroTitle,
+      String heroMeta,
+      String heroCtaLabel,
+      String heroCtaTarget) {}
+
+  public record AboutView(
+      String introText,
+      List<StatusItemView> statusItems,
+      List<SkillItemView> skillItems,
+      List<TimelineItemView> timelineItems,
+      String bottomQuote) {}
+
+  public record StatusItemView(String icon, String label, String content, int sort) {}
+
+  public record SkillItemView(String name, String value, int sort) {}
+
+  public record TimelineItemView(String year, String event, int sort) {}
+
+  public record GuestbookView(String introText, String backgroundImage) {}
+
+  public record FooterView(
+      String description,
+      String copyrightText,
+      String slogan,
+      List<SocialLinkView> socialLinks) {}
+
+  public record SocialLinkView(String icon, String name, String url, int sort) {}
 }

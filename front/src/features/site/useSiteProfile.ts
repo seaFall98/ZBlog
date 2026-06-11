@@ -1,40 +1,65 @@
-import { useEffect, useState } from "react";
-import { fetchMenus, fetchSiteProfile } from "./siteApi";
+import { createContext, createElement, useContext, useEffect, useMemo, useState } from "react";
+import { fetchMenuGroups, fetchSiteProfile } from "./siteApi";
 import type { SiteMenuView, SiteProfileView } from "./types";
 
-export const defaultSiteProfile: SiteProfileView = {
-  title: "寂静之书",
-  subtitle: "记录平凡生活里的光与影",
-  aboutIntro: "一个喜欢在平凡生活里寻找微小美好的人。",
-  email: "hello@quietbook.me",
-  avatarUrl: "https://images.unsplash.com/photo-1529665253569-6d01c0eaf7b6?w=600&q=80",
+export const emptySiteProfile: SiteProfileView = {
+  title: "",
+  ownerDisplayName: "",
+  subtitle: "",
+  aboutIntro: "",
+  email: "",
+  avatarUrl: "",
   faviconUrl: "",
-  established: "2024",
-  heroEyebrow: "个人出版物",
-  heroTitle: "以文字作舟，\n渡光阴\n之河",
-  heroSlogan: "以文字作舟，渡光阴之河",
-  footerDescription: "记录平凡生活里的光与影，写作是一种安静的对话。",
+  established: "",
+  icpRecord: "",
+  policeRecord: "",
+  heroEyebrow: "",
+  heroTitle: "",
+  heroMeta: "",
+  heroCtaLabel: "",
+  heroCtaTarget: "",
+  heroSlogan: "",
+  footerDescription: "",
   footerCopyright: "",
-  footerSlogan: "以文字作舟，渡光阴之河",
+  footerSlogan: "",
+  socialLinks: [],
   backgroundImage: "",
   barrageBackgroundImage: "",
-  messageContent: "",
-  aboutDescribe: "一个喜欢在平凡生活里寻找微小美好的人。",
-  aboutDescribeTips: "",
-  aboutExhibition: "",
-  aboutProfile: "",
-  aboutPersonality: "",
-  aboutMottoMain: "",
-  aboutMottoSub: "",
-  aboutStory: "",
+  guestbookIntro: "",
+  aboutStatusItems: [],
+  aboutSkillItems: [],
+  aboutTimelineItems: [],
+  aboutBottomQuote: "",
 };
+
+type SiteProfileContextValue = {
+  profile: SiteProfileView;
+  headerMenus: SiteMenuView[];
+  footerMenus: SiteMenuView[];
+  loading: boolean;
+  loaded: boolean;
+  error: unknown;
+};
+
+const initialValue: SiteProfileContextValue = {
+  profile: emptySiteProfile,
+  headerMenus: [],
+  footerMenus: [],
+  loading: true,
+  loaded: false,
+  error: null,
+};
+
+const SiteProfileContext = createContext<SiteProfileContextValue>(initialValue);
 
 function applyDocumentProfile(profile: SiteProfileView) {
   if (typeof document === "undefined") return;
-  document.title = profile.title || defaultSiteProfile.title;
 
-  const faviconHref = profile.faviconUrl || defaultSiteProfile.faviconUrl;
-  if (!faviconHref) return;
+  if (profile.title) {
+    document.title = profile.title;
+  }
+
+  if (!profile.faviconUrl) return;
 
   let favicon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
   if (!favicon) {
@@ -42,36 +67,51 @@ function applyDocumentProfile(profile: SiteProfileView) {
     favicon.rel = "icon";
     document.head.appendChild(favicon);
   }
-  favicon.href = faviconHref;
+  favicon.href = profile.faviconUrl;
 }
 
-function mergeProfile(current: SiteProfileView, incoming: SiteProfileView): SiteProfileView {
-  const nextProfile = { ...current };
-  (Object.keys(incoming) as Array<keyof SiteProfileView>).forEach((key) => {
-    if (incoming[key]) nextProfile[key] = incoming[key];
-  });
-  return nextProfile;
-}
-
-export function useSiteProfile() {
-  const [profile, setProfile] = useState(defaultSiteProfile);
-  const [menus, setMenus] = useState<SiteMenuView[]>([]);
+export function SiteProfileProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<SiteProfileContextValue>(initialValue);
 
   useEffect(() => {
     let active = true;
-    void Promise.allSettled([fetchSiteProfile(), fetchMenus()]).then(([profileResult, menusResult]) => {
+
+    async function load() {
+      const [profileResult, menusResult] = await Promise.allSettled([fetchSiteProfile(), fetchMenuGroups()]);
       if (!active) return;
-      if (profileResult.status === "fulfilled") {
-        setProfile((current) => {
-          const nextProfile = mergeProfile(current, profileResult.value);
-          applyDocumentProfile(nextProfile);
-          return nextProfile;
-        });
-      }
-      if (menusResult.status === "fulfilled") setMenus(menusResult.value);
-    });
-    return () => { active = false; };
+
+      const profile = profileResult.status === "fulfilled" ? profileResult.value : emptySiteProfile;
+      const headerMenus = menusResult.status === "fulfilled" ? menusResult.value.header : [];
+      const footerMenus = menusResult.status === "fulfilled" ? menusResult.value.footer : [];
+      const error =
+        profileResult.status === "rejected"
+          ? profileResult.reason
+          : menusResult.status === "rejected"
+            ? menusResult.reason
+            : null;
+
+      applyDocumentProfile(profile);
+      setState({
+        profile,
+        headerMenus,
+        footerMenus,
+        loading: false,
+        loaded: true,
+        error,
+      });
+    }
+
+    void load();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  return { profile, menus };
+  const value = useMemo(() => state, [state]);
+  return createElement(SiteProfileContext.Provider, { value }, children);
+}
+
+export function useSiteProfile() {
+  return useContext(SiteProfileContext);
 }

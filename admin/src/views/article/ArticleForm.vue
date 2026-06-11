@@ -283,7 +283,10 @@ const blogSettings = ref<Record<string, string>>({});
 // 获取系统设置
 const fetchSiteSettings = async () => {
   try {
-    const [basic, blog] = await Promise.all([getSettingGroup('basic'), getSettingGroup('blog')]);
+    const [basic, blog] = await Promise.all([
+      getSettingGroup('v2_identity' as never),
+      getSettingGroup('blog'),
+    ]);
     basicSettings.value = basic;
     blogSettings.value = blog;
   } catch (error) {
@@ -293,10 +296,16 @@ const fetchSiteSettings = async () => {
 
 // 作者名称和头像（从系统设置获取）
 const authorInfo = computed(() => {
-  const authorName = basicSettings.value['basic.author'] || '';
+  const authorName =
+    basicSettings.value.owner_display_name ||
+    basicSettings.value['v2_identity.owner_display_name'] ||
+    '';
   return {
     name: `@${authorName}`,
-    avatar: basicSettings.value['basic.author_avatar'] || '',
+    avatar:
+      basicSettings.value.primary_image_url ||
+      basicSettings.value['v2_identity.primary_image_url'] ||
+      '',
   };
 });
 

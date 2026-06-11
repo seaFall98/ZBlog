@@ -65,6 +65,7 @@ public class SecurityConfig {
                         "/api/v1/upload",
                         "/api/v1/collect",
                         "/api/v1/subscribe/**",
+                        "/api/v1/front/**",
                         "/api/v1/menus",
                         "/api/v1/categories/**",
                         "/api/v1/tags/**",

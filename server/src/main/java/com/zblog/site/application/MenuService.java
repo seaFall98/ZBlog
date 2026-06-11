@@ -1,16 +1,22 @@
 package com.zblog.site.application;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.zblog.common.exception.BusinessException;
 import com.zblog.site.application.port.MenuRepository;
 import com.zblog.site.domain.Menu;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
 public class MenuService {
+
+  private static final Set<String> V2_MENU_TYPES =
+      Set.of("header_navigation", "footer_navigation");
 
   private final MenuRepository menuRepository;
 
@@ -19,43 +25,63 @@ public class MenuService {
   }
 
   public List<MenuView> listMenus() {
-    return tree(menuRepository.findAll());
+    return tree(canonicalMenus(menuRepository.findAll()));
   }
 
   public List<MenuView> listAdminMenus(String type) {
-    List<Menu> menus = menuRepository.findAll();
+    List<Menu> menus = canonicalMenus(menuRepository.findAll());
     if (type != null && !type.isBlank()) {
-      menus = menus.stream().filter(menu -> type.equals(menu.type())).toList();
+      String normalizedType = normalizeRequestedType(type);
+      menus = menus.stream().filter(menu -> normalizedType.equals(menu.type())).toList();
     }
     return tree(menus);
   }
 
   public MenuView get(long id) {
-    return MenuView.from(menuRepository.get(id));
+    return toView(canonicalize(menuRepository.get(id)));
+  }
+
+  public FrontMenusView listFrontMenus() {
+    List<Menu> menus = canonicalMenus(menuRepository.findAll());
+    return new FrontMenusView(
+        tree(filterByType(menus, "header_navigation")),
+        tree(filterByType(menus, "footer_navigation")));
   }
 
   public MenuView create(Map<String, Object> request) {
-    return MenuView.from(
-        menuRepository.create(
-            text(request, "type"),
-            nullableLong(request, "parent_id"),
-            text(request, "title"),
-            textOrDefault(request, "url", ""),
-            textOrDefault(request, "icon", ""),
-            intOrDefault(request, "sort", 0)));
+    String type = normalizeRequestedType(text(request, "type"));
+    Long parentId = nullableLong(request, "parent_id");
+    validateParent(type, parentId);
+    return toView(
+        canonicalize(
+            menuRepository.create(
+                type,
+                parentId,
+                text(request, "title"),
+                textOrDefault(request, "url", ""),
+                textOrDefault(request, "icon", ""),
+                intOrDefault(request, "sort", 0))));
   }
 
   public MenuView update(long id, Map<String, Object> request) {
-    Menu existing = menuRepository.get(id);
-    return MenuView.from(
-        menuRepository.update(
-            id,
-            textOrDefault(request, "type", existing.type()),
-            request.containsKey("parent_id") ? nullableLong(request, "parent_id") : existing.parentId(),
-            textOrDefault(request, "title", existing.title()),
-            textOrDefault(request, "url", existing.url()),
-            textOrDefault(request, "icon", existing.icon()),
-            intOrDefault(request, "sort", existing.sort())));
+    Menu existing = canonicalize(menuRepository.get(id));
+    String type =
+        request.containsKey("type")
+            ? normalizeRequestedType(text(request, "type"))
+            : existing.type();
+    Long parentId =
+        request.containsKey("parent_id") ? nullableLong(request, "parent_id") : existing.parentId();
+    validateParent(type, parentId);
+    return toView(
+        canonicalize(
+            menuRepository.update(
+                id,
+                type,
+                parentId,
+                textOrDefault(request, "title", existing.title()),
+                textOrDefault(request, "url", existing.url()),
+                textOrDefault(request, "icon", existing.icon()),
+                intOrDefault(request, "sort", existing.sort()))));
   }
 
   public void delete(long id, String childrenAction) {
@@ -94,12 +120,9 @@ public class MenuService {
       String icon,
       int sort,
       @JsonProperty("is_enabled") boolean enabled,
-      List<MenuView> children) {
-    static MenuView from(Menu menu) {
-      return new MenuView(
-          menu.id(), menu.type(), menu.parentId(), menu.title(), menu.url(), menu.icon(), menu.sort(), true, List.of());
-    }
-  }
+      List<MenuView> children) {}
+
+  public record FrontMenusView(List<MenuView> header, List<MenuView> footer) {}
 
   private static final class MutableMenuView {
     private final long id;
@@ -149,5 +172,82 @@ public class MenuService {
   private int intOrDefault(Map<String, Object> request, String key, int defaultValue) {
     Object value = request.get(key);
     return value instanceof Number number ? number.intValue() : defaultValue;
+  }
+
+  private List<Menu> canonicalMenus(List<Menu> menus) {
+    return menus.stream()
+        .map(this::canonicalize)
+        .filter(menu -> V2_MENU_TYPES.contains(menu.type()))
+        .toList();
+  }
+
+  private List<Menu> filterByType(List<Menu> menus, String type) {
+    return menus.stream().filter(menu -> type.equals(menu.type())).toList();
+  }
+
+  private Menu canonicalize(Menu menu) {
+    return new Menu(
+        menu.id(),
+        canonicalType(menu.type()),
+        menu.parentId(),
+        menu.title(),
+        normalizeMenuUrl(menu.url()),
+        menu.icon(),
+        menu.sort());
+  }
+
+  private MenuView toView(Menu menu) {
+    return new MenuView(
+        menu.id(),
+        menu.type(),
+        menu.parentId(),
+        menu.title(),
+        menu.url(),
+        menu.icon(),
+        menu.sort(),
+        true,
+        List.of());
+  }
+
+  private String normalizeRequestedType(String type) {
+    String normalized = canonicalType(type);
+    if (!V2_MENU_TYPES.contains(normalized)) {
+      throw new BusinessException(400, "Unsupported menu type", HttpStatus.BAD_REQUEST);
+    }
+    return normalized;
+  }
+
+  private String canonicalType(String type) {
+    return switch (type) {
+      case "navigation" -> "header_navigation";
+      case "footer" -> "footer_navigation";
+      default -> type;
+    };
+  }
+
+  private String normalizeMenuUrl(String url) {
+    return switch (url) {
+      case "/album" -> "/gallery";
+      case "/moment" -> "/moments";
+      case "/message" -> "/guestbook";
+      case "/statistics" -> "/stats";
+      case "/friend" -> "/links";
+      default -> url;
+    };
+  }
+
+  private void validateParent(String type, Long parentId) {
+    if (parentId == null) {
+      return;
+    }
+
+    Menu parent = canonicalize(menuRepository.get(parentId));
+    if (!type.equals(parent.type())) {
+      throw new BusinessException(400, "Child menu must use the same type as its parent", HttpStatus.BAD_REQUEST);
+    }
+
+    if (parent.parentId() != null) {
+      throw new BusinessException(400, "Only two menu levels are supported", HttpStatus.BAD_REQUEST);
+    }
   }
 }
