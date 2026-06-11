@@ -54,6 +54,7 @@ function GuestbookComment({ comment, depth = 0, replyingTo, onReply }: Guestbook
 }
 
 export default function Guestbook() {
+  const [name, setName] = useState("");
   const [content, setContent] = useState("");
   const [commentName, setCommentName] = useState("");
   const [commentContent, setCommentContent] = useState("");
@@ -94,22 +95,23 @@ export default function Guestbook() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) {
-      toast.error("请填写留言内容");
+    if (!name.trim() || !content.trim()) {
+      toast.error("请填写昵称和留言内容");
       return;
     }
 
     try {
-      const result = await submitGuestbookMessage({ nickname: "访客", content: content.trim() });
+      const result = await submitGuestbookMessage({ nickname: name.trim(), content: content.trim() });
       const newDanmaku: Danmaku = {
         id: ++danmakuIdRef.current,
-        text: `访客：${content.slice(0, 34)}`,
+        text: `${name}：${content.slice(0, 34)}`,
         top: ((danmakuIdRef.current * 11) % 64) + 12,
         speed: 17 + (danmakuIdRef.current % 5) * 2,
         delay: 0,
         color: DANMAKU_COLORS[danmakuIdRef.current % DANMAKU_COLORS.length] ?? "rgba(255,255,255,0.78)",
       };
       setSubmittedDanmakus((prev) => [...prev, newDanmaku]);
+      setName("");
       setContent("");
       toast.success(result.message || (result.status === "pending" ? "留言已提交，等待审核" : "留言成功"));
       void reload();
@@ -158,10 +160,13 @@ export default function Guestbook() {
         </div>
 
         <div className="guestbook-hero__content">
+          <p className="text-xs tracking-widest uppercase mb-4">Guestbook</p>
+          <h1>留下你的话</h1>
           <p>{profile.guestbookIntro || "把想说的话留在这里，让它慢慢飘过留言墙。"}</p>
           <form onSubmit={handleSubmit} className="guestbook-form">
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="你的昵称" aria-label="你的昵称" />
+            <input type="text" value={content} onChange={(e) => setContent(e.target.value)} placeholder="说点什么吧..." aria-label="留言内容" />
             <button type="submit"><SendIcon size={14} /> 发送</button>
-            <input type="text" value={content} onChange={(e) => setContent(e.target.value)} placeholder="留下点什么啦" aria-label="留言内容" />
           </form>
         </div>
       </section>
