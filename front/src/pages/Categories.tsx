@@ -62,7 +62,7 @@ export default function Categories() {
                     <ArrowRightIcon size={16} className="mt-1.5 group-hover:translate-x-1 transition-transform" style={{ color: "var(--muted-ink)" }} />
                   </div>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-                    {cat.description || "沿着这一类文字，慢慢翻到更深处。"}
+                    {cat.description}
                   </p>
                 </div>
               </Link>

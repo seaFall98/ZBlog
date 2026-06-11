@@ -22,7 +22,7 @@ function mapFriend(value: unknown, category: string): FriendLinkView | null {
     url,
     description: stringValue(value.description),
     logo: stringValue(value.avatar ?? value.logo ?? value.screenshot),
-    category: stringValue(value.type_name) || category || "友情链接",
+    category: stringValue(value.type_name) || category || "",
   };
 }
 

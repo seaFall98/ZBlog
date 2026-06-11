@@ -25,7 +25,7 @@ export default function GalleryPhotoModal({
 }: GalleryPhotoModalProps) {
   const previousBodyOverflow = useRef<string | null>(null);
   const isOpen = Boolean(photo);
-  const displayTitle = photo?.title || "未命名照片";
+  const displayTitle = photo?.title ?? "";
   const displayDate = photo?.takenAt ? toDateText(photo.takenAt) : "";
 
   useEffect(() => {

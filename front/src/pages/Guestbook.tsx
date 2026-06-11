@@ -21,7 +21,6 @@ interface Danmaku {
 const DANMAKU_COLORS = ["rgba(255,255,255,0.9)", "rgba(245,238,224,0.82)", "rgba(201,174,134,0.78)", "rgba(255,255,255,0.66)"];
 const COMMENT_TARGET_TYPE = "page";
 const COMMENT_TARGET_KEY = "guestbook";
-const DEFAULT_GUESTBOOK_BACKGROUND = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1800&q=85";
 
 type GuestbookCommentProps = {
   comment: CommentView;
@@ -64,7 +63,7 @@ export default function Guestbook() {
   const { profile } = useSiteProfile();
   const [submittedDanmakus, setSubmittedDanmakus] = useState<Danmaku[]>([]);
   const danmakuIdRef = useRef(1000);
-  const backgroundImage = profile.barrageBackgroundImage || profile.backgroundImage || DEFAULT_GUESTBOOK_BACKGROUND;
+  const backgroundImage = profile.barrageBackgroundImage || profile.backgroundImage;
   const danmakus = useMemo<Danmaku[]>(() => [
     ...messages.slice(0, 14).map((m, i) => ({
       id: i,
@@ -158,7 +157,7 @@ export default function Guestbook() {
         </div>
 
         <div className="guestbook-hero__content">
-          <p>{profile.guestbookIntro || "把想说的话留在这里，让它慢慢飘过留言墙。"}</p>
+          {profile.guestbookIntro && <p>{profile.guestbookIntro}</p>}
           <form onSubmit={handleSubmit} className="guestbook-form">
             <button type="submit"><SendIcon size={14} /> 发送</button>
             <input type="text" value={content} onChange={(e) => setContent(e.target.value)} placeholder="留下点什么啦" aria-label="留言内容" />
