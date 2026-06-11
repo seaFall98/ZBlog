@@ -1,152 +1,97 @@
 import { describe, expect, it } from "vitest";
-import { mapFrontConfig, mapMenuGroups } from "./siteApi";
+import { mapMenus, mapSafeSiteProfile } from "./siteApi";
 
-describe("mapFrontConfig", () => {
-  it("maps the v2 front config payload into the site profile view", () => {
-    expect(
-      mapFrontConfig({
-        identity: {
-          siteTitle: "Quiet Book",
-          ownerDisplayName: "Sea",
-          email: "hello@example.com",
-          primaryImageUrl: "uploads/avatar.jpg",
-          faviconUrl: "uploads/favicon.ico",
-          icpRecord: "ICP 123",
-          policeRecord: "Police 456",
-        },
-        home: {
-          heroEyebrow: "Personal Edition",
-          heroTitle: "Use words as the boat",
-          heroMeta: "Latest updates",
-          heroCtaLabel: "Read Posts",
-          heroCtaTarget: "/blog",
-        },
-        about: {
-          introText: "A quiet corner on the internet.",
-          statusItems: [
-            { icon: "book-open", label: "Reading", content: "One Hundred Years", sort: 2 },
-            { icon: "camera", label: "Shooting", content: "Autumn streets", sort: 1 },
-          ],
-          skillItems: [
-            { name: "Writing", value: "90", sort: 2 },
-            { name: "Photography", value: "75", sort: 1 },
-          ],
-          timelineItems: [
-            { year: "2024", event: "Started weekly updates", sort: 2 },
-            { year: "2023", event: "Took the first solo trip", sort: 1 },
-          ],
-          bottomQuote: "Life is made of ordinary days with a little light.",
-        },
-        guestbook: {
-          introText: "Leave a few words here.",
-          backgroundImage: "uploads/guestbook-cover.jpg",
-        },
-        footer: {
-          description: "A growing blog.",
-          copyrightText: "© 2026 Quiet Book",
-          slogan: "Use words as the boat",
-          socialLinks: [
-            { icon: "github-line", name: "GitHub", url: "https://github.com/example", sort: 2 },
-            { icon: "mail-line", name: "Email", url: "mailto:hello@example.com", sort: 1 },
-          ],
-        },
-      }),
-    ).toEqual({
-      title: "Quiet Book",
-      ownerDisplayName: "Sea",
+describe("mapSafeSiteProfile", () => {
+  it("uses only known safe keys", () => {
+    expect(mapSafeSiteProfile({ site_title: "寂静之书", about_intro: "记录生活", mcp_secret: "secret" })).toEqual({
+      title: "寂静之书",
       subtitle: "",
-      aboutIntro: "A quiet corner on the internet.",
-      email: "hello@example.com",
-      avatarUrl: "/uploads/avatar.jpg",
-      faviconUrl: "/uploads/favicon.ico",
+      aboutIntro: "记录生活",
+      email: "",
+      avatarUrl: "",
+      faviconUrl: "",
       established: "",
-      icpRecord: "ICP 123",
-      policeRecord: "Police 456",
-      heroEyebrow: "Personal Edition",
-      heroTitle: "Use words as the boat",
-      heroMeta: "Latest updates",
-      heroCtaLabel: "Read Posts",
-      heroCtaTarget: "/blog",
-      heroSlogan: "Use words as the boat",
-      footerDescription: "A growing blog.",
-      footerCopyright: "© 2026 Quiet Book",
-      footerSlogan: "Use words as the boat",
-      socialLinks: [
-        { icon: "ri-mail-line", name: "Email", url: "mailto:hello@example.com", sort: 1 },
-        { icon: "ri-github-line", name: "GitHub", url: "https://github.com/example", sort: 2 },
-      ],
-      backgroundImage: "/uploads/guestbook-cover.jpg",
-      barrageBackgroundImage: "/uploads/guestbook-cover.jpg",
-      guestbookIntro: "Leave a few words here.",
-      aboutStatusItems: [
-        { icon: "camera", label: "Shooting", content: "Autumn streets", sort: 1 },
-        { icon: "book-open", label: "Reading", content: "One Hundred Years", sort: 2 },
-      ],
-      aboutSkillItems: [
-        { name: "Photography", value: "75", sort: 1 },
-        { name: "Writing", value: "90", sort: 2 },
-      ],
-      aboutTimelineItems: [
-        { year: "2023", event: "Took the first solo trip", sort: 1 },
-        { year: "2024", event: "Started weekly updates", sort: 2 },
-      ],
-      aboutBottomQuote: "Life is made of ordinary days with a little light.",
+      heroEyebrow: "",
+      heroTitle: "寂静之书",
+      heroSlogan: "",
+      footerDescription: "",
+      footerCopyright: "",
+      footerSlogan: "",
+      backgroundImage: "",
+      barrageBackgroundImage: "",
+      messageContent: "",
+      aboutDescribe: "记录生活",
+      aboutDescribeTips: "",
+      aboutExhibition: "",
+      aboutProfile: "",
+      aboutPersonality: "",
+      aboutMottoMain: "",
+      aboutMottoSub: "",
+      aboutStory: "",
     });
   });
 
-  it("ignores malformed nested values", () => {
-    expect(mapFrontConfig({ identity: "bad", footer: null })).toMatchObject({
-      title: "",
-      ownerDisplayName: "",
-      footerDescription: "",
-      socialLinks: [],
-      aboutStatusItems: [],
-      aboutSkillItems: [],
-      aboutTimelineItems: [],
+  it("maps existing backend basic profile keys", () => {
+    expect(mapSafeSiteProfile({ site_name: "ZBlog", site_description: "慢慢记录", "basic.author_email": "me@example.com", "basic.author_avatar": "uploads/avatar.jpg" })).toMatchObject({
+      title: "ZBlog",
+      subtitle: "慢慢记录",
+      email: "me@example.com",
+      avatarUrl: "/uploads/avatar.jpg",
+    });
+  });
+
+  it("maps prefixed blog public profile keys and normalizes media fields", () => {
+    expect(mapSafeSiteProfile({
+      "blog.title": "Z",
+      "blog.subtitle": "慢写生活",
+      "blog.slogan": "以文字作舟",
+      "blog.description": "一个正在生长的博客",
+      "blog.favicon": "uploads/favicon.ico",
+      "blog.established": "2026",
+      "blog.background_image": "uploads/bg.jpg",
+      "blog.barrage_background_image": "/uploads/message.jpg",
+      "blog.message_content": "欢迎留言",
+      "blog.about_describe": "站长简介",
+      "blog.about_profile": "[]",
+      "blog.about_personality": "最近在读",
+      "blog.about_motto_main": "[\"生活有光\"]",
+      "blog.about_motto_sub": "一句话介绍",
+      "blog.about_story": "时间轴",
+      api_key: "secret",
+      upload_secret: "secret",
+      oauth_client_secret: "secret",
+    })).toMatchObject({
+      title: "Z",
+      subtitle: "慢写生活",
+      heroTitle: "Z",
+      heroSlogan: "以文字作舟",
+      footerDescription: "一个正在生长的博客",
+      footerSlogan: "以文字作舟",
+      faviconUrl: "/uploads/favicon.ico",
+      established: "2026",
+      backgroundImage: "/uploads/bg.jpg",
+      barrageBackgroundImage: "/uploads/message.jpg",
+      messageContent: "欢迎留言",
+      aboutDescribe: "站长简介",
+      aboutProfile: "[]",
+      aboutPersonality: "最近在读",
+      aboutMottoMain: "[\"生活有光\"]",
+      aboutMottoSub: "一句话介绍",
+      aboutStory: "时间轴",
     });
   });
 });
 
-describe("mapMenuGroups", () => {
-  it("maps the v2 menu trees into header and footer groups", () => {
-    expect(
-      mapMenuGroups({
-        header: [
-          {
-            title: "Writing",
-            url: "/blog",
-            children: [{ title: "Categories", url: "/categories" }],
-          },
-        ],
-        footer: [
-          {
-            title: "Protocols",
-            children: [{ title: "Privacy Policy", url: "/privacy-policy" }],
-          },
-        ],
-      }),
-    ).toEqual({
-      header: [
-        {
-          label: "Writing",
-          href: "/blog",
-          children: [{ label: "Categories", href: "/categories", children: [] }],
-        },
-      ],
-      footer: [
-        {
-          label: "Protocols",
-          href: "/",
-          children: [{ label: "Privacy Policy", href: "/privacy-policy", children: [] }],
-        },
-      ],
-    });
+describe("mapMenus", () => {
+  it("maps enabled menu tree", () => {
+    expect(mapMenus([{ title: "写作", name: "写作", path: "/blog", enabled: true, children: [{ title: "分类", path: "/categories", enabled: true }] }])).toEqual([
+      { label: "写作", href: "/blog", children: [{ label: "分类", href: "/categories", children: [] }] },
+    ]);
   });
 
-  it("drops invalid menu nodes", () => {
-    expect(mapMenuGroups({ header: [{ url: "/blog" }], footer: [{ title: "", url: "/x" }] })).toEqual({
-      header: [],
-      footer: [],
-    });
+  it("normalizes legacy album menu URLs to gallery routes", () => {
+    expect(mapMenus([{ title: "相册", url: "/album", enabled: true }])).toEqual([
+      { label: "相册", href: "/gallery", children: [] },
+    ]);
   });
 });

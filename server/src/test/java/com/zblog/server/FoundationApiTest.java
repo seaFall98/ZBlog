@@ -131,7 +131,6 @@ class FoundationApiTest {
     String menus = data(response).toString();
     assertThat(menus).doesNotContain("Smoke", "/smoke");
     assertThat(menus).contains("反馈投诉", "/feedback");
-    assertThat(menus).doesNotContain("aggregate");
   }
 
   private Object data(ResponseEntity<Map> response) {

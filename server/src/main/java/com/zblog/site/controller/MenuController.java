@@ -2,7 +2,6 @@ package com.zblog.site.controller;
 
 import com.zblog.common.api.ApiResponse;
 import com.zblog.site.application.MenuService;
-import com.zblog.site.application.MenuService.FrontMenusView;
 import com.zblog.site.application.MenuService.MenuView;
 import java.util.List;
 import java.util.Map;
@@ -21,11 +20,6 @@ public class MenuController {
   @GetMapping("/menus")
   public ApiResponse<List<MenuView>> listMenus() {
     return ApiResponse.ok(menuService.listMenus());
-  }
-
-  @GetMapping("/front/menus")
-  public ApiResponse<FrontMenusView> listFrontMenus() {
-    return ApiResponse.ok(menuService.listFrontMenus());
   }
 
   @GetMapping("/admin/menus")

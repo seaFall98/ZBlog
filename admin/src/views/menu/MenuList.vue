@@ -83,30 +83,25 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Compass, Reading } from '@element-plus/icons-vue';
+import { Grid, Compass, Reading } from '@element-plus/icons-vue';
 import CommonList from '@/components/common/CommonList.vue';
-import type { MenuTreeNode, MenuType } from '@/types/menu';
+import type { MenuTreeNode } from '@/types/menu';
 import { getMenuTree, deleteMenu } from '@/api/menu';
 import MenuFormDialog from './components/MenuFormDialog.vue';
-import { DEFAULT_MENU_TYPE, MENU_TYPE_OPTIONS } from './menuSchema';
 
 const loading = ref(false);
 const menuTree = ref<MenuTreeNode[]>([]);
-const selectedType = ref<MenuType>(DEFAULT_MENU_TYPE);
+const selectedType = ref<string>('aggregate');
 const dialogVisible = ref(false);
 const currentMenu = ref<MenuTreeNode | null>(null);
 const parentMenu = ref<MenuTreeNode | null>(null);
 
-const menuTypeIconMap: Record<MenuType, typeof Compass> = {
-  header_navigation: Compass,
-  footer_navigation: Reading,
-};
-
 // 菜单类型选项
-const menuTypeOptions = MENU_TYPE_OPTIONS.map(item => ({
-  ...item,
-  icon: menuTypeIconMap[item.value],
-}));
+const menuTypeOptions = [
+  { label: '聚合菜单', value: 'aggregate', icon: Grid },
+  { label: '导航菜单', value: 'navigation', icon: Compass },
+  { label: '页脚菜单', value: 'footer', icon: Reading },
+];
 
 // 判断是否是 RemixIcon 图标类名
 const isRemixIcon = (icon: string) => {

@@ -39,12 +39,8 @@ applyFavicon(window.__APP_CONFIG__?.faviconUrl || '/favicon.ico');
 
 onMounted(async () => {
   try {
-    const identityConfig = await getPublicSettingGroup('v2_identity' as never);
-    const favicon =
-      identityConfig.favicon_url ||
-      identityConfig['v2_identity.favicon_url'] ||
-      window.__APP_CONFIG__?.faviconUrl ||
-      '/favicon.ico';
+    const blogConfig = await getPublicSettingGroup('blog');
+    const favicon = blogConfig['blog.favicon'] || blogConfig.favicon || window.__APP_CONFIG__?.faviconUrl || '/favicon.ico';
     applyFavicon(favicon);
   } catch {
     applyFavicon(window.__APP_CONFIG__?.faviconUrl || '/favicon.ico');

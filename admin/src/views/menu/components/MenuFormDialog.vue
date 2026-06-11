@@ -8,6 +8,7 @@
     @close="handleClose"
   >
     <el-form ref="formRef" :model="formData" :rules="rules" label-width="100px">
+      <!-- 提示信息 -->
       <div class="form-info">
         <div class="info-item">
           <span class="info-label">菜单类型</span>
@@ -39,45 +40,34 @@
 
       <el-form-item label="图标" prop="icon">
         <div class="icon-input-wrapper">
-          <el-select
+          <el-input
             v-model="formData.icon"
-            class="icon-select"
-            placeholder="可选择预设图标，或直接输入自定义图标类名 / 图片 URL"
-            filterable
-            allow-create
-            clearable
-            default-first-option
+            placeholder="请输入图标类名(ri-home-line)或上传图片"
+            maxlength="500"
           >
-            <el-option
-              v-for="option in MENU_ICON_OPTIONS"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            >
-              <div class="icon-option">
-                <i v-if="option.icon" :class="option.icon"></i>
-                <span>{{ option.label }}</span>
-                <code>{{ option.value }}</code>
-              </div>
-            </el-option>
-          </el-select>
-
-          <el-button @click="handleIconUpload">
-            <el-icon><Upload /></el-icon>
-            上传
-          </el-button>
-
+            <template #append>
+              <el-button @click="handleIconUpload">
+                <el-icon>
+                  <Upload />
+                </el-icon>
+                上传
+              </el-button>
+            </template>
+          </el-input>
           <div v-if="formData.icon" class="icon-preview">
+            <!-- RemixIcon 图标预览 -->
             <i v-if="isRemixIcon(formData.icon)" :class="formData.icon"></i>
+            <!-- 图片预览 -->
             <img v-else :src="formData.icon" alt="图标预览" @error="handleIconError" />
           </div>
         </div>
       </el-form-item>
 
+      <!-- 编辑时显示父菜单选择器 -->
       <el-form-item v-if="isEdit" label="父菜单" prop="parent_id">
         <el-select
           v-model="formData.parent_id"
-          :placeholder="hasChildren ? '包含子菜单，无法调整父级' : '请选择父菜单'"
+          :placeholder="hasChildren ? '包含子菜单，无法设置' : '请选择父菜单'"
           :disabled="hasChildren"
           clearable
           style="width: 100%"
@@ -88,15 +78,16 @@
             :label="menu.title"
             :value="menu.id"
           >
-            <div class="parent-option">
+            <div style="display: flex; align-items: center">
               <i
                 v-if="menu.icon && isRemixIcon(menu.icon)"
                 :class="menu.icon"
+                style="margin-right: 8px"
               ></i>
               <img
                 v-else-if="menu.icon"
                 :src="menu.icon"
-                alt=""
+                style="width: 16px; height: 16px; margin-right: 8px; object-fit: contain"
               />
               <span>{{ menu.title }}</span>
             </div>
@@ -105,7 +96,7 @@
       </el-form-item>
 
       <el-form-item label="排序" prop="sort">
-        <el-input-number v-model="formData.sort" :min="1" :max="99" />
+        <el-input-number v-model="formData.sort" :min="1" :max="10" />
       </el-form-item>
 
       <el-form-item label="是否启用" prop="is_enabled">
@@ -115,40 +106,30 @@
 
     <template #footer>
       <el-button @click="handleClose">取消</el-button>
-      <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
-        确定
-      </el-button>
+      <el-button type="primary" :loading="submitLoading" @click="handleSubmit"> 确定 </el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Upload } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
-import { MENU_ICON_OPTIONS } from '@/constants/iconOptions';
-import type {
-  CreateMenuRequest,
-  MenuTreeNode,
-  MenuType,
-  UpdateMenuRequest,
-} from '@/types/menu';
-import { createMenu, getMenuTree, updateMenu } from '@/api/menu';
+import type { MenuTreeNode, CreateMenuRequest, UpdateMenuRequest, MenuType } from '@/types/menu';
+import { createMenu, updateMenu, getMenuTree } from '@/api/menu';
 import { uploadFile } from '@/api/file';
-import { DEFAULT_MENU_TYPE, getMenuTypeLabel } from '../menuSchema';
 
 interface Props {
   modelValue: boolean;
   editMenu?: MenuTreeNode | null;
   parentMenu?: MenuTreeNode | null;
-  currentType?: MenuType;
+  currentType?: string;
 }
-
 const props = withDefaults(defineProps<Props>(), {
   editMenu: null,
   parentMenu: null,
-  currentType: DEFAULT_MENU_TYPE,
+  currentType: 'navigation',
 });
 
 const emit = defineEmits<{
@@ -158,26 +139,33 @@ const emit = defineEmits<{
 
 const visible = computed({
   get: () => props.modelValue,
-  set: value => emit('update:modelValue', value),
+  set: val => emit('update:modelValue', val),
 });
 
 const formRef = ref<FormInstance>();
 const submitLoading = ref(false);
-const parentMenuOptions = ref<MenuTreeNode[]>([]);
-const isEdit = computed(() => Boolean(props.editMenu));
-const hasChildren = computed(() => (props.editMenu?.children?.length ?? 0) > 0);
+const isEdit = computed(() => !!props.editMenu);
 
+// 判断当前菜单是否有子菜单（用于禁用父菜单选择器）
+const hasChildren = computed(() => {
+  return props.editMenu?.children && props.editMenu.children.length > 0;
+});
+
+// 父菜单列表
+const parentMenuOptions = ref<MenuTreeNode[]>([]);
+
+// 图标上传相关
 interface IconItem {
   type: 'file' | 'url';
   file?: File;
   url: string;
 }
-
 const iconItem = ref<IconItem | null>(null);
 
+// 表单数据
 const formData = ref<CreateMenuRequest | UpdateMenuRequest>({
   title: '',
-  type: DEFAULT_MENU_TYPE,
+  type: 'navigation' as MenuType,
   url: '',
   icon: '',
   sort: 5,
@@ -185,34 +173,52 @@ const formData = ref<CreateMenuRequest | UpdateMenuRequest>({
   parent_id: null,
 });
 
+// 表单验证规则
 const rules: FormRules = {
   title: [
-    { required: true, message: '请输入菜单标题', trigger: 'blur' },
-    { min: 1, max: 100, message: '长度应在 1 到 100 个字符之间', trigger: 'blur' },
+    { message: '请输入菜单标题', trigger: 'blur' },
+    { min: 1, max: 100, message: '长度在 1 到 100 个字符', trigger: 'blur' },
   ],
+  type: [{ message: '请选择菜单类型', trigger: 'change' }],
   url: [{ max: 500, message: '链接地址不能超过 500 个字符', trigger: 'blur' }],
-  icon: [{ max: 500, message: '图标值不能超过 500 个字符', trigger: 'blur' }],
+  icon: [{ max: 500, message: '图标不能超过 500 个字符', trigger: 'blur' }],
 };
 
-function isRemixIcon(icon: string) {
-  return icon.startsWith('ri-');
-}
+// 获取菜单类型标签
+const getMenuTypeLabel = (type: MenuType) => {
+  const typeMap: Record<MenuType, string> = {
+    aggregate: '聚合菜单',
+    navigation: '导航菜单',
+    footer: '页脚菜单',
+  };
+  return typeMap[type] || type;
+};
 
-function cleanupIconBlob() {
+// 判断是否是 RemixIcon 图标类名
+const isRemixIcon = (icon: string) => {
+  return icon && icon.startsWith('ri-');
+};
+
+// 清理图标Blob URL
+const cleanupIconBlob = () => {
   if (iconItem.value?.type === 'file' && iconItem.value.url.startsWith('blob:')) {
     URL.revokeObjectURL(iconItem.value.url);
   }
-}
+};
 
-function handleIconUpload() {
+// 上传图标
+const handleIconUpload = () => {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
-  input.onchange = event => {
-    const file = (event.target as HTMLInputElement).files?.[0];
+  input.onchange = e => {
+    const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
 
+    // 清理旧的Blob URL
     cleanupIconBlob();
+
+    // 创建临时预览URL
     const blobUrl = URL.createObjectURL(file);
     iconItem.value = {
       type: 'file',
@@ -222,40 +228,50 @@ function handleIconUpload() {
     formData.value.icon = blobUrl;
   };
   input.click();
-}
+};
 
-function handleIconError(event: Event) {
-  const target = event.target as HTMLImageElement;
+// 图标加载错误处理
+const handleIconError = (e: Event) => {
+  const target = e.target as HTMLImageElement;
   target.style.display = 'none';
   ElMessage.warning('图标加载失败');
-}
+};
 
-function getAllChildrenIds(menu: MenuTreeNode): number[] {
-  const ids = [menu.id];
-  menu.children?.forEach(child => {
-    ids.push(...getAllChildrenIds(child));
-  });
+// 获取所有子菜单ID（用于防止循环引用）
+const getAllChildrenIds = (menu: MenuTreeNode): number[] => {
+  const ids: number[] = [menu.id];
+  if (menu.children) {
+    menu.children.forEach(child => {
+      ids.push(...getAllChildrenIds(child));
+    });
+  }
   return ids;
-}
+};
 
-async function fetchParentMenuOptions() {
+// 获取父菜单选项列表
+const fetchParentMenuOptions = async () => {
   try {
     const type = props.editMenu?.type || props.currentType;
     const allMenus = await getMenuTree(type);
+
+    // 只显示主菜单（parent_id 为 null 的菜单）
     let options = allMenus.filter(menu => menu.parent_id === null);
 
+    // 编辑时，过滤掉当前菜单及其所有子菜单（防止循环引用）
     if (props.editMenu) {
       const excludeIds = getAllChildrenIds(props.editMenu);
       options = options.filter(menu => !excludeIds.includes(menu.id));
     }
 
     parentMenuOptions.value = options;
-  } catch {
+  } catch (_error) {
     ElMessage.error('获取父菜单列表失败');
   }
-}
+};
 
-function initFormData() {
+// 初始化表单数据
+const initFormData = () => {
+  // 清理旧的Blob URL
   cleanupIconBlob();
   iconItem.value = null;
 
@@ -271,44 +287,53 @@ function initFormData() {
       parent_id: menu.parent_id,
     };
 
+    // 如果有图标URL，标记为网络图标
     if (menu.icon) {
       iconItem.value = {
         type: 'url',
         url: menu.icon,
       };
     }
-    return;
+  } else {
+    // 新增菜单时，重置为默认值
+    formData.value = {
+      title: '',
+      type: props.parentMenu
+        ? props.parentMenu.type
+        : (props.currentType as MenuType) || 'navigation',
+      url: '',
+      icon: '',
+      sort: 5,
+      is_enabled: true,
+      parent_id: props.parentMenu?.id || null,
+    };
   }
+};
 
-  formData.value = {
-    title: '',
-    type: props.parentMenu ? props.parentMenu.type : props.currentType || DEFAULT_MENU_TYPE,
-    url: '',
-    icon: '',
-    sort: 5,
-    is_enabled: true,
-    parent_id: props.parentMenu?.id || null,
-  };
-}
-
+// 监听对话框打开状态，打开时初始化表单
 watch(
   () => props.modelValue,
-  async open => {
-    if (!open) return;
-    initFormData();
-    if (isEdit.value) {
-      await fetchParentMenuOptions();
+  async newVal => {
+    if (newVal) {
+      // 对话框打开时初始化表单数据
+      initFormData();
+      // 编辑时加载父菜单选项
+      if (isEdit.value) {
+        await fetchParentMenuOptions();
+      }
     }
-  },
+  }
 );
 
-async function handleSubmit() {
+// 提交表单
+const handleSubmit = async () => {
   if (!formRef.value) return;
 
   try {
     await formRef.value.validate();
     submitLoading.value = true;
 
+    // 如果图标是本地文件，先上传
     if (iconItem.value?.type === 'file' && iconItem.value.file) {
       const result = await uploadFile(iconItem.value.file, '菜单图标');
       formData.value.icon = result.file_url;
@@ -316,29 +341,34 @@ async function handleSubmit() {
 
     if (isEdit.value && props.editMenu) {
       await updateMenu(props.editMenu.id, formData.value as UpdateMenuRequest);
-      ElMessage.success('菜单更新成功');
+      ElMessage.success('更新成功');
     } else {
       await createMenu(formData.value as CreateMenuRequest);
-      ElMessage.success('菜单创建成功');
+      ElMessage.success('创建成功');
     }
 
     emit('success');
     handleClose();
   } catch (error) {
     if (error instanceof Error) {
-      ElMessage.error(error.message || '菜单保存失败');
+      ElMessage.error(error.message || '操作失败');
     }
   } finally {
     submitLoading.value = false;
   }
-}
+};
 
-function handleClose() {
+// 关闭对话框
+const handleClose = () => {
+  // 清理Blob URL
   cleanupIconBlob();
   iconItem.value = null;
+
+  // 重置表单验证状态
   formRef.value?.clearValidate();
+
   emit('update:modelValue', false);
-}
+};
 </script>
 
 <style scoped lang="scss">
@@ -349,83 +379,61 @@ function handleClose() {
   padding: 16px;
   margin-bottom: 20px;
   background-color: #f5f7fa;
-  border: 1px solid #e4e7ed;
   border-radius: 4px;
+  border: 1px solid #e4e7ed;
 
   .info-item {
     display: flex;
-    flex: 1;
     flex-direction: column;
     align-items: center;
     gap: 6px;
+    flex: 1;
     text-align: center;
-  }
 
-  .info-label {
-    color: #909399;
-    font-size: 12px;
-  }
+    .info-label {
+      font-size: 12px;
+      color: #909399;
+    }
 
-  .info-value {
-    color: #303133;
-    font-size: 14px;
-    font-weight: 500;
+    .info-value {
+      font-size: 14px;
+      color: #303133;
+      font-weight: 500;
+    }
   }
 }
 
 .icon-input-wrapper {
-  display: flex;
   width: 100%;
+  display: flex;
   align-items: center;
   gap: 12px;
 
-  .icon-select {
+  .el-input {
     flex: 1;
   }
-}
 
-.icon-option,
-.parent-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  .icon-preview {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f7fa;
+    flex-shrink: 0;
 
-  i {
-    font-size: 16px;
-  }
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
 
-  img {
-    width: 16px;
-    height: 16px;
-    object-fit: contain;
-  }
-
-  code {
-    color: #909399;
-    font-size: 12px;
-  }
-}
-
-.icon-preview {
-  display: flex;
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  background-color: #f5f7fa;
-
-  img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-  }
-
-  i {
-    color: #606266;
-    font-size: 24px;
+    i {
+      font-size: 24px;
+      color: #606266;
+    }
   }
 }
 </style>
