@@ -70,12 +70,18 @@ The local defaults are suitable for development. Replace default passwords and J
 docker compose up --build -d
 ```
 
+If local `npm --prefix front run dev` is already using host port `5173`, the Docker `front` container cannot be reached on the same port. In that case, stop the local dev server first, or override the host port before starting Compose:
+
+```bash
+ZBLOG_FRONT_PORT=4173 ZBLOG_PUBLIC_SITE_URL=http://localhost:4173 docker compose up --build -d
+```
+
 ### 4. Open Services
 
 | Service | URL |
 | --- | --- |
-| V2 front | `http://localhost:5173` |
-| Admin console | `http://localhost:4000` |
+| V2 front | `http://localhost:5173` by default, or `http://localhost:<ZBLOG_FRONT_PORT>` when overridden |
+| Admin console | `http://localhost:4000` by default, or `http://localhost:<ZBLOG_ADMIN_PORT>` when overridden |
 | Backend API | `http://localhost:8080/api/v1` |
 | Swagger UI | `http://localhost:8080/swagger-ui.html` |
 | RabbitMQ Console | `http://localhost:15672` |
