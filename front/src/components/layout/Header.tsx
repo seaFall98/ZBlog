@@ -1,53 +1,89 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
-  SearchIcon,
-  UserIcon,
-  MenuIcon,
-  XIcon,
-  ChevronDownIcon,
-  BookOpenIcon,
-  ImageIcon,
-  TagIcon,
   ArchiveIcon,
+  BookOpenIcon,
   BookmarkIcon,
+  ChevronDownIcon,
+  ImageIcon,
+  MenuIcon,
+  SearchIcon,
+  TagIcon,
+  type LucideIcon,
+  UserIcon,
+  XIcon,
 } from "lucide-react";
+import { useSiteProfile } from "../../features/site/useSiteProfile";
+import type { SiteMenuView } from "../../features/site/types";
 
-const navItems = [
-  {
-    label: "写作",
-    href: "/blog",
-    children: [
-      { label: "文章列表", href: "/blog", icon: BookOpenIcon },
-      { label: "分类", href: "/categories", icon: BookmarkIcon },
-      { label: "标签", href: "/tags", icon: TagIcon },
-      { label: "归档", href: "/archive", icon: ArchiveIcon },
-    ],
-  },
-  {
-    label: "影像",
-    href: "/gallery",
-    children: [
-      { label: "相册图库", href: "/gallery", icon: ImageIcon },
-    ],
-  },
-  { label: "瞬间", href: "/moments" },
-  { label: "关于", href: "/about" },
-];
+type NavChild = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
 
-export default function Header() {
+type NavItem = {
+  label: string;
+  href: string;
+  children?: NavChild[];
+};
+
+function resolveChildIcon(item: SiteMenuView): LucideIcon {
+  if (item.href.includes("/categories")) return BookmarkIcon;
+  if (item.href.includes("/tags")) return TagIcon;
+  if (item.href.includes("/archive")) return ArchiveIcon;
+  if (item.href.includes("/gallery")) return ImageIcon;
+  return BookOpenIcon;
+}
+
+function mapHeaderMenusToNavItems(menus: SiteMenuView[]): NavItem[] {
+  return menus.map((item) => ({
+    label: item.label,
+    href: item.href,
+    children: item.children.length > 0
+      ? item.children.map((child) => ({
+          label: child.label,
+          href: child.href,
+          icon: resolveChildIcon(child),
+        }))
+      : undefined,
+  }));
+}
+
+function GitHubIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.38-3.37-1.38-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.86.09-.67.35-1.12.63-1.38-2.22-.26-4.55-1.14-4.55-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.72 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.93c.85 0 1.7.12 2.5.34 1.9-1.33 2.74-1.05 2.74-1.05.55 1.42.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.38-.01 2.49-.01 2.83 0 .27.18.6.69.49A10.07 10.07 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z" />
+    </svg>
+  );
+}
+
+type HeaderProps = {
+  variant?: "default" | "guestbook";
+};
+
+export default function Header({ variant = "default" }: HeaderProps) {
+  const { profile, headerMenus } = useSiteProfile();
+  const navItems = mapHeaderMenusToNavItems(headerMenus);
+  const isGuestbook = variant === "guestbook";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (searchOpen && searchRef.current) {
       searchRef.current.focus();
     }
   }, [searchOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const handleMouseEnter = (label: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -58,48 +94,41 @@ export default function Header() {
     timeoutRef.current = setTimeout(() => setOpenMenu(null), 120);
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = (searchRef.current?.value ?? "").trim();
-    if (val) {
-      navigate(`/search?q=${encodeURIComponent(val)}`);
-      setSearchOpen(false);
-    }
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const keyword = (searchRef.current?.value ?? "").trim();
+    if (!keyword) return;
+    navigate(`/search?q=${encodeURIComponent(keyword)}`);
+    setSearchOpen(false);
   };
 
   return (
     <header
       data-cmp="Header"
-      className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-warm-border h-16"
-      style={{ borderBottomColor: "var(--warm-border)" }}
+      className={`fixed top-0 left-0 right-0 z-50 h-16 ${isGuestbook ? "guestbook-header" : "bg-card border-b border-warm-border"}`}
+      style={isGuestbook ? undefined : { borderBottomColor: "var(--warm-border)" }}
     >
-      <div className="max-w-7xl mx-auto px-8 h-full flex items-center justify-between">
-        {/* Logo */}
+      <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-8">
         <Link
           to="/"
           className="shrink-0"
           style={{ fontFamily: "var(--fontDisplay)", fontSize: "18px", letterSpacing: "0.02em", color: "var(--ink)" }}
         >
-          寂静之书
+          {profile.title}
         </Link>
 
-        {/* Center nav — desktop */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden items-center gap-8 md:flex">
           {navItems.map((item) => (
             <div
               key={item.label}
               className="relative"
-              onMouseEnter={() => item.children ? handleMouseEnter(item.label) : undefined}
+              onMouseEnter={item.children ? () => handleMouseEnter(item.label) : undefined}
               onMouseLeave={item.children ? handleMouseLeave : undefined}
             >
               <NavLink
                 to={item.href}
                 className={({ isActive }) =>
-                  `flex items-center gap-0.5 text-sm transition-colors duration-200 ${
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`
+                  `flex items-center gap-0.5 text-sm transition-colors duration-200 ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`
                 }
                 style={{ fontFamily: "var(--fontSans)", letterSpacing: "0.03em" }}
               >
@@ -112,11 +141,10 @@ export default function Header() {
                 )}
               </NavLink>
 
-              {/* Dropdown */}
               {item.children && (
                 <div
-                  className={`absolute top-full left-0 mt-3 bg-card border border-warm-border shadow-custom rounded-sm py-2 min-w-40 transition-all duration-200 ${
-                    openMenu === item.label ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 -translate-y-1 pointer-events-none"
+                  className={`absolute top-full left-0 mt-3 min-w-40 rounded-sm border border-warm-border bg-card py-2 shadow-custom transition-all duration-200 ${
+                    openMenu === item.label ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0"
                   }`}
                   style={{ borderColor: "var(--warm-border)" }}
                   onMouseEnter={() => handleMouseEnter(item.label)}
@@ -128,7 +156,7 @@ export default function Header() {
                       <Link
                         key={child.href}
                         to={child.href}
-                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                         onClick={() => setOpenMenu(null)}
                       >
                         <ChildIcon size={13} />
@@ -142,9 +170,7 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Right icons — desktop */}
-        <div className="hidden md:flex items-center gap-5">
-          {/* Search bar inline */}
+        <div className="hidden items-center gap-5 md:flex">
           <div className="flex items-center gap-2">
             {searchOpen && (
               <form onSubmit={handleSearchSubmit} className="flex items-center">
@@ -152,29 +178,36 @@ export default function Header() {
                   ref={searchRef}
                   type="text"
                   placeholder="搜索..."
-                  className="w-48 h-7 text-sm bg-transparent border-b border-warm-border outline-none px-1"
+                  className="h-7 w-48 border-b border-warm-border bg-transparent px-1 text-sm outline-none"
                   style={{ borderColor: "var(--warm-border)", fontFamily: "var(--fontSans)" }}
                   onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
                 />
               </form>
             )}
             <button
-              onClick={() => setSearchOpen(!searchOpen)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setSearchOpen((open) => !open)}
+              className="text-muted-foreground transition-colors hover:text-foreground"
               aria-label="搜索"
             >
               <SearchIcon size={16} />
             </button>
           </div>
-
-          <Link to="/login" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="登录">
+          <a
+            href="https://github.com/seaFall98"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="GitHub"
+          >
+            <GitHubIcon />
+          </a>
+          <Link to="/login" className="text-muted-foreground transition-colors hover:text-foreground" aria-label="登录">
             <UserIcon size={16} />
           </Link>
         </div>
 
-        {/* Mobile hamburger */}
         <button
-          className="md:hidden text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground md:hidden"
           onClick={() => setMobileOpen(true)}
           aria-label="打开菜单"
         >
@@ -182,37 +215,32 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Mobile drawer */}
-      <div
-        className={`fixed inset-0 z-50 md:hidden transition-opacity duration-300 ${mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-      >
+      <div className={`fixed inset-0 z-50 transition-opacity duration-300 md:hidden ${mobileOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}>
         <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-        <div
-          className={`absolute right-0 top-0 bottom-0 w-72 bg-card shadow-custom transition-transform duration-300 ${mobileOpen ? "translate-x-0" : "translate-x-full"}`}
-        >
-          <div className="flex items-center justify-between p-6 border-b border-warm-border">
-            <span style={{ fontFamily: "var(--fontDisplay)", fontSize: "16px" }}>寂静之书</span>
+        <div className={`absolute right-0 top-0 bottom-0 w-72 bg-card shadow-custom transition-transform duration-300 ${mobileOpen ? "translate-x-0" : "translate-x-full"}`}>
+          <div className="flex items-center justify-between border-b border-warm-border p-6">
+            <span style={{ fontFamily: "var(--fontDisplay)", fontSize: "16px" }}>{profile.title}</span>
             <button onClick={() => setMobileOpen(false)} className="text-muted-foreground">
               <XIcon size={20} />
             </button>
           </div>
-          <nav className="p-6 flex flex-col gap-1">
+          <nav className="flex flex-col gap-1 p-6">
             {navItems.map((item) => (
               <div key={item.label}>
                 <Link
                   to={item.href}
-                  className="block py-2 text-sm text-foreground hover:text-primary transition-colors"
+                  className="block py-2 text-sm text-foreground transition-colors hover:text-primary"
                   onClick={() => setMobileOpen(false)}
                 >
                   {item.label}
                 </Link>
                 {item.children && (
-                  <div className="pl-4 flex flex-col gap-0">
+                  <div className="flex flex-col gap-0 pl-4">
                     {item.children.map((child) => (
                       <Link
                         key={child.href}
                         to={child.href}
-                        className="block py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        className="block py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                         onClick={() => setMobileOpen(false)}
                       >
                         {child.label}
@@ -222,9 +250,22 @@ export default function Header() {
                 )}
               </div>
             ))}
-            <div className="pt-4 border-t border-warm-border mt-2 flex flex-col gap-2">
-              <Link to="/search" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>搜索</Link>
-              <Link to="/login" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>登录</Link>
+            <div className="mt-2 flex flex-col gap-2 border-t border-warm-border pt-4">
+              <Link to="/search" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
+                搜索
+              </Link>
+              <a
+                href="https://github.com/seaFall98"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block py-2 text-sm text-muted-foreground"
+                onClick={() => setMobileOpen(false)}
+              >
+                GitHub
+              </a>
+              <Link to="/login" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
+                登录
+              </Link>
             </div>
           </nav>
         </div>

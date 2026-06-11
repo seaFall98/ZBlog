@@ -1,4 +1,5 @@
 import { escapeHtml, estimateReadTime, slugFromText, stripHtml } from "../../lib/text";
+import { extractMarkdownToc } from "./toc";
 import type { DataSource, PostView, TaxonomyView } from "./types";
 
 type RawRecord = Record<string, unknown>;
@@ -84,7 +85,8 @@ export function mapArticleToPostView(article: RawRecord, source: DataSource = "a
   const title = toStringValue(firstValue(article, ["title", "name"]));
   const slug = toStringValue(firstValue(article, ["slug", "id"])) || slugFromText(title);
   const html = toStringValue(firstValue(article, ["content_html", "contentHtml", "content"]));
-  const text = toStringValue(firstValue(article, ["content_text", "contentText", "content_markdown", "contentMarkdown"]));
+  const contentMarkdown = toStringValue(firstValue(article, ["content_markdown", "contentMarkdown"]));
+  const text = toStringValue(firstValue(article, ["content_text", "contentText"])) || contentMarkdown;
   const contentHtml = html || textToParagraphHtml(text);
   const summary =
     toStringValue(firstValue(article, ["summary", "excerpt", "description"])) ||
@@ -113,6 +115,8 @@ export function mapArticleToPostView(article: RawRecord, source: DataSource = "a
     title,
     summary,
     contentHtml,
+    contentMarkdown,
+    toc: extractMarkdownToc(contentMarkdown),
     category: mapCategory(firstValue(article, ["category"]), article),
     tags: mapTags(firstValue(article, ["tags"])),
     publishedAt,

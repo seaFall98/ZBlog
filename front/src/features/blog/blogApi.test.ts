@@ -6,7 +6,7 @@ function jsonResponse(data: unknown): Response {
 }
 
 describe("blogApi", () => {
-  it("fetches article list with category params", async () => {
+  it("fetches article list with category and tag params", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       jsonResponse({
         list: [
@@ -24,9 +24,9 @@ describe("blogApi", () => {
     );
     const api = createBlogApi({ fetcher });
 
-    const result = await api.listPosts({ page: 1, pageSize: 10, category: "life" });
+    const result = await api.listPosts({ page: 1, pageSize: 10, category: "life", tag: "coffee" });
 
-    expect(fetcher).toHaveBeenCalledWith("/api/v1/articles?page=1&page_size=10&category=life", {
+    expect(fetcher).toHaveBeenCalledWith("/api/v1/articles?page=1&page_size=10&category=life&tag=coffee", {
       headers: { Accept: "application/json" },
     });
     expect(result.posts[0]).toMatchObject({ slug: "life-post", title: "生活文章" });

@@ -1,37 +1,22 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchMoments } from "./momentsApi";
 import type { MomentView } from "./types";
 
-export function useMoments(pageSize = 30) {
-  const [moments, setMoments] = useState<MomentView[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
+type UseMomentsState = {
+  moments: MomentView[];
+  loading: boolean;
+  error: unknown;
+};
 
-  useEffect(() => {
-    let active = true;
+export function useMoments(pageSize = 30): UseMomentsState {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["moments", pageSize],
+    queryFn: () => fetchMoments(pageSize),
+  });
 
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await fetchMoments(pageSize);
-        if (!active) return;
-        setMoments(result);
-        setLoading(false);
-      } catch (loadError) {
-        if (!active) return;
-        setMoments([]);
-        setError(loadError);
-        setLoading(false);
-      }
-    }
-
-    void load();
-
-    return () => {
-      active = false;
-    };
-  }, [pageSize]);
-
-  return { moments, loading, error };
+  return {
+    moments: data ?? [],
+    loading: isLoading,
+    error,
+  };
 }

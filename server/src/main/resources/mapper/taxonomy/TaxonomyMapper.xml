@@ -29,13 +29,13 @@
   </select>
 
   <insert id="insertCategory" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-    insert into categories (name, slug, description, sort_order)
-    values (#{name}, #{slug}, #{description}, #{sort})
+    insert into categories (name, slug, description, cover_url, sort_order)
+    values (#{name}, #{slug}, #{description}, #{coverUrl}, #{sort})
   </insert>
 
   <update id="updateCategory">
     update categories
-    set name = #{name}, slug = #{slug}, description = #{description}, sort_order = #{sort}, updated_at = current_timestamp
+    set name = #{name}, slug = #{slug}, description = #{description}, cover_url = #{coverUrl}, sort_order = #{sort}, updated_at = current_timestamp
     where id = #{id}
   </update>
 

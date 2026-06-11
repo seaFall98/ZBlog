@@ -31,18 +31,19 @@ public class MyBatisTaxonomyRepository implements TaxonomyRepository {
     return one(taxonomyMapper.categoryByIdOrSlug(idOrSlug), "Category not found");
   }
 
-  public Map<String, Object> createCategory(String name, String slug, String description, int sort) {
+  public Map<String, Object> createCategory(String name, String slug, String description, int sort, String coverUrl) {
     Map<String, Object> params = new LinkedHashMap<>();
     params.put("name", name);
     params.put("slug", slug);
     params.put("description", description);
     params.put("sort", sort);
+    params.put("coverUrl", coverUrl);
     taxonomyMapper.insertCategory(params);
     return getCategory(String.valueOf(generatedId(params)));
   }
 
-  public Map<String, Object> updateCategory(long id, String name, String slug, String description, int sort) {
-    taxonomyMapper.updateCategory(id, name, slug, description, sort);
+  public Map<String, Object> updateCategory(long id, String name, String slug, String description, int sort, String coverUrl) {
+    taxonomyMapper.updateCategory(id, name, slug, description, sort, coverUrl);
     return getCategory(String.valueOf(id));
   }
 

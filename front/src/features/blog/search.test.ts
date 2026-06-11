@@ -9,6 +9,8 @@ function makePost(overrides: Partial<PostView> & Pick<PostView, "id" | "title">)
     title: overrides.title,
     summary: "一段摘要",
     contentHtml: "<p>正文</p>",
+    contentMarkdown: "",
+    toc: [],
     category: { id: "life", slug: "life", name: "生活" },
     tags: [],
     publishedAt: "2026-06-01",

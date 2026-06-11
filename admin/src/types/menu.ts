@@ -1,5 +1,5 @@
 // 菜单类型
-export type MenuType = 'aggregate' | 'navigation' | 'footer';
+export type MenuType = 'header_navigation' | 'footer_navigation';
 
 // 菜单树节点
 export interface MenuTreeNode {

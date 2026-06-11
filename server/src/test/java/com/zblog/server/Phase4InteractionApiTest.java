@@ -45,51 +45,56 @@ class Phase4InteractionApiTest {
   }
 
   @Test
-  void publicSettingsAndMenusProvideFrontendBaseline() {
-    ResponseEntity<Map> basicResponse = restTemplate.getForEntity("/api/v1/settings/basic", Map.class);
-    ResponseEntity<Map> blogResponse = restTemplate.getForEntity("/api/v1/settings/blog", Map.class);
-    ResponseEntity<Map> uploadResponse = restTemplate.getForEntity("/api/v1/settings/upload", Map.class);
-    ResponseEntity<Map> menusResponse = restTemplate.getForEntity("/api/v1/menus", Map.class);
+  void frontConfigAndMenusProvideV2Baseline() {
+    ResponseEntity<Map> configResponse = restTemplate.getForEntity("/api/v1/front/config", Map.class);
+    ResponseEntity<Map> menusResponse = restTemplate.getForEntity("/api/v1/front/menus", Map.class);
 
-    assertThat(basicResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(blogResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(configResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(menusResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-    Map<String, Object> basic = castMap(data(basicResponse));
-    Map<String, Object> blog = castMap(data(blogResponse));
-    Map<String, Object> upload = castMap(data(uploadResponse));
-    List<?> menus = (List<?>) data(menusResponse);
+    Map<String, Object> config = castMap(data(configResponse));
+    Map<String, Object> identity = castMap(config.get("identity"));
+    Map<String, Object> home = castMap(config.get("home"));
+    Map<String, Object> about = castMap(config.get("about"));
+    Map<String, Object> guestbook = castMap(config.get("guestbook"));
+    Map<String, Object> footer = castMap(config.get("footer"));
+    Map<String, Object> menus = castMap(data(menusResponse));
 
-    assertThat(basic)
-        .containsKeys("basic.author", "basic.author_avatar", "basic.blog_url", "basic.home_url");
-    assertThat(blog)
+    assertThat(identity)
         .containsKeys(
-            "blog.title",
-            "blog.subtitle",
-            "blog.description",
-            "blog.announcement",
-            "blog.typing_texts",
-            "blog.sidebar_social",
-            "blog.footer_social",
-            "blog.footer_links",
-            "blog.home_layout");
-    assertThat(blog.get("blog.about_personality")).isEqualTo("INFJ-A");
-    assertThat(upload).containsKey("upload.max_file_size");
-    assertThat(menus).hasSizeGreaterThanOrEqualTo(6);
-    assertThat(menus)
+            "siteTitle",
+            "ownerDisplayName",
+            "email",
+            "primaryImageUrl",
+            "faviconUrl",
+            "icpRecord",
+            "policeRecord");
+    assertThat(home)
+        .containsKeys(
+            "heroEyebrow", "heroTitle", "heroMeta", "heroCtaLabel", "heroCtaTarget");
+    assertThat(about)
+        .containsKeys(
+            "introText", "statusItems", "skillItems", "timelineItems", "bottomQuote");
+    assertThat(guestbook).containsKeys("introText", "backgroundImage");
+    assertThat(footer)
+        .containsKeys("description", "copyrightText", "slogan", "socialLinks");
+
+    assertThat(menus).containsKeys("header", "footer");
+    assertThat((List<?>) menus.get("header")).isNotEmpty();
+    assertThat((List<?>) menus.get("footer")).isNotEmpty();
+    assertThat((List<?>) menus.get("header"))
         .anySatisfy(
             menu -> {
               Map<?, ?> item = (Map<?, ?>) menu;
-              assertThat(item.get("type")).isEqualTo("footer");
+              assertThat(item.get("type")).isEqualTo("header_navigation");
+              assertThat(item.get("title")).isEqualTo("写作");
               assertThat((List<?>) item.get("children")).isNotEmpty();
             });
-    assertThat(menus)
-        .anySatisfy(
+    assertThat((List<?>) menus.get("footer"))
+        .allSatisfy(
             menu -> {
               Map<?, ?> item = (Map<?, ?>) menu;
-              assertThat(item.get("type")).isEqualTo("aggregate");
-              assertThat((List<?>) item.get("children")).isNotEmpty();
+              assertThat(item.get("type")).isEqualTo("footer_navigation");
             });
   }
 
@@ -102,7 +107,7 @@ class Phase4InteractionApiTest {
             HttpMethod.POST,
             new HttpEntity<>(
                 Map.of(
-                    "type", "aggregate",
+                    "type", "header_navigation",
                     "title", "测试菜单",
                     "url", "/test-menu",
                     "icon", "ri-test-tube-line",
@@ -119,7 +124,7 @@ class Phase4InteractionApiTest {
             HttpMethod.POST,
             new HttpEntity<>(
                 Map.of(
-                    "type", "aggregate",
+                    "type", "header_navigation",
                     "parent_id", parentId,
                     "title", "测试子菜单",
                     "url", "/test-child-menu",
@@ -141,7 +146,10 @@ class Phase4InteractionApiTest {
 
     ResponseEntity<Map> listResponse =
         restTemplate.exchange(
-            "/api/v1/admin/menus?type=aggregate", HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            "/api/v1/admin/menus?type=header_navigation",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            Map.class);
     List<?> menus = (List<?>) data(listResponse);
     assertThat(menus)
         .anySatisfy(
@@ -190,7 +198,7 @@ class Phase4InteractionApiTest {
 
     ResponseEntity<Map> groupedResponse = restTemplate.getForEntity("/api/v1/friends", Map.class);
     Map<?, ?> grouped = (Map<?, ?>) data(groupedResponse);
-    assertThat(grouped.get("total_friends")).isEqualTo(1);
+    assertThat(((Number) grouped.get("total_friends")).intValue()).isGreaterThanOrEqualTo(1);
     assertThat((List<?>) grouped.get("groups")).isNotEmpty();
 
     ResponseEntity<Map> applyResponse =

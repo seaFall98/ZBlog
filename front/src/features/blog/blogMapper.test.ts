@@ -73,4 +73,21 @@ describe("mapArticleToPostView", () => {
     expect(post.contentHtml).toBe("<p>第一行<br />&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;</p>");
     expect(post.contentHtml).not.toContain("<script>");
   });
+
+  it("preserves markdown content and extracts a real article TOC", () => {
+    const post = mapArticleToPostView({
+      id: "markdown-post",
+      title: "Markdown 文章",
+      content_html: "<p>后端 HTML fallback</p>",
+      content_markdown: "## 一、序言\n\n正文\n\n### 引子\n\n```md\n## 代码标题\n```",
+    });
+
+    expect(post).toMatchObject({
+      contentMarkdown: "## 一、序言\n\n正文\n\n### 引子\n\n```md\n## 代码标题\n```",
+      toc: [
+        { id: "一-序言", title: "一、序言", level: 2 },
+        { id: "引子", title: "引子", level: 3 },
+      ],
+    });
+  });
 });

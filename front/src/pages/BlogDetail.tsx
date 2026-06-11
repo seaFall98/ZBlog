@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { CalendarIcon, ClockIcon, TagIcon, ArrowLeftIcon, Share2Icon, BookmarkIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import ArticleContent from "../features/blog/ArticleContent";
+import ArticleToc from "../features/blog/ArticleToc";
 import { usePost } from "../features/blog/usePost";
 import { toDateText } from "../lib/text";
 import { toast } from "sonner";
@@ -34,7 +35,22 @@ export default function BlogDetail() {
           <ArrowLeftIcon size={14} /> 返回文章列表
         </button>
 
-        {!post && (
+        {loading && !post && (
+          <div className="py-24 max-w-2xl">
+            <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>Loading</p>
+            <h1
+              className="mb-6 leading-tight"
+              style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 400, color: "var(--ink)", lineHeight: 1.25 }}
+            >
+              正在翻开这一页
+            </h1>
+            <p className="text-sm" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
+              正在从 server 读取文章内容与目录。
+            </p>
+          </div>
+        )}
+
+        {!loading && !post && (
           <div className="py-24 max-w-2xl">
             <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>Missing Page</p>
             <h1
@@ -44,7 +60,7 @@ export default function BlogDetail() {
               这页纸暂时没有被装订进来
             </h1>
             <p className="text-sm mb-8" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-              {loading ? "正在翻阅书页..." : "也许它还在整理，先回到文章列表继续阅读。"}
+              也许它还在整理，先回到文章列表继续阅读。
             </p>
             <Link
               to="/blog"
@@ -175,21 +191,8 @@ export default function BlogDetail() {
                 </button>
               </div>
 
-              {/* TOC (static) */}
-              <div
-                className="p-5"
-                style={{ background: "var(--section-bg)", border: "1px solid var(--warm-border)" }}
-              >
-                <div className="text-xs tracking-widest uppercase mb-4" style={{ color: "var(--muted-ink)" }}>目录</div>
-                <div className="flex flex-col gap-3">
-                  <div className="text-xs" style={{ color: "var(--ink)" }}>一、序言</div>
-                  <div className="text-xs pl-3" style={{ color: "var(--muted-ink)" }}>· 引子</div>
-                  <div className="text-xs" style={{ color: "var(--ink)" }}>二、正文展开</div>
-                  <div className="text-xs pl-3" style={{ color: "var(--muted-ink)" }}>· 细节描述</div>
-                  <div className="text-xs pl-3" style={{ color: "var(--muted-ink)" }}>· 深入探讨</div>
-                  <div className="text-xs" style={{ color: "var(--ink)" }}>三、尾声</div>
-                </div>
-              </div>
+              {/* TOC */}
+              <ArticleToc toc={post.toc} />
 
               {/* All posts link */}
               <Link

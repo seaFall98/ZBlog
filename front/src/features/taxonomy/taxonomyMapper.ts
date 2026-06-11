@@ -67,3 +67,17 @@ export function mapTaxonomyItems(response: unknown): TaxonomyItem[] {
     .filter((record): record is TaxonomyRecord => Boolean(record) && typeof record === "object" && !Array.isArray(record))
     .map(mapTaxonomyItem);
 }
+
+function normalizeRouteParam(value: string): string {
+  try {
+    return decodeURIComponent(value).trim();
+  } catch {
+    return value.trim();
+  }
+}
+
+export function findTaxonomyItemByRouteParam(items: TaxonomyItem[], param?: string): TaxonomyItem | undefined {
+  if (!param) return undefined;
+  const normalizedParam = normalizeRouteParam(param);
+  return items.find((item) => item.slug === normalizedParam || item.name === normalizedParam);
+}

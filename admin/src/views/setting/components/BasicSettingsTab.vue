@@ -1,43 +1,39 @@
 <template>
   <el-form :model="form" label-width="120px" class="setting-form">
-    <el-divider content-position="left">站长信息</el-divider>
+    <el-divider content-position="left">站点身份</el-divider>
 
-    <el-form-item label="站长姓名">
-      <el-input v-model="form.author" placeholder="站长姓名" :disabled="loading" />
+    <el-form-item label="站点名">
+      <el-input v-model="form.site_title" placeholder="用于前台 Header、浏览器标题、Footer" :disabled="loading" />
     </el-form-item>
 
-    <el-form-item label="站长邮箱">
-      <el-input v-model="form.author_email" placeholder="站长联系邮箱" :disabled="loading" />
+    <el-form-item label="站长展示名">
+      <el-input v-model="form.owner_display_name" placeholder="例如 seaFall98" :disabled="loading" />
     </el-form-item>
 
-    <el-form-item label="站长简介">
-      <el-input
-        v-model="form.author_desc"
-        type="textarea"
-        :rows="3"
-        placeholder="站长个人简介"
-        :disabled="loading"
-      />
+    <el-form-item label="联系邮箱">
+      <el-input v-model="form.email" placeholder="站长联系邮箱" :disabled="loading" />
     </el-form-item>
+
+    <el-divider content-position="left">基础资源</el-divider>
 
     <div class="image-row">
-      <el-form-item label="站长头像">
+      <el-form-item label="主展示图">
         <ImageUploader
-          ref="authorAvatarUploaderRef"
-          v-model="form.author_avatar"
-          upload-type="站长头像"
-          width="120px"
-          height="120px"
+          ref="primaryImageUploaderRef"
+          v-model="form.primary_image_url"
+          upload-type="主展示图"
+          width="160px"
+          height="220px"
           :disabled="loading"
         />
       </el-form-item>
 
-      <el-form-item label="站长形象">
+      <el-form-item label="Favicon">
         <ImageUploader
-          ref="authorPhotoUploaderRef"
-          v-model="form.author_photo"
-          upload-type="站长形象"
-          width="80px"
+          ref="faviconUploaderRef"
+          v-model="form.favicon_url"
+          upload-type="站点图标"
+          width="120px"
           height="120px"
           :disabled="loading"
         />
@@ -46,38 +42,12 @@
 
     <el-divider content-position="left">备案信息</el-divider>
 
-    <el-form-item label="ICP备案号">
-      <el-input v-model="form.icp" placeholder="ICP备案号" :disabled="loading" />
+    <el-form-item label="ICP备案">
+      <el-input v-model="form.icp_record" placeholder="例如 沪ICP备12345678号" :disabled="loading" />
     </el-form-item>
 
-    <el-form-item label="公安备案号">
-      <el-input v-model="form.police_record" placeholder="公安备案号" :disabled="loading" />
-    </el-form-item>
-
-    <el-divider content-position="left">系统地址</el-divider>
-
-    <el-form-item label="管理地址">
-      <el-input
-        v-model="form.admin_url"
-        placeholder="例如 https://admin.your-site.com"
-        :disabled="loading"
-      />
-    </el-form-item>
-
-    <el-form-item label="博客地址">
-      <el-input
-        v-model="form.blog_url"
-        placeholder="例如 https://blog.your-site.com"
-        :disabled="loading"
-      />
-    </el-form-item>
-
-    <el-form-item label="主页地址">
-      <el-input
-        v-model="form.home_url"
-        placeholder="例如 https://your-site.com"
-        :disabled="loading"
-      />
+    <el-form-item label="公安备案">
+      <el-input v-model="form.police_record" placeholder="例如 沪公网安备123456789号" :disabled="loading" />
     </el-form-item>
   </el-form>
 </template>
@@ -85,34 +55,20 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import ImageUploader from '@/components/common/ImageUploader.vue';
+import type { BasicSettingsForm } from '../settingAdapters';
 
-interface BasicForm {
-  author: string;
-  author_email: string;
-  author_desc: string;
-  author_avatar: string;
-  author_photo: string;
-  icp: string;
-  police_record: string;
-  admin_url: string;
-  blog_url: string;
-  home_url: string;
-}
-
-const form = defineModel<BasicForm>('form', { required: true });
+const form = defineModel<BasicSettingsForm>('form', { required: true });
 
 defineProps<{
   loading?: boolean;
 }>();
 
-// 图片上传器引用
-const authorAvatarUploaderRef = ref<InstanceType<typeof ImageUploader>>();
-const authorPhotoUploaderRef = ref<InstanceType<typeof ImageUploader>>();
+const primaryImageUploaderRef = ref<InstanceType<typeof ImageUploader>>();
+const faviconUploaderRef = ref<InstanceType<typeof ImageUploader>>();
 
-// 暴露给父组件使用
 defineExpose({
-  authorAvatarUploaderRef,
-  authorPhotoUploaderRef,
+  primaryImageUploaderRef,
+  faviconUploaderRef,
 });
 </script>
 
@@ -128,7 +84,6 @@ defineExpose({
   }
 }
 
-// 移动端适配
 @media (max-width: 768px) {
   .setting-form {
     .image-row {
