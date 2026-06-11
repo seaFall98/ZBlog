@@ -759,12 +759,6 @@
   background-repeat: no-repeat;
 }
 
-.guestbook-hero__shade {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 52% 45%, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.52));
-}
-
 .guestbook-hero__content {
   position: relative;
   z-index: 1;
@@ -799,7 +793,7 @@
   width: min(560px, 100%);
   margin-top: 34px;
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -818,6 +812,11 @@
 
 .guestbook-form input:focus {
   border-color: rgba(255, 255, 255, 0.58);
+}
+
+.guestbook-form button {
+  min-width: 104px;
+  white-space: nowrap;
 }
 
 .guestbook-form button,

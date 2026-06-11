@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchAlbums } from "./galleryApi";
 import type { AlbumListResult } from "./types";
 
@@ -12,29 +12,14 @@ function emptyAlbums(page = 1, pageSize = 20): AlbumListResult {
 }
 
 export function useAlbums(pageSize = 20): UseAlbumsState {
-  const [state, setState] = useState<UseAlbumsState>(() => ({ ...emptyAlbums(1, pageSize), loading: true, error: null }));
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["albums", pageSize],
+    queryFn: () => fetchAlbums({ page: 1, pageSize }),
+  });
 
-  useEffect(() => {
-    let active = true;
-
-    async function load() {
-      setState({ ...emptyAlbums(1, pageSize), loading: true, error: null });
-      try {
-        const result = await fetchAlbums({ page: 1, pageSize });
-        if (!active) return;
-        setState({ ...result, loading: false, error: null });
-      } catch (error) {
-        if (!active) return;
-        setState({ ...emptyAlbums(1, pageSize), loading: false, error });
-      }
-    }
-
-    void load();
-
-    return () => {
-      active = false;
-    };
-  }, [pageSize]);
-
-  return state;
+  return {
+    ...(data ?? emptyAlbums(1, pageSize)),
+    loading: isLoading,
+    error,
+  };
 }

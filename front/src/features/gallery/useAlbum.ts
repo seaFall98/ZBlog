@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchAlbum } from "./galleryApi";
 import type { AlbumView } from "./types";
 
@@ -8,39 +8,16 @@ type UseAlbumState = {
   error: unknown;
 };
 
-function emptyAlbum(): UseAlbumState {
-  return { album: null, loading: false, error: null };
-}
-
 export function useAlbum(slug: string): UseAlbumState {
-  const [state, setState] = useState<UseAlbumState>(() => ({ ...emptyAlbum(), loading: true }));
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["album", slug],
+    queryFn: () => fetchAlbum(slug),
+    enabled: !!slug,
+  });
 
-  useEffect(() => {
-    let active = true;
-
-    async function load() {
-      if (!slug) {
-        setState(emptyAlbum());
-        return;
-      }
-
-      setState((current) => ({ ...current, loading: true, error: null }));
-      try {
-        const album = await fetchAlbum(slug);
-        if (!active) return;
-        setState({ album, loading: false, error: null });
-      } catch (error) {
-        if (!active) return;
-        setState({ ...emptyAlbum(), error });
-      }
-    }
-
-    void load();
-
-    return () => {
-      active = false;
-    };
-  }, [slug]);
-
-  return state;
+  return {
+    album: data ?? null,
+    loading: isLoading,
+    error,
+  };
 }
