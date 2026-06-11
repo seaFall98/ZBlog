@@ -45,7 +45,7 @@ function LinkPrefetch() {
       const a = (e.target as Element).closest<HTMLAnchorElement>("a[href]");
       if (!a) return;
       const href = a.getAttribute("href") || "";
-      const postMatch = href.match(/^\/(?:posts|blog)\/([^/?#]+)/);
+      const postMatch = href.match(/^\/posts\/([^/?#]+)/);
       if (postMatch) {
         prefetchPost(postMatch[1]);
         return;

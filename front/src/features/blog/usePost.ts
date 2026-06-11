@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { blogApi } from "./blogApi";
 import type { DataSource, PostView } from "./types";
@@ -58,18 +59,20 @@ export async function loadRelatedPosts(
 }
 
 export function usePost(slug: string): UsePostState {
+  const stableSlug = useMemo(() => slug, [slug]);
+
   const {
     data: post,
     isLoading: postLoading,
     error: postError,
   } = useQuery({
-    queryKey: ["post", slug],
-    queryFn: () => blogApi.getPost(slug),
-    enabled: !!slug,
+    queryKey: ["post", stableSlug],
+    queryFn: () => blogApi.getPost(stableSlug),
+    enabled: !!stableSlug,
   });
 
   const { data: related = [] } = useQuery({
-    queryKey: ["relatedPosts", slug],
+    queryKey: ["relatedPosts", stableSlug],
     queryFn: () => loadRelatedPosts(post!),
     enabled: !!post && post.tags.length > 0,
   });

@@ -7,19 +7,41 @@ type UsePostsState = PostListResult & {
   error: unknown;
 };
 
+function emptyPosts(params: PostFilterParams = {}): PostListResult {
+  return {
+    posts: [],
+    total: 0,
+    page: Number(params.page) || 1,
+    pageSize: Number(params.pageSize) || 0,
+    source: "api",
+  };
+}
+
+function getCacheKey(params: PostFilterParams): string {
+  return JSON.stringify({
+    category: params.category ?? "",
+    tag: params.tag ?? "",
+    year: params.year ?? "",
+    month: params.month ?? "",
+    keyword: params.keyword ?? "",
+    page: Number(params.page) || 1,
+    pageSize: Number(params.pageSize) || 0,
+  });
+}
+
 export function usePosts(params: PostFilterParams = {}): UsePostsState {
+  const { category, tag, year, month, keyword, page, pageSize } = params;
+  const requestParams: PostFilterParams = { category, tag, year, month, keyword, page, pageSize };
+  const cacheKey = getCacheKey(requestParams);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["posts", params],
+    queryKey: ["posts", cacheKey],
     queryFn: () =>
-      params.keyword ? blogApi.searchPosts(params) : blogApi.listPosts(params),
+      keyword ? blogApi.searchPosts(requestParams) : blogApi.listPosts(requestParams),
   });
 
   return {
-    posts: data?.posts ?? [],
-    total: data?.total ?? 0,
-    page: data?.page ?? (Number(params.page) || 1),
-    pageSize: data?.pageSize ?? (Number(params.pageSize) || 20),
-    source: data?.source ?? "api",
+    ...(data ?? emptyPosts(requestParams)),
     loading: isLoading,
     error,
   };
