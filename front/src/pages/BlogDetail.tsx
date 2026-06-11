@@ -35,7 +35,22 @@ export default function BlogDetail() {
           <ArrowLeftIcon size={14} /> 返回文章列表
         </button>
 
-        {!post && (
+        {loading && !post && (
+          <div className="py-24 max-w-2xl">
+            <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>Loading</p>
+            <h1
+              className="mb-6 leading-tight"
+              style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 400, color: "var(--ink)", lineHeight: 1.25 }}
+            >
+              正在翻开这一页
+            </h1>
+            <p className="text-sm" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
+              正在从 server 读取文章内容与目录。
+            </p>
+          </div>
+        )}
+
+        {!loading && !post && (
           <div className="py-24 max-w-2xl">
             <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>Missing Page</p>
             <h1
@@ -45,7 +60,7 @@ export default function BlogDetail() {
               这页纸暂时没有被装订进来
             </h1>
             <p className="text-sm mb-8" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-              {loading ? "正在翻阅书页..." : "也许它还在整理，先回到文章列表继续阅读。"}
+              也许它还在整理，先回到文章列表继续阅读。
             </p>
             <Link
               to="/blog"

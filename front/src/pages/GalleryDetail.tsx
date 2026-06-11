@@ -40,17 +40,26 @@ export default function GalleryDetail() {
 
         <header className="gallery-detail-page__header mb-12">
           <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>
-            {album ? toDateText(album.createdAt).slice(0, 7) : "Gallery"}
+            {album ? toDateText(album.createdAt).slice(0, 7) : loading ? "Loading" : "Gallery"}
           </p>
           <h1 style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(30px,3.5vw,48px)", fontWeight: 400, color: "var(--ink)" }}>
             {album?.title ?? (loading ? "正在加载相册" : "相册不存在")}
           </h1>
           <p className="mt-3 text-sm" style={{ color: "var(--muted-ink)" }}>
-            {album ? `${album.description} / ${photos.length} 张` : ""}
+            {album ? `${album.description} / ${photos.length} 张` : loading ? "正在从 server 读取相册与照片。" : "没有找到对应的相册。"}
           </p>
         </header>
 
-        <SpatialGallery photos={photos} albumTitle={albumTitle} onSelectPhoto={setSelectedIndex} />
+        {loading && !album ? (
+          <div
+            className="grid min-h-[360px] place-items-center border"
+            style={{ borderColor: "var(--warm-border)", background: "var(--warm-white)", color: "var(--muted-ink)" }}
+          >
+            正在展开这本相册…
+          </div>
+        ) : (
+          <SpatialGallery photos={photos} albumTitle={albumTitle} onSelectPhoto={setSelectedIndex} />
+        )}
       </div>
 
       <GalleryPhotoModal

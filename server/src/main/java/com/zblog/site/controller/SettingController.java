@@ -2,6 +2,7 @@ package com.zblog.site.controller;
 
 import com.zblog.common.api.ApiResponse;
 import com.zblog.site.application.SettingService;
+import com.zblog.site.application.SettingService.FrontConfigView;
 import java.util.Map;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +24,11 @@ public class SettingController {
   @GetMapping("/settings/public-profile")
   public ApiResponse<Map<String, String>> publicProfile() {
     return ApiResponse.ok(settingService.publicProfile());
+  }
+
+  @GetMapping("/front/config")
+  public ApiResponse<FrontConfigView> frontConfig() {
+    return ApiResponse.ok(settingService.frontConfig());
   }
 
   @RequestMapping(
