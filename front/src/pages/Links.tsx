@@ -75,7 +75,7 @@ export default function Links() {
                   <span className="font-medium text-sm" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>{link.name}</span>
                   <ExternalLinkIcon size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--muted-ink)" }} />
                 </div>
-                <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: "var(--muted-ink)" }}>{link.description}</p>
+                <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: "var(--muted-ink)" }}>{link.description || "一位认真记录生活的朋友。"}</p>
                 <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-sm" style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}>{link.category}</span>
               </div>
             </a>
