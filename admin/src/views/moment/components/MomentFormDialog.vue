@@ -800,18 +800,20 @@ const handleParseMusic = async () => {
   fetchingMusic.value = true;
   try {
     const { server, type, id } = formData.content.music;
-    const apiUrl = `https://meting.flec.top/api?server=${server}&type=${type}&id=${id}`;
+    const apiUrl = `/meting/api?server=${server}&type=${type}&id=${id}`;
 
     const response = await fetch(apiUrl);
     const data = await response.json();
 
     if (data && data.length > 0) {
       const info = data[0];
+      // type=url endpoint → 302 redirect to real streaming URL (no auth expiry)
+      const audioUrl = `/meting/api?server=${server}&type=url&id=${info.id || id}`;
       musicInfo.value = {
         title: info.name || info.title || '未知歌曲',
         artist: info.artist || info.author || '未知艺术家',
         pic: info.pic || info.cover || '',
-        url: info.url || '',
+        url: audioUrl,
         type: type as 'song' | 'album' | 'artist' | 'playlist',
         server: server as 'netease' | 'tencent',
       };
@@ -852,7 +854,7 @@ const handleSearchMusic = async () => {
   hasSearched.value = true;
 
   try {
-    const apiUrl = `https://meting.flec.top/api?server=netease&type=search&id=${encodeURIComponent(keyword)}`;
+    const apiUrl = `/meting/api?server=netease&type=search&id=${encodeURIComponent(keyword)}`;
     const response = await fetch(apiUrl);
     const data = await response.json();
     musicSearchResults.value = Array.isArray(data) ? data : [];
@@ -881,11 +883,12 @@ const selectMusic = (item: MusicSearchItem) => {
   formData.content.music!.type = 'song';
 
   // 更新音乐信息预览
+  const audioUrl = `/meting/api?server=netease&type=url&id=${musicId}`;
   musicInfo.value = {
     title: item.title,
     artist: item.author,
     pic: item.pic,
-    url: item.url || '',
+    url: audioUrl,
     type: 'song',
     server: 'netease',
   };

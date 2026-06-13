@@ -8,21 +8,23 @@ type Props = {
 interface AudioTrack {
   name: string;
   artist: string;
-  url: string;
   cover: string;
+  /** Server-proxied audio URL — browser gets stable same-origin URL, server handles CDN token refresh */
+  streamUrl: string;
 }
 
-async function resolveViaMeting(server: string, type: string, id: string): Promise<AudioTrack[]> {
+async function resolveMetaViaMeting(server: string, type: string, id: string): Promise<AudioTrack[]> {
   const res = await fetch(
-    `https://meting.flec.top/api?server=${server}&type=${type}&id=${id}`,
+    `/meting/api?server=${server}&type=${type}&id=${id}`,
   );
   const data = await res.json();
   const list = Array.isArray(data) ? data : [data];
   return list.map((item: Record<string, string>) => ({
     name: item.name || item.title || "未知歌曲",
     artist: item.artist || item.author || "未知艺术家",
-    url: item.url || "",
     cover: item.pic || item.cover || "",
+    // Proxy through our Java server to avoid cross-origin CDN token expiry
+    streamUrl: `/api/v1/audio/stream?server=${server}&id=${item.id || id}`,
   }));
 }
 
@@ -36,35 +38,34 @@ export default function MomentMusicPlayer({ music }: Props) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  // Resolve metadata on mount / music change
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
 
     const load = async () => {
-      // Re-resolve fresh URL via Meting API if we have server/type/id
       if (music.server && music.type && music.id) {
         try {
-          const resolved = await resolveViaMeting(music.server, music.type, music.id);
+          const resolved = await resolveMetaViaMeting(music.server, music.type, music.id);
           if (cancelled) return;
-          const filtered = resolved.filter((t) => t.url);
-          if (filtered.length > 0) {
-            setTracks(filtered);
+          if (resolved.length > 0) {
+            setTracks(resolved);
             setLoading(false);
             return;
           }
         } catch {
-          // Fall through to direct URL attempt
+          // Fall through to stored URL fallback
         }
       }
 
-      // Fallback: use the stored URL directly (may have expired)
+      // Fallback: use stored URL (for manually uploaded audio files etc.)
       if (music.url) {
         setTracks([{
           name: music.title || "未知歌曲",
           artist: music.artist || "",
-          url: music.url,
           cover: music.cover || "",
+          streamUrl: music.url,
         }]);
         setLoading(false);
       } else {
@@ -80,10 +81,14 @@ export default function MomentMusicPlayer({ music }: Props) {
   const current = tracks[currentIdx];
 
   const togglePlay = () => {
-    if (!audioRef.current || !current?.url) return;
+    if (!audioRef.current || !current?.streamUrl) return;
     if (playing) {
       audioRef.current.pause();
     } else {
+      // Set src each time in case URL needs to be re-resolved
+      if (audioRef.current.src !== current.streamUrl || audioRef.current.readyState === 0) {
+        audioRef.current.src = current.streamUrl;
+      }
       audioRef.current.play().catch(() => setError(true));
     }
   };
@@ -112,7 +117,7 @@ export default function MomentMusicPlayer({ music }: Props) {
     );
   }
 
-  if (error || !current?.url) {
+  if (error || !current?.streamUrl) {
     if (music.url) {
       return (
         <a href={music.url} target="_blank" rel="noopener noreferrer"
@@ -145,7 +150,7 @@ export default function MomentMusicPlayer({ music }: Props) {
     >
       <audio
         ref={audioRef}
-        src={current.url}
+        src={current.streamUrl}
         preload="metadata"
         onTimeUpdate={() => { if (audioRef.current) setCurrentTime(audioRef.current.currentTime); }}
         onLoadedMetadata={() => { if (audioRef.current) setDuration(audioRef.current.duration); }}
