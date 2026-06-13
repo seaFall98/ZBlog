@@ -44,15 +44,49 @@ function linkFrom(value: unknown): MomentView["link"] {
 
 function musicFrom(value: unknown): MusicLinkView | null {
   if (!isRecord(value)) return null;
-  const url = stringValue(value.url).trim();
-  if (!url) return null;
-  const cover = stringValue(value.cover).trim();
+  // Direct URL format: {url, title, artist?, cover?}
+  const directUrl = stringValue(value.url).trim();
+  if (directUrl) {
+    const cover = stringValue(value.cover).trim();
+    return {
+      url: directUrl,
+      title: stringValue(value.title).trim() || directUrl,
+      artist: stringValue(value.artist).trim() || undefined,
+      ...(cover ? { cover: normalizeMediaUrl(cover) } : {}),
+    };
+  }
+  // Admin format: {server, type, id}
+  const server = stringValue(value.server).trim();
+  const type = stringValue(value.type).trim();
+  const songId = stringValue(value.id).trim();
+  if (!songId) return null;
+  const musicUrl = buildMusicUrl(server, type, songId);
+  if (!musicUrl) return null;
+  const typeLabel = type === "playlist" ? "歌单" : type === "album" ? "专辑" : "歌曲";
+  const serverLabel = server === "netease" ? "网易云" : server;
   return {
-    url,
-    title: stringValue(value.title).trim() || url,
-    artist: stringValue(value.artist).trim() || undefined,
-    ...(cover ? { cover: normalizeMediaUrl(cover) } : {}),
+    url: musicUrl,
+    title: `${serverLabel} · ${typeLabel}`,
+    artist: `ID: ${songId}`,
   };
+}
+
+function buildMusicUrl(server: string, type: string, id: string): string {
+  if (server === "netease") {
+    const path = type === "playlist" ? "playlist" : type === "album" ? "album" : "song";
+    return `https://music.163.com/#/${path}?id=${id}`;
+  }
+  return "";
+}
+
+/** Extract media URL from either a plain string or an object like {url, platform, ...} */
+function extractMediaUrl(value: unknown): string | undefined {
+  if (isRecord(value)) {
+    const url = stringValue(value.url).trim();
+    return url || undefined;
+  }
+  const str = stringValue(value).trim();
+  return str || undefined;
 }
 
 function contentOf(record: RawRecord): RawRecord {
@@ -74,8 +108,8 @@ export function mapMoment(value: unknown): MomentView | null {
     tags,
     location: stringValue(content.location).trim(),
     link: linkFrom(content.link),
-    video: stringValue(content.video).trim() || undefined,
-    audio: stringValue(content.audio).trim() || undefined,
+    video: extractMediaUrl(content.video),
+    audio: extractMediaUrl(content.audio),
     music: musicFrom(content.music),
   };
 }
