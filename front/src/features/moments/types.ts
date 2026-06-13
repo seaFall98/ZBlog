@@ -4,6 +4,23 @@ export type MomentLinkView = {
   favicon?: string;
 };
 
+export type MusicLinkView = {
+  title: string;
+  artist?: string;
+  cover?: string;
+  url: string;
+  /** For Meting API re-resolution at render time */
+  server?: string;
+  type?: string;
+  id?: string;
+};
+
+export type VideoSourceView = {
+  url: string;
+  platform?: string;
+  videoId?: string;
+};
+
 export type MomentView = {
   id: string;
   text: string;
@@ -13,4 +30,7 @@ export type MomentView = {
   tags: string[];
   location: string;
   link: MomentLinkView | null;
+  video?: VideoSourceView;
+  audio?: string;
+  music?: MusicLinkView | null;
 };

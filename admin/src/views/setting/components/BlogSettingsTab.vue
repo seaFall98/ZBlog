@@ -123,6 +123,29 @@
       </div>
     </el-form-item>
 
+    <el-form-item label="弹幕数量上限">
+      <el-input
+        v-model="form.guestbook_danmaku_limit"
+        type="number"
+        :min="50"
+        :max="500"
+        placeholder="200"
+        :disabled="loading"
+      />
+      <p class="field-hint">公开弹幕池加载的 approved 弹幕数量上限，范围 50-500。</p>
+    </el-form-item>
+
+    <el-divider content-position="left">搜索</el-divider>
+
+    <el-form-item label="热门关键词">
+      <el-input
+        v-model="form.search_hot_keywords"
+        placeholder="多个关键词用英文逗号分隔，如：旅行,摄影,阅读"
+        :disabled="loading"
+      />
+      <p class="field-hint">留空则由后端自动从热门文章聚合。</p>
+    </el-form-item>
+
     <el-divider content-position="left">页脚</el-divider>
 
     <el-form-item label="描述">

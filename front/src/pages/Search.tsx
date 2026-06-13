@@ -1,44 +1,74 @@
 import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { SearchIcon, CalendarIcon, ClockIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import PageLayout from "../components/layout/PageLayout";
+import { AppPagination } from "../components/ui/app-pagination";
+import { apiClient } from "../lib/apiClient";
 import { queryFromSearchParams } from "../features/blog/search";
 import { usePosts } from "../features/blog/usePosts";
+import { useNormalizePage, usePage } from "../hooks/usePage";
 import { escapeHtml, toDateText } from "../lib/text";
+
+const PAGE_SIZE = 10;
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = queryFromSearchParams(searchParams);
   const trimmedQuery = query.trim();
-  const { posts: results, loading } = usePosts({ keyword: trimmedQuery, pageSize: 50 });
+  const { page, setPage } = usePage();
+  const { posts: results, total, loading } = usePosts({ keyword: trimmedQuery, page, pageSize: PAGE_SIZE });
   const visibleResults = trimmedQuery.length > 0 ? results : [];
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  useNormalizePage(page, setPage, totalPages, loading || trimmedQuery.length === 0);
 
-  const updateQuery = (value: string) => {
-    const trimmedValue = value.trim();
-    if (trimmedValue) {
-      setSearchParams({ q: trimmedValue });
-    } else {
-      setSearchParams({});
-    }
-  };
+  /* IME-safe local input state */
+  const [inputValue, setInputValue] = useState(query);
+  useEffect(() => {
+    setInputValue(query);
+  }, [query]);
+
+  /* Debounce: push local input to URL after 300ms */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = inputValue.trim();
+      if (trimmed) setSearchParams({ q: trimmed }, { replace: true });
+      else if (query) setSearchParams({}, { replace: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    updateQuery(query);
+    const trimmed = inputValue.trim();
+    if (trimmed) setSearchParams({ q: trimmed }, { replace: true });
   };
 
+  const clearInput = () => {
+    setInputValue("");
+    setSearchParams({}, { replace: true });
+  };
+
+  /* Multi-word highlight */
   const highlight = (text: string) => {
     if (!trimmedQuery) return escapeHtml(text);
-    const lowerText = text.toLowerCase();
-    const lowerQuery = trimmedQuery.toLowerCase();
-    const idx = lowerText.indexOf(lowerQuery);
-    if (idx === -1) return escapeHtml(text);
-    return (
-      escapeHtml(text.slice(0, idx)) +
-      `<mark style="background:var(--section-bg);color:var(--olive);padding:0 2px;">${escapeHtml(text.slice(idx, idx + trimmedQuery.length))}</mark>` +
-      escapeHtml(text.slice(idx + trimmedQuery.length))
+    const words = trimmedQuery.split(/\s+/).filter(Boolean);
+    const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regex = new RegExp(`(${escaped.join("|")})`, "gi");
+    return escapeHtml(text).replace(
+      regex,
+      '<mark style="background:var(--section-bg);color:var(--olive);padding:0 2px;">$1</mark>',
     );
   };
+
+  /* Hot keywords from API */
+  const { data: hotKeywords } = useQuery({
+    queryKey: ["hotKeywords"],
+    queryFn: () => apiClient.get<string[]>("/search/hot-keywords"),
+    staleTime: 10 * 60 * 1000,
+  });
+  const suggestions: string[] = Array.isArray(hotKeywords) ? hotKeywords : [];
 
   return (
     <PageLayout>
@@ -60,17 +90,17 @@ export default function Search() {
           <SearchIcon size={20} style={{ color: "var(--muted-ink)" }} />
           <input
             type="text"
-            value={query}
-            onChange={(e) => updateQuery(e.target.value)}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             placeholder="输入关键词搜索文章..."
             className="flex-1 bg-transparent outline-none text-base"
             style={{ fontFamily: "var(--fontSans)", color: "var(--ink)" }}
             autoFocus
           />
-          {query && (
+          {inputValue && (
             <button
               type="button"
-              onClick={() => updateQuery("")}
+              onClick={clearInput}
               className="text-xs px-2 py-1 hover:opacity-60 transition-opacity"
               style={{ color: "var(--muted-ink)" }}
             >
@@ -83,7 +113,7 @@ export default function Search() {
         {trimmedQuery.length > 0 && (
           <div>
             <p className="text-xs mb-6" style={{ color: "var(--muted-ink)" }}>
-              「{trimmedQuery}」的搜索结果：{loading ? "正在检索..." : `${visibleResults.length} 篇`}
+              「{trimmedQuery}」的搜索结果：{loading ? "正在检索..." : `${total} 篇`}
             </p>
 
             {visibleResults.length === 0 && (
@@ -146,18 +176,22 @@ export default function Search() {
                 );
               })}
             </div>
+
+            <AppPagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         )}
 
         {/* Suggestions when empty */}
         {trimmedQuery.length === 0 && (
           <div>
-            <div className="text-xs tracking-widest uppercase mb-5" style={{ color: "var(--muted-ink)" }}>热门搜索</div>
+            {suggestions.length > 0 && (
+              <div className="text-xs tracking-widest uppercase mb-5" style={{ color: "var(--muted-ink)" }}>热门搜索</div>
+            )}
             <div className="flex flex-wrap gap-2">
-              {["旅行", "摄影", "阅读", "生活", "日本", "音乐", "咖啡"].map((kw) => (
+              {suggestions.map((kw) => (
                 <button
                   key={kw}
-                  onClick={() => updateQuery(kw)}
+                  onClick={() => { setInputValue(kw); }}
                   className="px-4 py-2 text-sm border rounded-full hover:border-primary transition-colors"
                   style={{
                     borderColor: "var(--warm-border)",

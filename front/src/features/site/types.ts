@@ -48,6 +48,7 @@ export type SiteProfileView = {
   backgroundImage: string;
   barrageBackgroundImage: string;
   guestbookIntro: string;
+  guestbookDanmakuLimit: number;
   aboutStatusItems: SiteStatusItemView[];
   aboutSkillItems: SiteSkillItemView[];
   aboutTimelineItems: SiteTimelineItemView[];

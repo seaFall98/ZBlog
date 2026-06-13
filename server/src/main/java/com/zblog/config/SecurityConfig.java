@@ -53,6 +53,7 @@ public class SecurityConfig {
                     // 白名单覆盖公开内容、采集、订阅、上传和文档入口，其余 API 走 JWT。
                     .requestMatchers(
                         "/api/v1/health",
+                        "/api/v1/audio/stream",
                         "/api/v1/auth/login",
                         "/api/v1/auth/register",
                         "/api/v1/auth/forgot-password",

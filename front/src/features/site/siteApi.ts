@@ -1,5 +1,6 @@
 import { apiClient } from "../../lib/apiClient";
 import { normalizeMediaUrl } from "../../lib/mediaUrl";
+import { isRecord, type RawRecord } from "../../lib/typeGuards";
 import type {
   SiteMenuGroupsView,
   SiteMenuView,
@@ -9,12 +10,6 @@ import type {
   SiteStatusItemView,
   SiteTimelineItemView,
 } from "./types";
-
-type RawRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is RawRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
 
 function stringValue(value: unknown): string {
   return value === undefined || value === null ? "" : String(value).trim();
@@ -125,6 +120,7 @@ export function mapFrontConfig(value: unknown): SiteProfileView {
     backgroundImage: normalizeMediaUrl(stringValue(guestbook.backgroundImage)),
     barrageBackgroundImage: normalizeMediaUrl(stringValue(guestbook.backgroundImage)),
     guestbookIntro: stringValue(guestbook.introText),
+    guestbookDanmakuLimit: typeof guestbook.danmakuPublicLimit === "number" ? guestbook.danmakuPublicLimit : 200,
     aboutStatusItems: mapStatusItems(about.statusItems),
     aboutSkillItems: mapSkillItems(about.skillItems),
     aboutTimelineItems: mapTimelineItems(about.timelineItems),

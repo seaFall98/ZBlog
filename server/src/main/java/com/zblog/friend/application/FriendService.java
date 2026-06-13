@@ -2,6 +2,7 @@ package com.zblog.friend.application;
 
 import com.zblog.common.api.PageResponse;
 import com.zblog.friend.application.port.FriendRepository;
+import com.zblog.friend.infrastructure.NotificationFriendApplyNotifier;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
@@ -9,9 +10,11 @@ import org.springframework.stereotype.Service;
 public class FriendService {
 
   private final FriendRepository friendRepository;
+  private final NotificationFriendApplyNotifier notifier;
 
-  public FriendService(FriendRepository friendRepository) {
+  public FriendService(FriendRepository friendRepository, NotificationFriendApplyNotifier notifier) {
     this.friendRepository = friendRepository;
+    this.notifier = notifier;
   }
 
   public PageResponse<Map<String, Object>> listTypes(int page, int pageSize) {
@@ -54,7 +57,9 @@ public class FriendService {
 
   public Map<String, Object> applyFriend(Map<String, Object> request) {
     long id = insertFriend(request, true);
-    return getFriend(id);
+    Map<String, Object> friend = getFriend(id);
+    notifier.notifyNewFriendApply(friend);
+    return friend;
   }
 
   public Map<String, Object> updateFriend(long id, Map<String, Object> request) {
@@ -114,6 +119,15 @@ public class FriendService {
 
   private boolean bool(Map<String, Object> request, String key, boolean fallback) {
     Object value = request.get(key);
-    return value instanceof Boolean bool ? bool : fallback;
+    if (value instanceof Boolean bool) {
+      return bool;
+    }
+    if (value instanceof String text) {
+      return "true".equalsIgnoreCase(text) || "1".equals(text);
+    }
+    if (value instanceof Number number) {
+      return number.intValue() != 0;
+    }
+    return fallback;
   }
 }

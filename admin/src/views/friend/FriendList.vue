@@ -132,10 +132,16 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="180" align="center" fixed="right">
+      <el-table-column label="操作" min-width="220" align="center" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button type="danger" link size="small" @click="handleDelete(row.id)">删除</el-button>
+          <template v-if="row.is_pending">
+            <el-button type="success" link size="small" @click="handleApprove(row)">通过</el-button>
+            <el-button type="danger" link size="small" @click="handleReject(row.id)">拒绝</el-button>
+          </template>
+          <template v-else>
+            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row.id)">删除</el-button>
+          </template>
         </template>
       </el-table-column>
     </common-list>
@@ -163,7 +169,7 @@ import { Link, Search, Folder } from '@element-plus/icons-vue';
 import CommonList from '@/components/common/CommonList.vue';
 import FriendFilter from './components/FriendFilter.vue';
 import type { Friend, FriendQuery, FriendType } from '@/types/friend';
-import { getFriends, deleteFriend, getFriendTypes } from '@/api/friend';
+import { getFriends, deleteFriend, updateFriend, getFriendTypes } from '@/api/friend';
 import { formatDateTime } from '@/utils/date';
 import FriendFormDialog from './components/FriendFormDialog.vue';
 import FriendTypeManager from './components/FriendTypeManager.vue';
@@ -273,10 +279,7 @@ const handleQuickFilterChange = () => {
 const fetchFriends = async () => {
   loading.value = true;
   try {
-    const [result] = await Promise.all([
-      getFriends(queryParams.value),
-      new Promise(resolve => setTimeout(resolve, 300)),
-    ]);
+    const result = await getFriends(queryParams.value);
     friendList.value = result.list;
     total.value = result.total;
   } catch {
@@ -307,6 +310,39 @@ const handleFriendSuccess = () => {
   fetchFriends();
   // 同时刷新类型管理器的数据（更新友链数量）
   typeManagerRef.value?.refreshData();
+};
+
+const handleApprove = async (row: Friend) => {
+  try {
+    await updateFriend(row.id, {
+      name: row.name,
+      url: row.url,
+      description: row.description || "",
+      avatar: row.avatar || "",
+      type_id: row.type_id,
+      sort: row.sort ?? 5,
+      is_pending: false,
+    });
+    ElMessage.success('已通过申请');
+    fetchFriends();
+    typeManagerRef.value?.refreshData();
+  } catch (error) {
+    if (error instanceof Error) ElMessage.error(error.message);
+  }
+};
+
+const handleReject = async (id: number) => {
+  try {
+    await ElMessageBox.confirm('确定要拒绝这个友链申请吗？拒绝后将被删除。', '确认拒绝', {
+      type: 'warning',
+    });
+    await deleteFriend(id);
+    ElMessage.success('已拒绝申请');
+    fetchFriends();
+    typeManagerRef.value?.refreshData();
+  } catch (error) {
+    if (error !== 'cancel' && error instanceof Error) ElMessage.error(error.message);
+  }
 };
 
 const handleDelete = async (id: number) => {

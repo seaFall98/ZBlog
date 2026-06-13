@@ -30,7 +30,7 @@ function getCacheKey(params: PostFilterParams): string {
 }
 
 export function usePosts(params: PostFilterParams = {}): UsePostsState {
-  const { category, tag, year, month, keyword, page, pageSize } = params;
+  const { category, tag, year, month, keyword, page, pageSize, enabled = true } = params;
   const requestParams: PostFilterParams = { category, tag, year, month, keyword, page, pageSize };
   const cacheKey = getCacheKey(requestParams);
 
@@ -38,6 +38,7 @@ export function usePosts(params: PostFilterParams = {}): UsePostsState {
     queryKey: ["posts", cacheKey],
     queryFn: () =>
       keyword ? blogApi.searchPosts(requestParams) : blogApi.listPosts(requestParams),
+    enabled,
   });
 
   return {

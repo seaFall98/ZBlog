@@ -10,4 +10,5 @@ export type SettingGroupType =
   | 'v2_home'
   | 'v2_about'
   | 'v2_guestbook'
-  | 'v2_footer';
+  | 'v2_footer'
+  | 'v2_search';

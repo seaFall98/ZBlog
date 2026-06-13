@@ -50,6 +50,25 @@ services:
       timeout: 5s
       retries: 20
 
+  meting:
+    image: ghcr.docker.mikus.ink/mikus-loli/meting-api:latest
+    container_name: zblog-meting
+    restart: unless-stopped
+    environment:
+      ADMIN_PATH: ${METING_ADMIN_PATH:-zb-admin-meting}
+      UID: "1010"
+      GID: "1010"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - zblog_meting_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/test >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.3.3
     container_name: zblog-elasticsearch
@@ -165,4 +184,5 @@ volumes:
   zblog_redis_data:
   zblog_rabbitmq_data:
   zblog_elasticsearch_data:
+  zblog_meting_data:
   zblog_uploads:

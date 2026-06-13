@@ -3,6 +3,7 @@ package com.zblog.site.infrastructure.mybatis;
 import com.zblog.site.application.port.SettingRepository;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Repository;
 
@@ -20,7 +21,7 @@ public class MyBatisSettingRepository implements SettingRepository {
         .collect(
             Collectors.toMap(
                 row -> row.get("key_name").toString(),
-                row -> row.get("value_text").toString(),
+                row -> Objects.toString(row.get("value_text"), ""),
                 (left, right) -> right,
                 LinkedHashMap::new));
   }

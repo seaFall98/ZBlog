@@ -59,6 +59,11 @@ export function createBlogApi(options: ApiClientOptions = {}) {
       });
       return toPostListResult(data, Number(params.page) || 1, Number(params.pageSize) || 50);
     },
+
+    async listHotPosts(type: "recent" | "total", limit = 20): Promise<PostListResult> {
+      const data = await client.get<ArticleListResponse>("/articles/hot", { type, limit });
+      return toPostListResult(data, 1, limit);
+    },
   };
 }
 

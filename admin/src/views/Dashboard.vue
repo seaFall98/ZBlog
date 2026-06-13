@@ -414,11 +414,14 @@ const openLink = (url: string) => {
 const fetchHitokoto = async () => {
   try {
     const response = await fetch('https://api.pearapi.ai/api/hitokoto/');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) throw new Error('Unexpected HTML response');
     const text = await response.text();
     hitokoto.value = text || '获取一言失败';
   } catch (error) {
     console.error('获取一言失败:', error);
-    hitokoto.value = '获取一言失败';
+    hitokoto.value = '';
   }
 };
 

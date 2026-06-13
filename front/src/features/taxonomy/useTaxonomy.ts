@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchCategories, fetchTags } from "./taxonomyApi";
 import type { TaxonomyItem, TaxonomyResult } from "./types";
 
@@ -10,38 +10,17 @@ const taxonomyLoaders: Record<TaxonomyKind, () => Promise<TaxonomyItem[]>> = {
 };
 
 function useTaxonomy(kind: TaxonomyKind): TaxonomyResult {
-  const [result, setResult] = useState<TaxonomyResult>(() => ({
-    items: [],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["taxonomy", kind],
+    queryFn: taxonomyLoaders[kind],
+  });
+
+  return {
+    items: data ?? [],
     source: "api",
-    loading: true,
-    error: null,
-  }));
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = taxonomyLoaders[kind];
-
-    async function loadTaxonomy(): Promise<void> {
-      setResult({ items: [], source: "api", loading: true, error: null });
-      try {
-        const items = await load();
-        if (cancelled) return;
-        setResult({ items, source: "api", loading: false, error: null });
-      } catch (error) {
-        if (!cancelled) {
-          setResult({ items: [], source: "api", loading: false, error: error as Error });
-        }
-      }
-    }
-
-    void loadTaxonomy();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [kind]);
-
-  return result;
+    loading: isLoading,
+    error,
+  };
 }
 
 export function useCategories(): TaxonomyResult {

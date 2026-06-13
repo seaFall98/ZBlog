@@ -50,6 +50,7 @@ describe("Footer", () => {
         backgroundImage: "",
         barrageBackgroundImage: "",
         guestbookIntro: "",
+        guestbookDanmakuLimit: 200,
         aboutStatusItems: [],
         aboutSkillItems: [],
         aboutTimelineItems: [],

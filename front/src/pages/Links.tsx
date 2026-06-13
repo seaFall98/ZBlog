@@ -1,16 +1,46 @@
 import { useState } from "react";
-import { ExternalLinkIcon } from "lucide-react";
+import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import { useFriendLinks } from "../features/links/useFriendLinks";
+import { apiClient } from "../lib/apiClient";
+import { toast } from "sonner";
 
 export default function Links() {
-  const { links, loading } = useFriendLinks();
+  const { links, types, loading } = useFriendLinks();
   const categories = Array.from(new Set(links.map((l) => l.category)));
   const [activeCategory, setActiveCategory] = useState("全部");
+  const [formOpen, setFormOpen] = useState(false);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [form, setForm] = useState({ name: "", url: "", description: "", type_id: "", avatar: "" });
 
   const filtered = activeCategory === "全部"
     ? links
     : links.filter((l) => l.category === activeCategory);
+
+  const handleApply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.url.trim() || !form.description.trim() || !form.type_id) {
+      toast.error("请填写网站名称、地址、简介和分类");
+      return;
+    }
+    setFormSubmitting(true);
+    try {
+      await apiClient.post("/friends/apply", {
+        name: form.name.trim(),
+        url: form.url.trim(),
+        description: form.description.trim(),
+        type_id: Number(form.type_id),
+        avatar: form.avatar.trim() || undefined,
+      });
+      toast.success("申请已提交，审核中");
+      setForm({ name: "", url: "", description: "", type_id: "", avatar: "" });
+      setFormOpen(false);
+    } catch {
+      toast.error("申请提交失败，请稍后再试");
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
 
   return (
     <PageLayout>
@@ -96,6 +126,96 @@ export default function Links() {
           <a href="/guestbook" className="inline-flex items-center gap-2 text-sm px-6 py-3 transition-opacity hover:opacity-80" style={{ background: "var(--ink)", color: "var(--warm-white)", fontFamily: "var(--fontSans)" }}>
             前往留言墙 →
           </a>
+        </div>
+
+        {/* Collapsible application form */}
+        <div className="mt-6 p-8" style={{ border: "1px solid var(--warm-border)", background: "var(--warm-white)" }}>
+          <button
+            type="button"
+            onClick={() => setFormOpen(!formOpen)}
+            className="flex items-center gap-2 text-sm font-medium w-full text-left"
+            style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}
+          >
+            <ChevronDownIcon
+              size={14}
+              className="transition-transform"
+              style={{ transform: formOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
+            />
+            直接申请
+          </button>
+
+          {formOpen && (
+            <form onSubmit={handleApply} className="mt-6 grid gap-5 max-w-lg">
+              <label className="grid gap-1.5">
+                <span className="text-xs" style={{ color: "var(--muted-ink)" }}>网站名称 *</span>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="px-3 py-2 text-sm border"
+                  style={{ borderColor: "var(--warm-border)", background: "var(--ivory)", color: "var(--ink)", outline: "none" }}
+                  required
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="text-xs" style={{ color: "var(--muted-ink)" }}>网站地址 *</span>
+                <input
+                  type="url"
+                  value={form.url}
+                  onChange={(e) => setForm({ ...form, url: e.target.value })}
+                  className="px-3 py-2 text-sm border"
+                  style={{ borderColor: "var(--warm-border)", background: "var(--ivory)", color: "var(--ink)", outline: "none" }}
+                  placeholder="https://"
+                  required
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="text-xs" style={{ color: "var(--muted-ink)" }}>简介 *</span>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={3}
+                  className="px-3 py-2 text-sm border resize-y"
+                  style={{ borderColor: "var(--warm-border)", background: "var(--ivory)", color: "var(--ink)", outline: "none" }}
+                  required
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="text-xs" style={{ color: "var(--muted-ink)" }}>友链分类 *</span>
+                <select
+                  value={form.type_id}
+                  onChange={(e) => setForm({ ...form, type_id: e.target.value })}
+                  className="px-3 py-2 text-sm border"
+                  style={{ borderColor: "var(--warm-border)", background: "var(--ivory)", color: "var(--ink)", outline: "none" }}
+                  required
+                >
+                  <option value="">请选择</option>
+                  {types.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5">
+                <span className="text-xs" style={{ color: "var(--muted-ink)" }}>Logo 地址（选填）</span>
+                <input
+                  type="url"
+                  value={form.avatar}
+                  onChange={(e) => setForm({ ...form, avatar: e.target.value })}
+                  className="px-3 py-2 text-sm border"
+                  style={{ borderColor: "var(--warm-border)", background: "var(--ivory)", color: "var(--ink)", outline: "none" }}
+                  placeholder="https://"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={formSubmitting}
+                className="w-fit px-5 py-2.5 text-sm transition-opacity hover:opacity-80 disabled:opacity-50"
+                style={{ background: "var(--ink)", color: "var(--warm-white)", fontFamily: "var(--fontSans)" }}
+              >
+                {formSubmitting ? "提交中..." : "提交申请"}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </PageLayout>

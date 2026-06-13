@@ -1,20 +1,10 @@
 import { escapeHtml, estimateReadTime, slugFromText, stripHtml } from "../../lib/text";
 import { extractMarkdownToc } from "./toc";
+import { isRecord, stringValue as toStringValue, type RawRecord } from "../../lib/typeGuards";
 import type { DataSource, PostView, TaxonomyView } from "./types";
-
-type RawRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is RawRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
 
 function firstValue(record: RawRecord, keys: string[]): unknown {
   return keys.map((key) => record[key]).find((value) => value !== undefined && value !== null && value !== "");
-}
-
-function toStringValue(value: unknown): string {
-  if (value === undefined || value === null) return "";
-  return String(value);
 }
 
 function toBooleanValue(value: unknown): boolean {

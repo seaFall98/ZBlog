@@ -5,4 +5,10 @@ export type FriendLinkView = {
   description: string;
   logo: string;
   category: string;
+  typeId: number;
+};
+
+export type FriendTypeView = {
+  id: number;
+  name: string;
 };

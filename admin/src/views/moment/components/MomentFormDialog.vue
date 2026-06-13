@@ -580,6 +580,7 @@ interface MusicInfo {
   title: string;
   artist: string;
   pic: string;
+  url: string;
   type: 'song' | 'album' | 'artist' | 'playlist'; // 音乐类型
   server: 'netease' | 'tencent'; // 平台
 }
@@ -799,17 +800,20 @@ const handleParseMusic = async () => {
   fetchingMusic.value = true;
   try {
     const { server, type, id } = formData.content.music;
-    const apiUrl = `https://meting.flec.top/api?server=${server}&type=${type}&id=${id}`;
+    const apiUrl = `/meting/api?server=${server}&type=${type}&id=${id}`;
 
     const response = await fetch(apiUrl);
     const data = await response.json();
 
     if (data && data.length > 0) {
       const info = data[0];
+      // type=url endpoint → 302 redirect to real streaming URL (no auth expiry)
+      const audioUrl = `/meting/api?server=${server}&type=url&id=${info.id || id}`;
       musicInfo.value = {
         title: info.name || info.title || '未知歌曲',
         artist: info.artist || info.author || '未知艺术家',
         pic: info.pic || info.cover || '',
+        url: audioUrl,
         type: type as 'song' | 'album' | 'artist' | 'playlist',
         server: server as 'netease' | 'tencent',
       };
@@ -850,7 +854,7 @@ const handleSearchMusic = async () => {
   hasSearched.value = true;
 
   try {
-    const apiUrl = `https://meting.flec.top/api?server=netease&type=search&id=${encodeURIComponent(keyword)}`;
+    const apiUrl = `/meting/api?server=netease&type=search&id=${encodeURIComponent(keyword)}`;
     const response = await fetch(apiUrl);
     const data = await response.json();
     musicSearchResults.value = Array.isArray(data) ? data : [];
@@ -879,10 +883,12 @@ const selectMusic = (item: MusicSearchItem) => {
   formData.content.music!.type = 'song';
 
   // 更新音乐信息预览
+  const audioUrl = `/meting/api?server=netease&type=url&id=${musicId}`;
   musicInfo.value = {
     title: item.title,
     artist: item.author,
     pic: item.pic,
+    url: audioUrl,
     type: 'song',
     server: 'netease',
   };
@@ -1136,6 +1142,19 @@ watch(
           url: moment.content.audio.url,
         };
       }
+
+      // 恢复音乐元数据（编辑时显示已存储的音乐信息）
+      if (moment.content.music?.id) {
+        const m = moment.content.music as Record<string, string>;
+        musicInfo.value = {
+          title: m.title || '未知歌曲',
+          artist: m.artist || '',
+          pic: m.cover || '',
+          url: m.url || '',
+          type: (m.type as 'song' | 'album' | 'artist' | 'playlist') || 'song',
+          server: (m.server as 'netease' | 'tencent') || 'netease',
+        };
+      }
     }
   },
   { immediate: true }
@@ -1222,6 +1241,13 @@ const handleSubmit = async () => {
         type: formData.content.music.type,
         id: formData.content.music.id.trim(),
       };
+      // Also store resolved music info so frontend can render an inline player
+      if (musicInfo.value) {
+        if (musicInfo.value.title) content.music.title = musicInfo.value.title;
+        if (musicInfo.value.artist) content.music.artist = musicInfo.value.artist;
+        if (musicInfo.value.pic) content.music.cover = musicInfo.value.pic;
+        if (musicInfo.value.url) content.music.url = musicInfo.value.url;
+      }
     }
     if (formData.content.link?.url?.trim()) {
       content.link = { url: formData.content.link.url.trim() };

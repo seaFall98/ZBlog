@@ -110,7 +110,7 @@ public class MomentService {
         number(row.get("id")).longValue(),
         content,
         booleanValue(row.get("is_publish"), true),
-        publishTime == null ? now() : publishTime,
+        publishTime == null ? (createdAt == null ? now() : createdAt) : publishTime,
         createdAt == null ? now() : createdAt,
         updatedAt == null ? now() : updatedAt,
         searchableText,
@@ -135,8 +135,8 @@ public class MomentService {
   }
 
   private MomentInput normalizeInput(Map<String, Object> request, Map<String, Object> existing) {
-    Map<String, Object> baseContent = existing == null ? new LinkedHashMap<>() : content(existing.get("content"));
-    Map<String, Object> content = request.containsKey("content") ? content(request.get("content")) : baseContent;
+    Map<String, Object> baseContent = existing == null ? new LinkedHashMap<>() : toContentMap(existing.get("content"));
+    Map<String, Object> content = request.containsKey("content") ? toContentMap(request.get("content")) : baseContent;
     boolean isPublish =
         request.containsKey("is_publish")
             ? booleanValue(request.get("is_publish"), true)
@@ -148,7 +148,12 @@ public class MomentService {
                 ? null
                 : timestamp(existing.get("publish_time"));
     if (publishTime == null) {
-      publishTime = now();
+      if (existing != null) {
+        publishTime = timestamp(existing.get("created_at"));
+      }
+      if (publishTime == null) {
+        publishTime = now();
+      }
     }
     return new MomentInput(writeContent(content), isPublish, publishTime);
   }
@@ -248,23 +253,6 @@ public class MomentService {
 
   private Comparator<MomentEntry> order() {
     return Comparator.comparing(MomentEntry::publishTime).thenComparingLong(MomentEntry::id);
-  }
-
-  private Map<String, Object> content(Object value) {
-    if (value == null) {
-      return new LinkedHashMap<>();
-    }
-    if (value instanceof String text) {
-      if (text.isBlank()) {
-        return new LinkedHashMap<>();
-      }
-      try {
-        return objectMapper.readValue(text, CONTENT_TYPE);
-      } catch (Exception exception) {
-        throw new IllegalStateException("Unable to parse moment content", exception);
-      }
-    }
-    return objectMapper.convertValue(value, CONTENT_TYPE);
   }
 
   private Map<String, Object> toContentMap(Object value) {

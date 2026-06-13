@@ -10,6 +10,11 @@
     left join friends f on f.type_id = ft.id
     group by ft.id, ft.name, ft.sort_order, ft.is_visible
     order by ft.sort_order, ft.id
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="countTypes" resultType="long">
+    select count(*) from friend_types
   </select>
 
   <insert id="insertType" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
@@ -47,6 +52,11 @@
   <select id="listAdmin" resultType="map">
     <include refid="friendAdminProjection"/>
     order by f.is_pending desc, f.sort_order, f.id
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="countAdmin" resultType="long">
+    select count(*) from friends
   </select>
 
   <select id="friendById" resultType="map">

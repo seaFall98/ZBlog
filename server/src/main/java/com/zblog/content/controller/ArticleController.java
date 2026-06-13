@@ -59,6 +59,11 @@ public class ArticleController {
     return ApiResponse.ok(articleService.hotArticles(limit, type));
   }
 
+  @GetMapping("/search/hot-keywords")
+  public ApiResponse<List<String>> hotKeywords() {
+    return ApiResponse.ok(articleService.hotKeywords());
+  }
+
   @GetMapping("/articles/{slug}")
   public ApiResponse<Map<String, Object>> getPublic(@PathVariable String slug) {
     return ApiResponse.ok(articleService.getPublicBySlug(slug));

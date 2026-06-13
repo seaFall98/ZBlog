@@ -8,7 +8,9 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface FriendMapper {
 
-  List<Map<String, Object>> listTypes();
+  List<Map<String, Object>> listTypes(@Param("offset") int offset, @Param("limit") int limit);
+
+  long countTypes();
 
   void insertType(Map<String, Object> params);
 
@@ -22,7 +24,9 @@ public interface FriendMapper {
 
   void deleteType(@Param("id") long id);
 
-  List<Map<String, Object>> listAdmin();
+  List<Map<String, Object>> listAdmin(@Param("offset") int offset, @Param("limit") int limit);
+
+  long countAdmin();
 
   List<Map<String, Object>> friendById(@Param("id") long id);
 

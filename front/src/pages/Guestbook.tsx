@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SendIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
+import { AppPagination } from "../components/ui/app-pagination";
 import { fetchComments, submitComment } from "../features/comments/commentApi";
 import type { CommentView } from "../features/comments/types";
-import { submitGuestbookMessage } from "../features/guestbook/guestbookApi";
+import { fetchGuestbookMessages, submitGuestbookMessage } from "../features/guestbook/guestbookApi";
 import { useGuestbookMessages } from "../features/guestbook/useGuestbookMessages";
 import { useSiteProfile } from "../features/site/useSiteProfile";
+import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
 import { toast } from "sonner";
 
@@ -22,6 +25,7 @@ const DANMAKU_COLORS = ["rgba(255,255,255,0.9)", "rgba(245,238,224,0.82)", "rgba
 const COMMENT_TARGET_TYPE = "page";
 const COMMENT_TARGET_KEY = "guestbook";
 const DEFAULT_GUESTBOOK_BACKGROUND = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1800&q=85";
+const MESSAGE_PAGE_SIZE = 10;
 
 type GuestbookCommentProps = {
   comment: CommentView;
@@ -58,15 +62,34 @@ export default function Guestbook() {
   const [commentName, setCommentName] = useState("");
   const [commentContent, setCommentContent] = useState("");
   const [replyingTo, setReplyingTo] = useState<CommentView | null>(null);
-  const [comments, setComments] = useState<CommentView[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(true);
-  const { messages, loading, reload } = useGuestbookMessages(50);
+  const { page, setPage } = usePage();
+  const { messages, total, loading, reload } = useGuestbookMessages(page, MESSAGE_PAGE_SIZE);
   const { profile } = useSiteProfile();
+  const messageTotalPages = Math.ceil(total / MESSAGE_PAGE_SIZE);
+  useNormalizePage(page, setPage, messageTotalPages, loading);
+
+  /* Danmaku pool — separate query with configurable limit */
+  const danmakuLimit = profile.guestbookDanmakuLimit || 200;
+  const { data: danmakuData } = useQuery({
+    queryKey: ["guestbookDanmakuPool", danmakuLimit],
+    queryFn: () => fetchGuestbookMessages(1, Math.min(danmakuLimit, 500)),
+    staleTime: 60 * 1000,
+  });
+  const danmakuMessages = danmakuData?.messages ?? [];
+
+  const { data: comments = [], isLoading: commentsLoading, refetch: refetchComments } = useQuery({
+    queryKey: ["guestbookComments"],
+    queryFn: () => fetchComments(COMMENT_TARGET_TYPE, COMMENT_TARGET_KEY, 50),
+  });
+
   const [submittedDanmakus, setSubmittedDanmakus] = useState<Danmaku[]>([]);
   const danmakuIdRef = useRef(1000);
   const backgroundImage = profile.barrageBackgroundImage || profile.backgroundImage || DEFAULT_GUESTBOOK_BACKGROUND;
+
+  /* Show up to 16 approved danmaku + local submitted ones, limited tracks */
+  const MAX_RENDERED_DANMAKU = 16;
   const danmakus = useMemo<Danmaku[]>(() => [
-    ...messages.slice(0, 14).map((m, i) => ({
+    ...danmakuMessages.slice(0, MAX_RENDERED_DANMAKU).map((m, i) => ({
       id: i,
       text: `${m.name}：${m.content.slice(0, 34)}`,
       top: ((i * 11) % 64) + 12,
@@ -75,22 +98,7 @@ export default function Guestbook() {
       color: DANMAKU_COLORS[i % DANMAKU_COLORS.length] ?? "rgba(255,255,255,0.78)",
     })),
     ...submittedDanmakus,
-  ], [messages, submittedDanmakus]);
-
-  const loadComments = useCallback(async () => {
-    setCommentsLoading(true);
-    try {
-      setComments(await fetchComments(COMMENT_TARGET_TYPE, COMMENT_TARGET_KEY, 50));
-    } catch {
-      setComments([]);
-    } finally {
-      setCommentsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    queueMicrotask(() => { void loadComments(); });
-  }, [loadComments]);
+  ], [danmakuMessages, submittedDanmakus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +144,7 @@ export default function Guestbook() {
       setCommentContent("");
       setReplyingTo(null);
       toast.success("评论已提交");
-      void loadComments();
+      void refetchComments();
     } catch {
       toast.error("评论发送失败，请稍后再试");
     }
@@ -165,6 +173,8 @@ export default function Guestbook() {
           </form>
         </div>
       </section>
+
+      <AppPagination page={page} totalPages={messageTotalPages} onPageChange={setPage} className="mb-4" />
 
       <section className="guestbook-board" aria-label="留言评论区">
         <div className="guestbook-board__heading">

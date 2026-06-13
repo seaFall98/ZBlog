@@ -1,21 +1,12 @@
 import { apiClient } from "../../lib/apiClient";
+import type { PageResponse } from "../../lib/apiEnvelope";
+import { isRecord, stringValue, type RawRecord } from "../../lib/typeGuards";
 import type { GuestbookMessageView, GuestbookSubmitResult } from "./types";
-
-type RawRecord = Record<string, unknown>;
-type PageResponse = { list?: unknown };
 
 type SubmitGuestbookMessage = {
   nickname: string;
   content: string;
 };
-
-function isRecord(value: unknown): value is RawRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function stringValue(value: unknown): string {
-  return value === undefined || value === null ? "" : String(value);
-}
 
 export function mapGuestbookMessage(value: unknown): GuestbookMessageView | null {
   if (!isRecord(value)) return null;
@@ -40,10 +31,23 @@ export function mapGuestbookSubmitResult(value: unknown): GuestbookSubmitResult 
   };
 }
 
-export async function fetchGuestbookMessages(pageSize = 50): Promise<GuestbookMessageView[]> {
-  const data = await apiClient.get<PageResponse>("/guestbook/messages", { page: 1, page_size: pageSize });
+export type GuestbookMessageListResult = {
+  messages: GuestbookMessageView[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export async function fetchGuestbookMessages(page = 1, pageSize = 50): Promise<GuestbookMessageListResult> {
+  const data = await apiClient.get<PageResponse<unknown>>("/guestbook/messages", { page, page_size: pageSize });
   const list = Array.isArray(data.list) ? data.list : [];
-  return list.map(mapGuestbookMessage).filter((message): message is GuestbookMessageView => Boolean(message));
+  const messages = list.map(mapGuestbookMessage).filter((message): message is GuestbookMessageView => Boolean(message));
+  return {
+    messages,
+    total: Number(data.total) || messages.length,
+    page: Number(data.page) || page,
+    pageSize: Number(data.page_size ?? data.pageSize) || pageSize,
+  };
 }
 
 export async function submitGuestbookMessage(message: SubmitGuestbookMessage): Promise<GuestbookSubmitResult> {
