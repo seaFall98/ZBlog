@@ -1,5 +1,5 @@
 import { apiClient } from "../../lib/apiClient";
-import type { FriendLinkView } from "./types";
+import type { FriendLinkView, FriendTypeView } from "./types";
 
 type RawRecord = Record<string, unknown>;
 
@@ -11,7 +11,7 @@ function stringValue(value: unknown): string {
   return value === undefined || value === null ? "" : String(value);
 }
 
-function mapFriend(value: unknown, category: string): FriendLinkView | null {
+function mapFriend(value: unknown, category: string, typeId: number): FriendLinkView | null {
   if (!isRecord(value)) return null;
   const name = stringValue(value.name);
   const url = stringValue(value.url);
@@ -23,16 +23,38 @@ function mapFriend(value: unknown, category: string): FriendLinkView | null {
     description: stringValue(value.description),
     logo: stringValue(value.avatar ?? value.logo ?? value.screenshot),
     category: stringValue(value.type_name) || category || "友情链接",
+    typeId: typeId || Number(stringValue(value.type_id)) || 0,
   };
 }
 
-export async function fetchFriendLinks(): Promise<FriendLinkView[]> {
+export type FriendLinksResult = {
+  links: FriendLinkView[];
+  types: FriendTypeView[];
+};
+
+export async function fetchFriendLinks(): Promise<FriendLinksResult> {
   const data = await apiClient.get<RawRecord>("/friends");
   const groups = Array.isArray(data.groups) ? data.groups : [];
-  return groups.flatMap((group) => {
-    if (!isRecord(group)) return [];
-    const category = stringValue(group.type_name);
+
+  const links: FriendLinkView[] = [];
+  const types: FriendTypeView[] = [];
+
+  for (const group of groups) {
+    if (!isRecord(group)) continue;
+    const typeId = Number(stringValue(group.type_id)) || 0;
+    const typeName = stringValue(group.type_name);
+    const category = typeName;
+
+    if (typeId && typeName) {
+      types.push({ id: typeId, name: typeName });
+    }
+
     const friends = Array.isArray(group.friends) ? group.friends : [];
-    return friends.map((friend) => mapFriend(friend, category)).filter((friend): friend is FriendLinkView => Boolean(friend));
-  });
+    for (const friend of friends) {
+      const mapped = mapFriend(friend, category, typeId);
+      if (mapped) links.push(mapped);
+    }
+  }
+
+  return { links, types };
 }

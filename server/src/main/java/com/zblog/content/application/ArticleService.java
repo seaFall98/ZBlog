@@ -70,6 +70,12 @@ public class ArticleService {
     return articleHotRankingService.hotArticles(limit, type);
   }
 
+  public List<String> hotKeywords() {
+    // Currently returns empty; admin can configure v2_search.hot_keywords later.
+    // When configured, read from SettingRepository and split by comma.
+    return List.of();
+  }
+
   public PageResponse<Map<String, Object>> listAdmin(
       int page, int pageSize, String keyword, Boolean published) {
     return articleQueryService.listAdmin(page, pageSize, keyword, published);

@@ -86,7 +86,10 @@ public class SettingService {
             parseSkillItems(read(about, "skill_items")),
             parseTimelineItems(read(about, "timeline_items")),
             read(about, "bottom_quote")),
-        new GuestbookView(read(guestbook, "intro_text"), read(guestbook, "background_image")),
+        new GuestbookView(
+            read(guestbook, "intro_text"),
+            read(guestbook, "background_image"),
+            clampDanmakuLimit(read(guestbook, "danmaku_public_limit"))),
         new FooterView(
             read(footer, "description"),
             read(footer, "copyright_text"),
@@ -224,6 +227,16 @@ public class SettingService {
     return 0;
   }
 
+  private int clampDanmakuLimit(String raw) {
+    if (raw == null || raw.isBlank()) return 200;
+    try {
+      int value = Integer.parseInt(raw.trim());
+      return Math.min(500, Math.max(50, value));
+    } catch (NumberFormatException ignored) {
+      return 200;
+    }
+  }
+
   public record FrontConfigView(
       IdentityView identity,
       HomeView home,
@@ -260,7 +273,7 @@ public class SettingService {
 
   public record TimelineItemView(String year, String event, int sort) {}
 
-  public record GuestbookView(String introText, String backgroundImage) {}
+  public record GuestbookView(String introText, String backgroundImage, int danmakuPublicLimit) {}
 
   public record FooterView(
       String description,

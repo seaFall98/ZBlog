@@ -1,6 +1,6 @@
 import { apiClient } from "../../lib/apiClient";
 import { normalizeMediaUrl } from "../../lib/mediaUrl";
-import type { MomentView } from "./types";
+import type { MomentView, MusicLinkView } from "./types";
 
 type RawRecord = Record<string, unknown>;
 
@@ -42,6 +42,19 @@ function linkFrom(value: unknown): MomentView["link"] {
   };
 }
 
+function musicFrom(value: unknown): MusicLinkView | null {
+  if (!isRecord(value)) return null;
+  const url = stringValue(value.url).trim();
+  if (!url) return null;
+  const cover = stringValue(value.cover).trim();
+  return {
+    url,
+    title: stringValue(value.title).trim() || url,
+    artist: stringValue(value.artist).trim() || undefined,
+    ...(cover ? { cover: normalizeMediaUrl(cover) } : {}),
+  };
+}
+
 function contentOf(record: RawRecord): RawRecord {
   return isRecord(record.content) ? record.content : record;
 }
@@ -61,6 +74,9 @@ export function mapMoment(value: unknown): MomentView | null {
     tags,
     location: stringValue(content.location).trim(),
     link: linkFrom(content.link),
+    video: stringValue(content.video).trim() || undefined,
+    audio: stringValue(content.audio).trim() || undefined,
+    music: musicFrom(content.music),
   };
 }
 

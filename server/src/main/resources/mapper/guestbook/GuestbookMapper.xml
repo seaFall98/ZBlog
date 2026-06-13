@@ -5,7 +5,7 @@
 <mapper namespace="com.zblog.guestbook.infrastructure.mybatis.GuestbookMapper">
   <insert id="insertMessage" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
     insert into guestbook_messages (nickname, email, content, status, pinned, ip, user_agent)
-    values (#{nickname}, #{email}, #{content}, 'approved', false, #{ip}, #{userAgent})
+    values (#{nickname}, #{email}, #{content}, 'pending', false, #{ip}, #{userAgent})
   </insert>
 
   <select id="countPublic" resultType="long">

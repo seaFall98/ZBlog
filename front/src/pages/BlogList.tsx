@@ -1,7 +1,9 @@
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { CalendarIcon, ClockIcon, SearchIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import PageLayout from "../components/layout/PageLayout";
 import { AppPagination } from "../components/ui/app-pagination";
+import { blogApi } from "../features/blog/blogApi";
 import { usePosts } from "../features/blog/usePosts";
 import { useCategories, useTags } from "../features/taxonomy/useTaxonomy";
 import { findTaxonomyItemByRouteParam } from "../features/taxonomy/taxonomyMapper";
@@ -9,6 +11,7 @@ import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
 
 const PAGE_SIZE = 10;
+type SortMode = "default" | "hot" | "total";
 
 export default function BlogList() {
   const { slug } = useParams();
@@ -18,14 +21,55 @@ export default function BlogList() {
   const selectedCategory = !isTagRoute ? decodedSlug : undefined;
   const selectedTag = isTagRoute ? decodedSlug : undefined;
   const { page, setPage } = usePage();
-  const { posts: filtered, total, loading } = usePosts({ category: selectedCategory, tag: selectedTag, page, pageSize: PAGE_SIZE });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sortMode: SortMode = (searchParams.get("sort") as SortMode) || "default";
+
+  const setSortMode = (mode: SortMode) => {
+    const next = new URLSearchParams(searchParams);
+    if (mode === "default") next.delete("sort");
+    else next.set("sort", mode);
+    setSearchParams(next, { replace: true });
+  };
+
+  /* Always call all three hooks (React rules) */
+  const defaultResult = usePosts({
+    category: sortMode === "default" ? selectedCategory : undefined,
+    tag: sortMode === "default" ? selectedTag : undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+  const hotResult = useQuery({
+    queryKey: ["hotPosts", "recent"],
+    queryFn: () => blogApi.listHotPosts("recent", 20),
+    enabled: sortMode === "hot",
+  });
+  const totalResult = useQuery({
+    queryKey: ["hotPosts", "total"],
+    queryFn: () => blogApi.listHotPosts("total", 20),
+    enabled: sortMode === "total",
+  });
+
+  const filtered =
+    sortMode === "hot" ? (hotResult.data?.posts ?? [])
+    : sortMode === "total" ? (totalResult.data?.posts ?? [])
+    : defaultResult.posts;
+  const total =
+    sortMode === "hot" ? 20
+    : sortMode === "total" ? 20
+    : defaultResult.total;
+  const loading =
+    sortMode === "hot" ? hotResult.isLoading
+    : sortMode === "total" ? totalResult.isLoading
+    : defaultResult.loading;
+  const totalPages = sortMode === "default" ? Math.ceil(total / PAGE_SIZE) : 1;
+
+  useNormalizePage(page, setPage, totalPages, loading);
+
   const { items: categories } = useCategories();
   const { items: tags } = useTags();
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-  useNormalizePage(page, setPage, totalPages, loading);
   const matchedTag = isTagRoute ? findTaxonomyItemByRouteParam(tags, decodedSlug) : undefined;
   const tagDisplayName = matchedTag?.name || selectedTag;
-  const pageTitle = tagDisplayName ? `标签：${tagDisplayName}` : selectedCategory ? `分类：${selectedCategory}` : "文章";
+  const pageTitle = tagDisplayName ? `标签：${tagDisplayName}` : selectedCategory ? `分类：${selectedCategory}` : sortMode === "hot" ? "热榜" : sortMode === "total" ? "总榜" : "文章";
 
   return (
     <PageLayout>
@@ -53,7 +97,40 @@ export default function BlogList() {
           >
             全部
           </Link>
-          {categories.map((cat) => {
+
+          {/* Ranking tags */}
+          <button
+            type="button"
+            onClick={() => setSortMode("hot")}
+            className="px-4 py-1.5 text-xs rounded-full transition-all duration-200"
+            style={{
+              fontFamily: "var(--fontSans)",
+              letterSpacing: "0.04em",
+              background: sortMode === "hot" ? "var(--ink)" : "transparent",
+              color: sortMode === "hot" ? "var(--warm-white)" : "var(--muted-ink)",
+              border: `1px solid ${sortMode === "hot" ? "var(--ink)" : "var(--warm-border)"}`,
+            }}
+          >
+            热榜
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortMode("total")}
+            className="px-4 py-1.5 text-xs rounded-full transition-all duration-200"
+            style={{
+              fontFamily: "var(--fontSans)",
+              letterSpacing: "0.04em",
+              background: sortMode === "total" ? "var(--ink)" : "transparent",
+              color: sortMode === "total" ? "var(--warm-white)" : "var(--muted-ink)",
+              border: `1px solid ${sortMode === "total" ? "var(--ink)" : "var(--warm-border)"}`,
+            }}
+          >
+            总榜
+          </button>
+
+          <span className="w-px h-4" style={{ background: "var(--warm-border)" }} />
+
+          {sortMode === "default" && categories.map((cat) => {
             const categorySlug = cat.slug || cat.name;
             const isActive = selectedCategory === categorySlug || selectedCategory === cat.name;
             return (

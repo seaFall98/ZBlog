@@ -27,6 +27,7 @@ export const emptySiteProfile: SiteProfileView = {
   backgroundImage: "",
   barrageBackgroundImage: "",
   guestbookIntro: "",
+  guestbookDanmakuLimit: 200,
   aboutStatusItems: [],
   aboutSkillItems: [],
   aboutTimelineItems: [],

@@ -1,8 +1,11 @@
+import { lazy } from "react";
 import PageLayout from "../components/layout/PageLayout";
 import { AppPagination } from "../components/ui/app-pagination";
 import { useMoments } from "../features/moments/useMoments";
 import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
+
+const ReactPlayer = lazy(() => import("react-player"));
 
 const moodColors: Record<string, string> = {
   慵懒: "#B5956A",
@@ -76,6 +79,72 @@ export default function Moments() {
                       </div>
                     )}
 
+                    {moment.video && (
+                      <div className="mt-5 aspect-video overflow-hidden">
+                        <ReactPlayer src={moment.video} width="100%" height="100%" controls />
+                      </div>
+                    )}
+
+                    {moment.audio && (
+                      <div className="mt-5">
+                        <audio src={moment.audio} controls className="w-full" />
+                      </div>
+                    )}
+
+                    {moment.music && (
+                      <a
+                        href={moment.music.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 mt-5 p-3 border rounded-sm transition-opacity hover:opacity-80"
+                        style={{ borderColor: "var(--warm-border)", background: "var(--warm-white)" }}
+                      >
+                        {moment.music.cover ? (
+                          <img src={moment.music.cover} alt="" className="w-12 h-12 object-cover rounded-sm shrink-0" />
+                        ) : (
+                          <div className="w-12 h-12 shrink-0 flex items-center justify-center rounded-sm" style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}>
+                            ♪
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-sm truncate" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>
+                            {moment.music.title}
+                          </div>
+                          {moment.music.artist && (
+                            <div className="text-xs" style={{ color: "var(--muted-ink)" }}>
+                              {moment.music.artist}
+                            </div>
+                          )}
+                        </div>
+                      </a>
+                    )}
+
+                    {moment.link && (
+                      <a
+                        href={moment.link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 mt-5 p-3 border rounded-sm transition-opacity hover:opacity-80"
+                        style={{ borderColor: "var(--warm-border)", background: "var(--warm-white)" }}
+                      >
+                        <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-sm overflow-hidden" style={{ background: "var(--section-bg)" }}>
+                          {moment.link.favicon ? (
+                            <img src={moment.link.favicon} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                          ) : (
+                            <span className="text-xs" style={{ color: "var(--muted-ink)" }}>🔗</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs truncate" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>
+                            {moment.link.title}
+                          </div>
+                          <div className="text-xs truncate mt-0.5" style={{ color: "var(--muted-ink)" }}>
+                            {moment.link.url}
+                          </div>
+                        </div>
+                      </a>
+                    )}
+
                     {moment.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-4">
                         {moment.tags.map((tag) => (
@@ -83,11 +152,12 @@ export default function Moments() {
                         ))}
                       </div>
                     )}
-                    {moment.location && <div className="text-xs mt-3" style={{ color: "var(--muted-ink)" }}>📍 {moment.location}</div>}
-                    {moment.link && (
-                      <a href={moment.link.url} target="_blank" rel="noreferrer" className="inline-block text-xs mt-3 underline" style={{ color: "var(--muted-ink)" }}>
-                        {moment.link.title}
-                      </a>
+
+                    {moment.location && (
+                      <div className="flex items-center gap-1.5 text-xs mt-3" style={{ color: "var(--muted-ink)" }}>
+                        <span>📍</span>
+                        <span>{moment.location}</span>
+                      </div>
                     )}
 
                     <div className="flex items-center justify-between mt-4">

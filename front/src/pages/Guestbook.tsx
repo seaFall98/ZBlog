@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SendIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import { AppPagination } from "../components/ui/app-pagination";
 import { fetchComments, submitComment } from "../features/comments/commentApi";
 import type { CommentView } from "../features/comments/types";
-import { submitGuestbookMessage } from "../features/guestbook/guestbookApi";
+import { fetchGuestbookMessages, submitGuestbookMessage } from "../features/guestbook/guestbookApi";
 import { useGuestbookMessages } from "../features/guestbook/useGuestbookMessages";
 import { useSiteProfile } from "../features/site/useSiteProfile";
 import { useNormalizePage, usePage } from "../hooks/usePage";
@@ -68,11 +69,24 @@ export default function Guestbook() {
   const { profile } = useSiteProfile();
   const messageTotalPages = Math.ceil(total / MESSAGE_PAGE_SIZE);
   useNormalizePage(page, setPage, messageTotalPages, loading);
+
+  /* Danmaku pool — separate query with configurable limit */
+  const danmakuLimit = profile.guestbookDanmakuLimit || 200;
+  const { data: danmakuData } = useQuery({
+    queryKey: ["guestbookDanmakuPool", danmakuLimit],
+    queryFn: () => fetchGuestbookMessages(1, Math.min(danmakuLimit, 500)),
+    staleTime: 60 * 1000,
+  });
+  const danmakuMessages = danmakuData?.messages ?? [];
+
   const [submittedDanmakus, setSubmittedDanmakus] = useState<Danmaku[]>([]);
   const danmakuIdRef = useRef(1000);
   const backgroundImage = profile.barrageBackgroundImage || profile.backgroundImage || DEFAULT_GUESTBOOK_BACKGROUND;
+
+  /* Show up to 16 approved danmaku + local submitted ones, limited tracks */
+  const MAX_RENDERED_DANMAKU = 16;
   const danmakus = useMemo<Danmaku[]>(() => [
-    ...messages.slice(0, 14).map((m, i) => ({
+    ...danmakuMessages.slice(0, MAX_RENDERED_DANMAKU).map((m, i) => ({
       id: i,
       text: `${m.name}：${m.content.slice(0, 34)}`,
       top: ((i * 11) % 64) + 12,
@@ -81,7 +95,7 @@ export default function Guestbook() {
       color: DANMAKU_COLORS[i % DANMAKU_COLORS.length] ?? "rgba(255,255,255,0.78)",
     })),
     ...submittedDanmakus,
-  ], [messages, submittedDanmakus]);
+  ], [danmakuMessages, submittedDanmakus]);
 
   const loadComments = useCallback(async () => {
     setCommentsLoading(true);

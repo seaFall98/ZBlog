@@ -63,6 +63,21 @@ public class NotificationService {
     return notificationRepository.get(id);
   }
 
+  public Map<String, Object> createFriendApplyNotification(Map<String, Object> friend) {
+    long id = ((Number) friend.get("id")).longValue();
+    String name = friend.get("name").toString();
+    long notificationId =
+        notificationRepository.create(
+            "friend_apply",
+            "新的友链申请",
+            "网站《" + name + "》申请友链",
+            "/friends?is_pending=true",
+            Map.of("friend_id", id, "name", name),
+            id,
+            "direct");
+    return notificationRepository.get(notificationId);
+  }
+
   public Map<String, Object> markRead(long id) {
     notificationRepository.markRead(id);
     return notificationRepository.get(id);

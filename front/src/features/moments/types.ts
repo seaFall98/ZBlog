@@ -4,6 +4,13 @@ export type MomentLinkView = {
   favicon?: string;
 };
 
+export type MusicLinkView = {
+  title: string;
+  artist?: string;
+  cover?: string;
+  url: string;
+};
+
 export type MomentView = {
   id: string;
   text: string;
@@ -13,4 +20,7 @@ export type MomentView = {
   tags: string[];
   location: string;
   link: MomentLinkView | null;
+  video?: string;
+  audio?: string;
+  music?: MusicLinkView | null;
 };

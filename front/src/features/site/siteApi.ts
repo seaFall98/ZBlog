@@ -125,6 +125,7 @@ export function mapFrontConfig(value: unknown): SiteProfileView {
     backgroundImage: normalizeMediaUrl(stringValue(guestbook.backgroundImage)),
     barrageBackgroundImage: normalizeMediaUrl(stringValue(guestbook.backgroundImage)),
     guestbookIntro: stringValue(guestbook.introText),
+    guestbookDanmakuLimit: typeof guestbook.danmakuPublicLimit === "number" ? guestbook.danmakuPublicLimit : 200,
     aboutStatusItems: mapStatusItems(about.statusItems),
     aboutSkillItems: mapSkillItems(about.skillItems),
     aboutTimelineItems: mapTimelineItems(about.timelineItems),

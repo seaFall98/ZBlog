@@ -35,7 +35,7 @@ public class GuestbookService {
     Map<String, Object> view = new LinkedHashMap<>();
     view.put("id", message.id());
     view.put("status", message.status().value());
-    view.put("message", "弹幕已发射，会立即出现在留言墙。");
+    view.put("message", "已提交，审核通过后将展示。");
     return view;
   }
 

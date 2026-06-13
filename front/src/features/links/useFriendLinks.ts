@@ -7,5 +7,10 @@ export function useFriendLinks() {
     queryFn: fetchFriendLinks,
   });
 
-  return { links: data ?? [], loading: isLoading, error };
+  return {
+    links: data?.links ?? [],
+    types: data?.types ?? [],
+    loading: isLoading,
+    error,
+  };
 }
