@@ -1,4 +1,5 @@
-import { createContext, createElement, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, createElement, useContext, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchMenuGroups, fetchSiteProfile } from "./siteApi";
 import type { SiteMenuView, SiteProfileView } from "./types";
 
@@ -71,44 +72,39 @@ function applyDocumentProfile(profile: SiteProfileView) {
 }
 
 export function SiteProfileProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<SiteProfileContextValue>(initialValue);
+  const {
+    data: profileData,
+    isLoading: profileLoading,
+    error: profileError,
+  } = useQuery({
+    queryKey: ["siteProfile"],
+    queryFn: fetchSiteProfile,
+  });
+  const {
+    data: menusData,
+    isLoading: menusLoading,
+    error: menusError,
+  } = useQuery({
+    queryKey: ["siteMenus"],
+    queryFn: fetchMenuGroups,
+  });
 
   useEffect(() => {
-    let active = true;
+    applyDocumentProfile(profileData ?? emptySiteProfile);
+  }, [profileData]);
 
-    async function load() {
-      const [profileResult, menusResult] = await Promise.allSettled([fetchSiteProfile(), fetchMenuGroups()]);
-      if (!active) return;
-
-      const profile = profileResult.status === "fulfilled" ? profileResult.value : emptySiteProfile;
-      const headerMenus = menusResult.status === "fulfilled" ? menusResult.value.header : [];
-      const footerMenus = menusResult.status === "fulfilled" ? menusResult.value.footer : [];
-      const error =
-        profileResult.status === "rejected"
-          ? profileResult.reason
-          : menusResult.status === "rejected"
-            ? menusResult.reason
-            : null;
-
-      applyDocumentProfile(profile);
-      setState({
-        profile,
-        headerMenus,
-        footerMenus,
-        loading: false,
-        loaded: true,
-        error,
-      });
-    }
-
-    void load();
-
-    return () => {
-      active = false;
+  const value = useMemo<SiteProfileContextValue>(() => {
+    const loading = profileLoading || menusLoading;
+    return {
+      profile: profileData ?? emptySiteProfile,
+      headerMenus: menusData?.header ?? [],
+      footerMenus: menusData?.footer ?? [],
+      loading,
+      loaded: !loading,
+      error: profileError ?? menusError ?? null,
     };
-  }, []);
+  }, [menusData, menusError, menusLoading, profileData, profileError, profileLoading]);
 
-  const value = useMemo(() => state, [state]);
   return createElement(SiteProfileContext.Provider, { value }, children);
 }
 

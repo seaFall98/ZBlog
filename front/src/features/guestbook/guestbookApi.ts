@@ -2,7 +2,13 @@ import { apiClient } from "../../lib/apiClient";
 import type { GuestbookMessageView, GuestbookSubmitResult } from "./types";
 
 type RawRecord = Record<string, unknown>;
-type PageResponse = { list?: unknown };
+type PageResponse = {
+  list?: unknown;
+  total?: unknown;
+  page?: unknown;
+  page_size?: unknown;
+  pageSize?: unknown;
+};
 
 type SubmitGuestbookMessage = {
   nickname: string;
@@ -40,10 +46,23 @@ export function mapGuestbookSubmitResult(value: unknown): GuestbookSubmitResult 
   };
 }
 
-export async function fetchGuestbookMessages(pageSize = 50): Promise<GuestbookMessageView[]> {
-  const data = await apiClient.get<PageResponse>("/guestbook/messages", { page: 1, page_size: pageSize });
+export type GuestbookMessageListResult = {
+  messages: GuestbookMessageView[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export async function fetchGuestbookMessages(page = 1, pageSize = 50): Promise<GuestbookMessageListResult> {
+  const data = await apiClient.get<PageResponse>("/guestbook/messages", { page, page_size: pageSize });
   const list = Array.isArray(data.list) ? data.list : [];
-  return list.map(mapGuestbookMessage).filter((message): message is GuestbookMessageView => Boolean(message));
+  const messages = list.map(mapGuestbookMessage).filter((message): message is GuestbookMessageView => Boolean(message));
+  return {
+    messages,
+    total: Number(data.total) || messages.length,
+    page: Number(data.page) || page,
+    pageSize: Number(data.page_size ?? data.pageSize) || pageSize,
+  };
 }
 
 export async function submitGuestbookMessage(message: SubmitGuestbookMessage): Promise<GuestbookSubmitResult> {

@@ -6,6 +6,10 @@ type RawRecord = Record<string, unknown>;
 
 type PageResponse = {
   list?: unknown;
+  total?: unknown;
+  page?: unknown;
+  page_size?: unknown;
+  pageSize?: unknown;
 };
 
 function isRecord(value: unknown): value is RawRecord {
@@ -60,8 +64,21 @@ export function mapMoment(value: unknown): MomentView | null {
   };
 }
 
-export async function fetchMoments(pageSize = 30): Promise<MomentView[]> {
-  const data = await apiClient.get<PageResponse>("/moments", { page: 1, page_size: pageSize });
+export type MomentListResult = {
+  moments: MomentView[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export async function fetchMoments(page = 1, pageSize = 30): Promise<MomentListResult> {
+  const data = await apiClient.get<PageResponse>("/moments", { page, page_size: pageSize });
   const list = Array.isArray(data.list) ? data.list : [];
-  return list.map(mapMoment).filter((moment): moment is MomentView => Boolean(moment));
+  const moments = list.map(mapMoment).filter((moment): moment is MomentView => Boolean(moment));
+  return {
+    moments,
+    total: Number(data.total) || moments.length,
+    page: Number(data.page) || page,
+    pageSize: Number(data.page_size ?? data.pageSize) || pageSize,
+  };
 }

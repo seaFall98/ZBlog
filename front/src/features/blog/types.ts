@@ -44,6 +44,7 @@ export type ArticleListParams = {
 
 export type ArticleSearchParams = ArticleListParams & {
   keyword?: string;
+  enabled?: boolean;
 };
 
 export type PostFilterParams = ArticleSearchParams;

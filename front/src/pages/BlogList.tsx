@@ -1,10 +1,14 @@
 import { Link, useLocation, useParams } from "react-router-dom";
 import { CalendarIcon, ClockIcon, SearchIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
+import { AppPagination } from "../components/ui/app-pagination";
 import { usePosts } from "../features/blog/usePosts";
 import { useCategories, useTags } from "../features/taxonomy/useTaxonomy";
 import { findTaxonomyItemByRouteParam } from "../features/taxonomy/taxonomyMapper";
+import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
+
+const PAGE_SIZE = 10;
 
 export default function BlogList() {
   const { slug } = useParams();
@@ -13,9 +17,12 @@ export default function BlogList() {
   const isTagRoute = location.pathname.startsWith("/tag/");
   const selectedCategory = !isTagRoute ? decodedSlug : undefined;
   const selectedTag = isTagRoute ? decodedSlug : undefined;
-  const { posts: filtered, loading } = usePosts({ category: selectedCategory, tag: selectedTag, pageSize: 100 });
+  const { page, setPage } = usePage();
+  const { posts: filtered, total, loading } = usePosts({ category: selectedCategory, tag: selectedTag, page, pageSize: PAGE_SIZE });
   const { items: categories } = useCategories();
   const { items: tags } = useTags();
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  useNormalizePage(page, setPage, totalPages, loading);
   const matchedTag = isTagRoute ? findTaxonomyItemByRouteParam(tags, decodedSlug) : undefined;
   const tagDisplayName = matchedTag?.name || selectedTag;
   const pageTitle = tagDisplayName ? `标签：${tagDisplayName}` : selectedCategory ? `分类：${selectedCategory}` : "文章";
@@ -66,7 +73,7 @@ export default function BlogList() {
               </Link>
             );
           })}
-          <span className="ml-auto text-xs" style={{ color: "var(--muted-ink)" }}>{filtered.length} 篇</span>
+          <span className="ml-auto text-xs" style={{ color: "var(--muted-ink)" }}>{loading ? "..." : total} 篇</span>
         </div>
 
         {/* Articles grid */}
@@ -141,6 +148,8 @@ export default function BlogList() {
             <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅文章..." : "这里暂时还没有文章"}</p>
           </div>
         )}
+
+        <AppPagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
     </PageLayout>
   );

@@ -78,6 +78,17 @@
     order by published_at desc
   </select>
 
+  <select id="archiveStats" resultType="map">
+    select
+      extract(year from published_at) as archive_year,
+      extract(month from published_at) as archive_month,
+      count(*) as count
+    from articles
+    where status = 'PUBLISHED' and published_at is not null
+    group by extract(year from published_at), extract(month from published_at)
+    order by archive_year desc, archive_month desc
+  </select>
+
   <select id="countActiveUsers" resultType="long">
     select count(*) from users where deleted_at is null
   </select>

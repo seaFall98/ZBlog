@@ -71,22 +71,12 @@ public class StatsService {
   }
 
   public Map<String, Object> archiveStats() {
-    Map<String, Long> grouped = new LinkedHashMap<>();
-    for (Map<String, Object> row : statsRepository.publishedArticleDates()) {
-      Instant value = instant(row.get("published_at"));
-      if (value != null) {
-        YearMonth month = YearMonth.from(value.atZone(java.time.ZoneId.systemDefault()));
-        grouped.merge(month.toString(), 1L, Long::sum);
-      }
-    }
     List<Map<String, Object>> archives =
-        grouped.entrySet().stream()
-            .map(
-                entry -> {
-                  String[] parts = entry.getKey().split("-");
-                  return Map.<String, Object>of(
-                      "year", parts[0], "month", parts[1], "count", entry.getValue());
-                })
+        statsRepository.archiveStats().stream()
+            .map(row -> Map.<String, Object>of(
+                "year", row.get("archive_year").toString(),
+                "month", String.format("%02d", ((Number) row.get("archive_month")).intValue()),
+                "count", row.get("count")))
             .toList();
     return Map.of("archives", archives);
   }

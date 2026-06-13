@@ -1,29 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchGuestbookMessages } from "./guestbookApi";
-import type { GuestbookMessageView } from "./types";
 
-export function useGuestbookMessages(pageSize = 50) {
-  const [messages, setMessages] = useState<GuestbookMessageView[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
+export function useGuestbookMessages(page = 1, pageSize = 50) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["guestbookMessages", page, pageSize],
+    queryFn: () => fetchGuestbookMessages(page, pageSize),
+  });
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchGuestbookMessages(pageSize);
-      setMessages(result);
-      setLoading(false);
-    } catch (loadError) {
-      setMessages([]);
-      setError(loadError);
-      setLoading(false);
-    }
-  }, [pageSize]);
-
-  useEffect(() => {
-    queueMicrotask(() => { void reload(); });
-  }, [reload]);
-
-  return { messages, loading, error, reload };
+  return {
+    messages: data?.messages ?? [],
+    total: data?.total ?? 0,
+    page: data?.page ?? page,
+    pageSize: data?.pageSize ?? pageSize,
+    loading: isLoading,
+    error,
+    reload: refetch,
+  };
 }

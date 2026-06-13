@@ -19,6 +19,7 @@ import Index from "./pages/Index";
 import Links from "./pages/Links";
 import Login from "./pages/Login";
 import Moments from "./pages/Moments";
+import NotFound from "./pages/NotFound";
 import Privacy from "./pages/Privacy";
 import Search from "./pages/Search";
 import Stats from "./pages/Stats";
@@ -84,7 +85,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/blog" element={<BlogList />} />
-          <Route path="/blog/detail" element={<BlogDetail />} />
+          <Route path="/blog/detail" element={<NotFound />} />
           <Route path="/posts/:slug" element={<BlogDetail />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
           <Route path="/category/:slug" element={<BlogList />} />
@@ -95,7 +96,7 @@ export default function App() {
           <Route path="/archive/:year/:month" element={<Archive />} />
           <Route path="/search" element={<Search />} />
           <Route path="/gallery" element={<Gallery />} />
-          <Route path="/gallery/detail" element={<Gallery />} />
+          <Route path="/gallery/detail" element={<NotFound />} />
           <Route path="/gallery/:slug" element={<GalleryDetail />} />
           <Route path="/moments" element={<Moments />} />
           <Route path="/guestbook" element={<Guestbook />} />
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="/copyright" element={<Copyright />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/login" element={<Login />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </SiteProfileProvider>

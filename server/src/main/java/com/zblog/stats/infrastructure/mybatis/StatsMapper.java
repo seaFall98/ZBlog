@@ -40,6 +40,8 @@ public interface StatsMapper {
 
   List<Map<String, Object>> publishedArticleDates();
 
+  List<Map<String, Object>> archiveStats();
+
   long countActiveUsers();
 
   long countTodayComments();

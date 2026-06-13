@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchSiteStats } from "./statsApi";
 import type { SiteStatsView } from "./types";
 
@@ -16,29 +16,14 @@ type UseSiteStatsState = SiteStatsView & {
 };
 
 export function useSiteStats(): UseSiteStatsState {
-  const [state, setState] = useState<UseSiteStatsState>(() => ({ ...emptySiteStats, loading: true, error: null }));
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["siteStats"],
+    queryFn: fetchSiteStats,
+  });
 
-  useEffect(() => {
-    let active = true;
-
-    async function load() {
-      setState((current) => ({ ...current, loading: true, error: null }));
-      try {
-        const stats = await fetchSiteStats();
-        if (!active) return;
-        setState({ ...stats, loading: false, error: null });
-      } catch (error) {
-        if (!active) return;
-        setState({ ...emptySiteStats, loading: false, error });
-      }
-    }
-
-    void load();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  return state;
+  return {
+    ...(data ?? emptySiteStats),
+    loading: isLoading,
+    error,
+  };
 }

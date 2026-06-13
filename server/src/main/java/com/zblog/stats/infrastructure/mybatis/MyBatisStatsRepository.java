@@ -81,6 +81,10 @@ public class MyBatisStatsRepository implements StatsRepository {
     return statsMapper.publishedArticleDates();
   }
 
+  public List<Map<String, Object>> archiveStats() {
+    return statsMapper.archiveStats();
+  }
+
   public long countActiveUsers() {
     return statsMapper.countActiveUsers();
   }

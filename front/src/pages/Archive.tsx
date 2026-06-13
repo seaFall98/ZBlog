@@ -2,23 +2,55 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronDownIcon, ChevronUpIcon, CalendarIcon, ClockIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
-import { buildArchive } from "../features/blog/archive";
+import { AppPagination } from "../components/ui/app-pagination";
+import type { ArchiveYear } from "../features/blog/archive";
 import { usePosts } from "../features/blog/usePosts";
+import { useArchiveStats } from "../features/stats/useArchiveStats";
+import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
+
+const MONTH_PAGE_SIZE = 12;
+const POST_PAGE_SIZE = 12;
+
+function paginateArchiveMonths(archiveYears: ArchiveYear[], page: number): ArchiveYear[] {
+  const months = archiveYears.flatMap((group) => group.months.map((month) => ({ year: group.year, month })));
+  const start = (page - 1) * MONTH_PAGE_SIZE;
+  const pageMonths = months.slice(start, start + MONTH_PAGE_SIZE);
+  const grouped = new Map<number, ArchiveYear>();
+
+  pageMonths.forEach(({ year, month }) => {
+    const current = grouped.get(year) ?? { year, count: 0, months: [] };
+    current.months.push(month);
+    current.count += month.count;
+    grouped.set(year, current);
+  });
+
+  return Array.from(grouped.values());
+}
 
 export default function Archive() {
   const { year, month } = useParams();
   const isMonthArchive = Boolean(year && month);
-  const { posts, loading } = usePosts(isMonthArchive ? { year, month, pageSize: 100 } : { pageSize: 100 });
-  const archiveYears = useMemo(() => buildArchive(posts), [posts]);
+  const { page, setPage } = usePage();
+  const { posts, total, loading: postsLoading } = usePosts(
+    { year, month, page, pageSize: POST_PAGE_SIZE, enabled: isMonthArchive },
+  );
+  const { archiveYears, loading: archiveLoading } = useArchiveStats();
+  const archiveMonthCount = archiveYears.reduce((count, group) => count + group.months.length, 0);
+  const archiveTotalPages = Math.ceil(archiveMonthCount / MONTH_PAGE_SIZE);
+  const postTotalPages = Math.ceil(total / POST_PAGE_SIZE);
+  const displayedArchiveYears = useMemo(() => paginateArchiveMonths(archiveYears, page), [archiveYears, page]);
   const defaultOpenYears = useMemo(() => {
     const next: Record<string, boolean> = {};
-    archiveYears.forEach((group, index) => {
+    displayedArchiveYears.forEach((group, index) => {
       next[String(group.year)] = index === 0;
     });
     return next;
-  }, [archiveYears]);
+  }, [displayedArchiveYears]);
   const [openYears, setOpenYears] = useState<Record<string, boolean>>({});
+  const loading = isMonthArchive ? postsLoading : archiveLoading;
+  useNormalizePage(page, setPage, isMonthArchive ? postTotalPages : archiveTotalPages, loading);
+  const archiveArticleCount = archiveYears.reduce((count, group) => count + group.count, 0);
 
   const toggleYear = (archiveYear: number) => {
     const key = String(archiveYear);
@@ -35,7 +67,7 @@ export default function Archive() {
             {isMonthArchive ? `${year} 年 ${String(month).padStart(2, "0")} 月` : "归档"}
           </h1>
           <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>
-            {isMonthArchive ? `${loading ? "正在整理" : "共"} ${posts.length} 篇文章` : `共 ${posts.length} 篇文章，跨越 ${archiveYears.length} 年`}
+            {isMonthArchive ? `${loading ? "正在整理" : "共"} ${total} 篇文章` : `共 ${archiveArticleCount} 篇文章，跨越 ${archiveYears.length} 年`}
           </p>
         </div>
 
@@ -97,10 +129,12 @@ export default function Archive() {
                   </Link>
                 </div>
               )}
+
+              <AppPagination page={page} totalPages={postTotalPages} onPageChange={setPage} />
             </div>
           ) : (
             <>
-              {archiveYears.map((group) => {
+              {displayedArchiveYears.map((group) => {
                 const isOpen = openYears[String(group.year)] ?? defaultOpenYears[String(group.year)] ?? false;
                 return (
                   <div key={group.year} className="mb-2">
@@ -179,12 +213,14 @@ export default function Archive() {
                 );
               })}
 
-              {archiveYears.length === 0 && (
+              {displayedArchiveYears.length === 0 && (
                 <div className="py-20 text-center">
                   <CalendarIcon size={32} className="mx-auto mb-4" style={{ color: "var(--warm-border)" }} />
                   <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅归档..." : "归档暂时还是空白"}</p>
                 </div>
               )}
+
+              <AppPagination page={page} totalPages={archiveTotalPages} onPageChange={setPage} />
             </>
           )}
         </div>

@@ -2,16 +2,23 @@ import type { FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { SearchIcon, CalendarIcon, ClockIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
+import { AppPagination } from "../components/ui/app-pagination";
 import { queryFromSearchParams } from "../features/blog/search";
 import { usePosts } from "../features/blog/usePosts";
+import { useNormalizePage, usePage } from "../hooks/usePage";
 import { escapeHtml, toDateText } from "../lib/text";
+
+const PAGE_SIZE = 10;
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = queryFromSearchParams(searchParams);
   const trimmedQuery = query.trim();
-  const { posts: results, loading } = usePosts({ keyword: trimmedQuery, pageSize: 50 });
+  const { page, setPage } = usePage();
+  const { posts: results, total, loading } = usePosts({ keyword: trimmedQuery, page, pageSize: PAGE_SIZE });
   const visibleResults = trimmedQuery.length > 0 ? results : [];
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  useNormalizePage(page, setPage, totalPages, loading || trimmedQuery.length === 0);
 
   const updateQuery = (value: string) => {
     const trimmedValue = value.trim();
@@ -83,7 +90,7 @@ export default function Search() {
         {trimmedQuery.length > 0 && (
           <div>
             <p className="text-xs mb-6" style={{ color: "var(--muted-ink)" }}>
-              「{trimmedQuery}」的搜索结果：{loading ? "正在检索..." : `${visibleResults.length} 篇`}
+              「{trimmedQuery}」的搜索结果：{loading ? "正在检索..." : `${total} 篇`}
             </p>
 
             {visibleResults.length === 0 && (
@@ -146,6 +153,8 @@ export default function Search() {
                 );
               })}
             </div>
+
+            <AppPagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         )}
 

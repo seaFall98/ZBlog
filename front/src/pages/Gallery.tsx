@@ -1,11 +1,18 @@
 import { Link } from "react-router-dom";
 import { ImageIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
+import { AppPagination } from "../components/ui/app-pagination";
 import { useAlbums } from "../features/gallery/useAlbums";
+import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
 
+const PAGE_SIZE = 12;
+
 export default function Gallery() {
-  const { albums, loading } = useAlbums(50);
+  const { page, setPage } = usePage();
+  const { albums, total, loading } = useAlbums(page, PAGE_SIZE);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  useNormalizePage(page, setPage, totalPages, loading);
 
   return (
     <PageLayout>
@@ -16,7 +23,7 @@ export default function Gallery() {
           <h1 style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(36px,4vw,56px)", fontWeight: 400, color: "var(--ink)" }}>
             相册
           </h1>
-          <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>{loading ? "正在加载相册..." : `${albums.length} 个相册`}</p>
+          <p className="mt-4 text-sm" style={{ color: "var(--muted-ink)" }}>{loading ? "正在加载相册..." : `${total} 个相册`}</p>
         </div>
 
         {/* Albums masonry-like layout */}
@@ -80,6 +87,8 @@ export default function Gallery() {
             <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅相册..." : "相册暂时还是空白"}</p>
           </div>
         )}
+
+        <AppPagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
     </PageLayout>
   );

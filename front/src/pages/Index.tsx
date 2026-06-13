@@ -73,8 +73,8 @@ export default function Index() {
   const [statsVisible, setStatsVisible] = useState(false);
   const { profile } = useSiteProfile();
   const { posts } = usePosts({ pageSize: 50 });
-  const { albums } = useAlbums(4);
-  const { moments } = useMoments(3);
+  const { albums } = useAlbums(1, 4);
+  const { moments } = useMoments(1, 3);
   const stats = useSiteStats();
 
   useEffect(() => {

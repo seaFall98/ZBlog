@@ -1,5 +1,7 @@
 import PageLayout from "../components/layout/PageLayout";
+import { AppPagination } from "../components/ui/app-pagination";
 import { useMoments } from "../features/moments/useMoments";
+import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
 
 const moodColors: Record<string, string> = {
@@ -13,8 +15,13 @@ const moodColors: Record<string, string> = {
   专注: "#6E8A74",
 };
 
+const PAGE_SIZE = 10;
+
 export default function Moments() {
-  const { moments, loading } = useMoments(30);
+  const { page, setPage } = usePage();
+  const { moments, total, loading } = useMoments(page, PAGE_SIZE);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  useNormalizePage(page, setPage, totalPages, loading);
 
   return (
     <PageLayout>
@@ -98,6 +105,8 @@ export default function Moments() {
               <p style={{ color: "var(--muted-ink)" }}>{loading ? "正在翻阅生活瞬间..." : "生活瞬间暂时还是空白"}</p>
             </div>
           )}
+
+          <AppPagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       </div>
     </PageLayout>

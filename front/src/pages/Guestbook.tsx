@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SendIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
+import { AppPagination } from "../components/ui/app-pagination";
 import { fetchComments, submitComment } from "../features/comments/commentApi";
 import type { CommentView } from "../features/comments/types";
 import { submitGuestbookMessage } from "../features/guestbook/guestbookApi";
 import { useGuestbookMessages } from "../features/guestbook/useGuestbookMessages";
 import { useSiteProfile } from "../features/site/useSiteProfile";
+import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
 import { toast } from "sonner";
 
@@ -22,6 +24,7 @@ const DANMAKU_COLORS = ["rgba(255,255,255,0.9)", "rgba(245,238,224,0.82)", "rgba
 const COMMENT_TARGET_TYPE = "page";
 const COMMENT_TARGET_KEY = "guestbook";
 const DEFAULT_GUESTBOOK_BACKGROUND = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1800&q=85";
+const MESSAGE_PAGE_SIZE = 10;
 
 type GuestbookCommentProps = {
   comment: CommentView;
@@ -60,8 +63,11 @@ export default function Guestbook() {
   const [replyingTo, setReplyingTo] = useState<CommentView | null>(null);
   const [comments, setComments] = useState<CommentView[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
-  const { messages, loading, reload } = useGuestbookMessages(50);
+  const { page, setPage } = usePage();
+  const { messages, total, loading, reload } = useGuestbookMessages(page, MESSAGE_PAGE_SIZE);
   const { profile } = useSiteProfile();
+  const messageTotalPages = Math.ceil(total / MESSAGE_PAGE_SIZE);
+  useNormalizePage(page, setPage, messageTotalPages, loading);
   const [submittedDanmakus, setSubmittedDanmakus] = useState<Danmaku[]>([]);
   const danmakuIdRef = useRef(1000);
   const backgroundImage = profile.barrageBackgroundImage || profile.backgroundImage || DEFAULT_GUESTBOOK_BACKGROUND;
@@ -165,6 +171,8 @@ export default function Guestbook() {
           </form>
         </div>
       </section>
+
+      <AppPagination page={page} totalPages={messageTotalPages} onPageChange={setPage} className="mb-4" />
 
       <section className="guestbook-board" aria-label="留言评论区">
         <div className="guestbook-board__heading">
