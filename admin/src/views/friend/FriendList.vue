@@ -135,7 +135,7 @@
       <el-table-column label="操作" min-width="220" align="center" fixed="right">
         <template #default="{ row }">
           <template v-if="row.is_pending">
-            <el-button type="success" link size="small" @click="handleApprove(row.id)">通过</el-button>
+            <el-button type="success" link size="small" @click="handleApprove(row)">通过</el-button>
             <el-button type="danger" link size="small" @click="handleReject(row.id)">拒绝</el-button>
           </template>
           <template v-else>
@@ -315,9 +315,17 @@ const handleFriendSuccess = () => {
   typeManagerRef.value?.refreshData();
 };
 
-const handleApprove = async (id: number) => {
+const handleApprove = async (row: Friend) => {
   try {
-    await updateFriend(id, { is_pending: false });
+    await updateFriend(row.id, {
+      name: row.name,
+      url: row.url,
+      description: row.description || "",
+      avatar: row.avatar || "",
+      type_id: row.type_id,
+      sort: row.sort ?? 5,
+      is_pending: false,
+    });
     ElMessage.success('已通过申请');
     fetchFriends();
     typeManagerRef.value?.refreshData();
