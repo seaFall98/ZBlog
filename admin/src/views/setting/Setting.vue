@@ -87,6 +87,7 @@ import {
   buildV2GuestbookPayload,
   buildV2HomePayload,
   buildV2IdentityPayload,
+  buildV2SearchPayload,
   createDefaultBasicSettingsForm,
   createDefaultBlogSettingsForm,
   mapV2BlogSettingsToForm,
@@ -183,13 +184,14 @@ const loadBasicConfigs = async () => {
 
 const loadBlogConfigs = async () => {
   try {
-    const [home, about, guestbook, footer] = await Promise.all([
+    const [home, about, guestbook, footer, search] = await Promise.all([
       loadConfigs('v2_home'),
       loadConfigs('v2_about'),
       loadConfigs('v2_guestbook'),
       loadConfigs('v2_footer'),
+      loadConfigs('v2_search'),
     ]);
-    blogForm.value = mapV2BlogSettingsToForm({ home, about, guestbook, footer });
+    blogForm.value = mapV2BlogSettingsToForm({ home, about, guestbook, footer, search });
   } catch {
     ElMessage.error('获取博客配置失败');
   }
@@ -399,6 +401,7 @@ const handleSave = async () => {
       updateSettingGroup('v2_about', buildV2AboutPayload(blogForm.value) as never),
       updateSettingGroup('v2_guestbook', buildV2GuestbookPayload(blogForm.value) as never),
       updateSettingGroup('v2_footer', buildV2FooterPayload(blogForm.value) as never),
+      updateSettingGroup('v2_search', buildV2SearchPayload(blogForm.value) as never),
       updateSettingGroup('notification', notificationPayload as never),
       updateSettingGroup('upload', uploadPayload as never),
       updateSettingGroup('ai', aiPayload as never),

@@ -47,6 +47,8 @@ export type BlogSettingsForm = {
   about_bottom_quote: string;
   guestbook_intro_text: string;
   guestbook_background_image: string;
+  guestbook_danmaku_limit: string;
+  search_hot_keywords: string;
   footer_description: string;
   footer_copyright_text: string;
   footer_slogan: string;
@@ -60,6 +62,7 @@ type BlogSettingsGroups = {
   about: FlatSettings;
   guestbook: FlatSettings;
   footer: FlatSettings;
+  search: FlatSettings;
 };
 
 export function createDefaultBasicSettingsForm(): BasicSettingsForm {
@@ -88,6 +91,8 @@ export function createDefaultBlogSettingsForm(): BlogSettingsForm {
     about_bottom_quote: "",
     guestbook_intro_text: "",
     guestbook_background_image: "",
+    guestbook_danmaku_limit: "200",
+    search_hot_keywords: "",
     footer_description: "",
     footer_copyright_text: "",
     footer_slogan: "",
@@ -121,6 +126,8 @@ export function mapV2BlogSettingsToForm(groups: BlogSettingsGroups): BlogSetting
     about_bottom_quote: read(groups.about, "bottom_quote"),
     guestbook_intro_text: read(groups.guestbook, "intro_text"),
     guestbook_background_image: read(groups.guestbook, "background_image"),
+    guestbook_danmaku_limit: read(groups.guestbook, "danmaku_public_limit") || "200",
+    search_hot_keywords: read(groups.search, "hot_keywords"),
     footer_description: read(groups.footer, "description"),
     footer_copyright_text: read(groups.footer, "copyright_text"),
     footer_slogan: read(groups.footer, "slogan"),
@@ -164,6 +171,13 @@ export function buildV2GuestbookPayload(form: BlogSettingsForm): FlatSettings {
   return {
     intro_text: form.guestbook_intro_text,
     background_image: form.guestbook_background_image,
+    danmaku_public_limit: form.guestbook_danmaku_limit,
+  };
+}
+
+export function buildV2SearchPayload(form: BlogSettingsForm): FlatSettings {
+  return {
+    hot_keywords: form.search_hot_keywords,
   };
 }
 

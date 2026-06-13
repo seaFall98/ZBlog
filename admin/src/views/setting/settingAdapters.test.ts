@@ -53,7 +53,9 @@ describe("settingAdapters", () => {
         guestbook: {
           intro_text: "把想说的话留在这里。",
           background_image: "/uploads/guestbook-cover.jpg",
+          danmaku_public_limit: "200",
         },
+        search: { hot_keywords: "旅行,摄影" },
         footer: {
           description: "页脚描述",
           copyright_text: "© 2026",
@@ -84,6 +86,8 @@ describe("settingAdapters", () => {
       about_bottom_quote: "生活就是很多很多个平凡的日子，偶尔有一些光。",
       guestbook_intro_text: "把想说的话留在这里。",
       guestbook_background_image: "/uploads/guestbook-cover.jpg",
+      guestbook_danmaku_limit: "200",
+      search_hot_keywords: "旅行,摄影",
       footer_description: "页脚描述",
       footer_copyright_text: "© 2026",
       footer_slogan: "以文字作舟，渡光阴之河",
@@ -131,6 +135,8 @@ describe("settingAdapters", () => {
       about_bottom_quote: "生活就是很多很多个平凡的日子，偶尔有一些光。",
       guestbook_intro_text: "把想说的话留在这里。",
       guestbook_background_image: "/uploads/guestbook-cover.jpg",
+      guestbook_danmaku_limit: "200",
+      search_hot_keywords: "旅行,摄影",
       footer_description: "页脚描述",
       footer_copyright_text: "© 2026",
       footer_slogan: "以文字作舟，渡光阴之河",
@@ -174,6 +180,7 @@ describe("settingAdapters", () => {
     expect(buildV2GuestbookPayload(blogForm)).toEqual({
       intro_text: "把想说的话留在这里。",
       background_image: "/uploads/guestbook-cover.jpg",
+      danmaku_public_limit: "200",
     });
 
     expect(buildV2FooterPayload(blogForm)).toEqual({
