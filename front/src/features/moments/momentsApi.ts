@@ -1,6 +1,6 @@
 import { apiClient } from "../../lib/apiClient";
 import { normalizeMediaUrl } from "../../lib/mediaUrl";
-import type { MomentView, MusicLinkView } from "./types";
+import type { MomentView, MusicLinkView, VideoSourceView } from "./types";
 
 type RawRecord = Record<string, unknown>;
 
@@ -44,28 +44,33 @@ function linkFrom(value: unknown): MomentView["link"] {
 
 function musicFrom(value: unknown): MusicLinkView | null {
   if (!isRecord(value)) return null;
-  // Direct URL format: {url, title, artist?, cover?}
-  const directUrl = stringValue(value.url).trim();
-  if (directUrl) {
-    const cover = stringValue(value.cover).trim();
+  // Has resolved audio URL — inline player possible
+  const audioUrl = stringValue(value.url).trim();
+  // Admin format with server/type/id for fallback link
+  const server = stringValue(value.server).trim();
+  const songId = stringValue(value.id).trim();
+
+  if (!audioUrl && !songId) return null;
+
+  const cover = stringValue(value.cover ?? value.pic).trim();
+  const title = stringValue(value.title).trim();
+  const artist = stringValue(value.artist).trim();
+
+  if (audioUrl) {
     return {
-      url: directUrl,
-      title: stringValue(value.title).trim() || directUrl,
-      artist: stringValue(value.artist).trim() || undefined,
+      url: audioUrl,
+      title: title || `${server || "未知"} 音乐`,
+      artist: artist || undefined,
       ...(cover ? { cover: normalizeMediaUrl(cover) } : {}),
     };
   }
-  // Admin format: {server, type, id}
-  const server = stringValue(value.server).trim();
+
+  // Fallback: only server/type/id, build external link
   const type = stringValue(value.type).trim();
-  const songId = stringValue(value.id).trim();
-  if (!songId) return null;
-  const musicUrl = buildMusicUrl(server, type, songId);
-  if (!musicUrl) return null;
   const typeLabel = type === "playlist" ? "歌单" : type === "album" ? "专辑" : "歌曲";
   const serverLabel = server === "netease" ? "网易云" : server;
   return {
-    url: musicUrl,
+    url: buildMusicUrl(server, type, songId),
     title: `${serverLabel} · ${typeLabel}`,
     artist: `ID: ${songId}`,
   };
@@ -77,6 +82,21 @@ function buildMusicUrl(server: string, type: string, id: string): string {
     return `https://music.163.com/#/${path}?id=${id}`;
   }
   return "";
+}
+
+/** Extract video source including platform info for iframe embedding */
+function extractVideoSource(value: unknown): VideoSourceView | undefined {
+  if (isRecord(value)) {
+    const url = stringValue(value.url).trim();
+    if (!url) return undefined;
+    return {
+      url,
+      platform: stringValue(value.platform).trim() || undefined,
+      videoId: stringValue(value.video_id).trim() || undefined,
+    };
+  }
+  const str = stringValue(value).trim();
+  return str || undefined ? { url: str } : undefined;
 }
 
 /** Extract media URL from either a plain string or an object like {url, platform, ...} */
@@ -108,7 +128,7 @@ export function mapMoment(value: unknown): MomentView | null {
     tags,
     location: stringValue(content.location).trim(),
     link: linkFrom(content.link),
-    video: extractMediaUrl(content.video),
+    video: extractVideoSource(content.video),
     audio: extractMediaUrl(content.audio),
     music: musicFrom(content.music),
   };

@@ -1,11 +1,8 @@
-import { lazy } from "react";
 import PageLayout from "../components/layout/PageLayout";
 import { AppPagination } from "../components/ui/app-pagination";
 import { useMoments } from "../features/moments/useMoments";
 import { useNormalizePage, usePage } from "../hooks/usePage";
 import { toDateText } from "../lib/text";
-
-const ReactPlayer = lazy(() => import("react-player"));
 
 const moodColors: Record<string, string> = {
   慵懒: "#B5956A",
@@ -80,8 +77,26 @@ export default function Moments() {
                     )}
 
                     {moment.video && (
-                      <div className="mt-5 aspect-video overflow-hidden">
-                        <ReactPlayer src={moment.video} width="100%" height="100%" controls />
+                      <div className="mt-5 rounded-sm overflow-hidden" style={{ background: "#000" }}>
+                        {moment.video.platform === "bilibili" && moment.video.videoId ? (
+                          <iframe
+                            src={`//player.bilibili.com/player.html?bvid=${moment.video.videoId}&autoplay=0`}
+                            scrolling="no"
+                            frameBorder="0"
+                            allowFullScreen
+                            className="w-full aspect-video border-0 block"
+                          />
+                        ) : moment.video.platform === "youtube" && moment.video.videoId ? (
+                          <iframe
+                            src={`https://www.youtube.com/embed/${moment.video.videoId}`}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="w-full aspect-video border-0 block"
+                          />
+                        ) : (
+                          <video src={moment.video.url} controls preload="metadata" className="w-full aspect-video block" />
+                        )}
                       </div>
                     )}
 
@@ -92,31 +107,44 @@ export default function Moments() {
                     )}
 
                     {moment.music && (
-                      <a
-                        href={moment.music.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 mt-5 p-3 border rounded-sm transition-opacity hover:opacity-80"
-                        style={{ borderColor: "var(--warm-border)", background: "var(--warm-white)" }}
-                      >
-                        {moment.music.cover ? (
-                          <img src={moment.music.cover} alt="" className="w-12 h-12 object-cover rounded-sm shrink-0" />
-                        ) : (
-                          <div className="w-12 h-12 shrink-0 flex items-center justify-center rounded-sm" style={{ background: "var(--section-bg)", color: "var(--muted-ink)" }}>
-                            ♪
+                      <div className="mt-5 rounded-sm overflow-hidden" style={{ border: "1px solid var(--warm-border)", background: "var(--warm-white)" }}>
+                        <div className="flex items-center gap-3 p-3">
+                          {/* Cover */}
+                          <div className="w-14 h-14 shrink-0 rounded-sm overflow-hidden" style={{ background: "var(--section-bg)" }}>
+                            {moment.music.cover ? (
+                              <img src={moment.music.cover} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center" style={{ color: "var(--muted-ink)" }}>
+                                ♪
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="text-sm truncate" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>
-                            {moment.music.title}
-                          </div>
-                          {moment.music.artist && (
-                            <div className="text-xs" style={{ color: "var(--muted-ink)" }}>
-                              {moment.music.artist}
+                          {/* Info + audio */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm truncate" style={{ color: "var(--ink)", fontFamily: "var(--fontSans)" }}>
+                              {moment.music.title}
                             </div>
-                          )}
+                            {moment.music.artist && (
+                              <div className="text-xs mt-0.5" style={{ color: "var(--muted-ink)" }}>
+                                {moment.music.artist}
+                              </div>
+                            )}
+                            {moment.music.url ? (
+                              <audio src={moment.music.url} controls className="w-full mt-2" style={{ height: "32px" }} />
+                            ) : (
+                              <a
+                                href={moment.music.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block text-xs mt-2 underline"
+                                style={{ color: "var(--muted-ink)" }}
+                              >
+                                前往收听 →
+                              </a>
+                            )}
+                          </div>
                         </div>
-                      </a>
+                      </div>
                     )}
 
                     {moment.link && (

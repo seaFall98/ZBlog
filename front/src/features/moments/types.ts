@@ -11,6 +11,12 @@ export type MusicLinkView = {
   url: string;
 };
 
+export type VideoSourceView = {
+  url: string;
+  platform?: string;
+  videoId?: string;
+};
+
 export type MomentView = {
   id: string;
   text: string;
@@ -20,7 +26,7 @@ export type MomentView = {
   tags: string[];
   location: string;
   link: MomentLinkView | null;
-  video?: string;
+  video?: VideoSourceView;
   audio?: string;
   music?: MusicLinkView | null;
 };
