@@ -2,20 +2,22 @@ import { useCallback, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeftIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
+import GalleryMasonry from "../features/gallery/GalleryMasonry";
 import GalleryPhotoModal from "../features/gallery/GalleryPhotoModal";
-import SpatialGallery from "../features/gallery/SpatialGallery";
 import { getNextPhotoIndex, getPreviousPhotoIndex } from "../features/gallery/galleryLayout";
 import { useAlbum } from "../features/gallery/useAlbum";
 import { toDateText } from "../lib/text";
 
 export default function GalleryDetail() {
   const { slug } = useParams();
-  const { album, loading } = useAlbum(slug ?? "");
+  const { album, loading, error } = useAlbum(slug ?? "");
   const photos = album?.photos ?? [];
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const selectedPhoto = selectedIndex !== null ? (photos[selectedIndex] ?? null) : null;
   const albumTitle = album?.title ?? "相册";
+  const photoCount = album?.photoCount || photos.length;
+  const createdAtText = album?.createdAt ? toDateText(album.createdAt) : "";
 
   const closePhoto = useCallback(() => setSelectedIndex(null), []);
 
@@ -38,19 +40,39 @@ export default function GalleryDetail() {
           <ArrowLeftIcon size={14} aria-hidden="true" /> 返回相册
         </Link>
 
-        <header className="gallery-detail-page__header mb-12">
-          <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>
-            {album ? toDateText(album.createdAt).slice(0, 7) : "Gallery"}
-          </p>
-          <h1 style={{ fontFamily: "var(--fontDisplay)", fontSize: "clamp(30px,3.5vw,48px)", fontWeight: 400, color: "var(--ink)" }}>
-            {album?.title ?? (loading ? "正在加载相册" : "相册不存在")}
-          </h1>
-          <p className="mt-3 text-sm" style={{ color: "var(--muted-ink)" }}>
-            {album ? `${album.description} / ${photos.length} 张` : ""}
-          </p>
+        <header className="gallery-detail-page__header">
+          <div className="gallery-detail-page__intro">
+            <p className="text-xs tracking-widest uppercase mb-3" style={{ color: "var(--muted-ink)" }}>
+              Gallery
+            </p>
+            <h1>{album?.title ?? (loading ? "正在加载相册" : "相册不存在")}</h1>
+            {album?.description && <p className="gallery-detail-page__description">{album.description}</p>}
+          </div>
+
+          <dl className="gallery-detail-page__meta" aria-label="相册信息">
+            <div>
+              <dt>时间</dt>
+              <dd>{createdAtText || "未发布"}</dd>
+            </div>
+            <div>
+              <dt>照片</dt>
+              <dd>{photoCount} 张</dd>
+            </div>
+          </dl>
         </header>
 
-        <SpatialGallery photos={photos} albumTitle={albumTitle} onSelectPhoto={setSelectedIndex} />
+        {error ? (
+          <div className="gallery-masonry gallery-masonry--empty" role="status">
+            相册加载失败，请稍后再试。
+          </div>
+        ) : (
+          <GalleryMasonry
+            photos={photos}
+            albumTitle={albumTitle}
+            loading={loading}
+            onSelectPhoto={setSelectedIndex}
+          />
+        )}
       </div>
 
       <GalleryPhotoModal
