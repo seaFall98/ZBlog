@@ -1,8 +1,7 @@
 import { apiClient } from "../../lib/apiClient";
+import { stringValue, type RawRecord } from "../../lib/typeGuards";
 import type { ArchiveYear } from "../blog/archive";
 import type { SiteStatsView } from "./types";
-
-type RawRecord = Record<string, unknown>;
 
 function numberValue(value: unknown): number {
   const number = Number(value ?? 0);
@@ -23,10 +22,6 @@ export async function fetchSiteStats(): Promise<SiteStatsView> {
 type ArchiveStatsResponse = {
   archives?: unknown;
 };
-
-function stringValue(value: unknown): string {
-  return value === undefined || value === null ? "" : String(value);
-}
 
 export async function fetchArchiveStats(): Promise<ArchiveYear[]> {
   const data = await apiClient.get<ArchiveStatsResponse>("/stats/archives");

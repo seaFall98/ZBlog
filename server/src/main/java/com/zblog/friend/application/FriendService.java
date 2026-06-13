@@ -119,6 +119,15 @@ public class FriendService {
 
   private boolean bool(Map<String, Object> request, String key, boolean fallback) {
     Object value = request.get(key);
-    return value instanceof Boolean bool ? bool : fallback;
+    if (value instanceof Boolean bool) {
+      return bool;
+    }
+    if (value instanceof String text) {
+      return "true".equalsIgnoreCase(text) || "1".equals(text);
+    }
+    if (value instanceof Number number) {
+      return number.intValue() != 0;
+    }
+    return fallback;
   }
 }

@@ -31,6 +31,7 @@ function tagSearchFields(tags: unknown): string[] {
   });
 }
 
+/** @deprecated Not used in production — only referenced in tests. */
 export function filterPostsByQuery(posts: PostView[], query: string): PostView[] {
   const normalizedQuery = normalizeQuery(query).toLowerCase();
   if (!normalizedQuery) return [];

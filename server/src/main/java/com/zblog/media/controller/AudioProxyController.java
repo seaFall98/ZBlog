@@ -5,9 +5,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +51,10 @@ public class AudioProxyController {
 
     // Build the Meting API URL — internal Docker hostname
     String metingUrl =
-        "http://meting:3000/api?server=" + server + "&type=url&id=" + id;
+        "http://meting:3000/api?server="
+            + URLEncoder.encode(server, StandardCharsets.UTF_8)
+            + "&type=url&id="
+            + URLEncoder.encode(id, StandardCharsets.UTF_8);
 
     log.debug("Audio proxy: {}", metingUrl);
 

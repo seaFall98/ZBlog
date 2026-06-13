@@ -1,24 +1,8 @@
 import { apiClient } from "../../lib/apiClient";
 import { normalizeMediaUrl } from "../../lib/mediaUrl";
+import type { PageResponse } from "../../lib/apiEnvelope";
+import { isRecord, stringValue, type RawRecord } from "../../lib/typeGuards";
 import type { MomentView, MusicLinkView, VideoSourceView } from "./types";
-
-type RawRecord = Record<string, unknown>;
-
-type PageResponse = {
-  list?: unknown;
-  total?: unknown;
-  page?: unknown;
-  page_size?: unknown;
-  pageSize?: unknown;
-};
-
-function isRecord(value: unknown): value is RawRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function stringValue(value: unknown): string {
-  return value === undefined || value === null ? "" : String(value);
-}
 
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -145,7 +129,7 @@ export type MomentListResult = {
 };
 
 export async function fetchMoments(page = 1, pageSize = 30): Promise<MomentListResult> {
-  const data = await apiClient.get<PageResponse>("/moments", { page, page_size: pageSize });
+  const data = await apiClient.get<PageResponse<unknown>>("/moments", { page, page_size: pageSize });
   const list = Array.isArray(data.list) ? data.list : [];
   const moments = list.map(mapMoment).filter((moment): moment is MomentView => Boolean(moment));
   return {

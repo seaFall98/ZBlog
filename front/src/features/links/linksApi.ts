@@ -1,15 +1,6 @@
 import { apiClient } from "../../lib/apiClient";
+import { isRecord, stringValue, type RawRecord } from "../../lib/typeGuards";
 import type { FriendLinkView, FriendTypeView } from "./types";
-
-type RawRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is RawRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function stringValue(value: unknown): string {
-  return value === undefined || value === null ? "" : String(value);
-}
 
 function mapFriend(value: unknown, category: string, typeId: number): FriendLinkView | null {
   if (!isRecord(value)) return null;

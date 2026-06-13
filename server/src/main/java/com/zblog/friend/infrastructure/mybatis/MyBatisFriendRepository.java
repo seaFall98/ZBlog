@@ -1,10 +1,12 @@
 package com.zblog.friend.infrastructure.mybatis;
 
 import com.zblog.common.api.PageResponse;
+import com.zblog.common.exception.BusinessException;
 import com.zblog.friend.application.port.FriendRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -17,8 +19,12 @@ public class MyBatisFriendRepository implements FriendRepository {
   }
 
   public PageResponse<Map<String, Object>> listTypes(int page, int pageSize) {
-    List<Map<String, Object>> list = friendMapper.listTypes();
-    return new PageResponse<>(list, list.size(), page, pageSize);
+    int normalizedPage = Math.max(page, 1);
+    int normalizedPageSize = Math.max(pageSize, 1);
+    int offset = (normalizedPage - 1) * normalizedPageSize;
+    var list = friendMapper.listTypes(offset, normalizedPageSize);
+    long total = friendMapper.countTypes();
+    return new PageResponse<>(list, total, normalizedPage, normalizedPageSize);
   }
 
   public long createType(String name, int sort, boolean visible) {
@@ -31,7 +37,11 @@ public class MyBatisFriendRepository implements FriendRepository {
   }
 
   public Map<String, Object> getType(long id) {
-    return friendMapper.typeById(id).getFirst();
+    List<Map<String, Object>> rows = friendMapper.typeById(id);
+    if (rows.isEmpty()) {
+      throw new BusinessException(404, "Friend type not found", HttpStatus.NOT_FOUND);
+    }
+    return rows.getFirst();
   }
 
   public void updateType(long id, String name, int sort, boolean visible) {
@@ -43,12 +53,20 @@ public class MyBatisFriendRepository implements FriendRepository {
   }
 
   public PageResponse<Map<String, Object>> listAdmin(int page, int pageSize) {
-    List<Map<String, Object>> list = friendMapper.listAdmin();
-    return new PageResponse<>(list, list.size(), page, pageSize);
+    int normalizedPage = Math.max(page, 1);
+    int normalizedPageSize = Math.max(pageSize, 1);
+    int offset = (normalizedPage - 1) * normalizedPageSize;
+    var list = friendMapper.listAdmin(offset, normalizedPageSize);
+    long total = friendMapper.countAdmin();
+    return new PageResponse<>(list, total, normalizedPage, normalizedPageSize);
   }
 
   public Map<String, Object> getFriend(long id) {
-    return friendMapper.friendById(id).getFirst();
+    List<Map<String, Object>> rows = friendMapper.friendById(id);
+    if (rows.isEmpty()) {
+      throw new BusinessException(404, "Friend not found", HttpStatus.NOT_FOUND);
+    }
+    return rows.getFirst();
   }
 
   public long createFriend(
@@ -102,7 +120,7 @@ public class MyBatisFriendRepository implements FriendRepository {
               ignored -> {
                 Map<String, Object> next = new LinkedHashMap<>();
                 next.put("type_id", typeId);
-                next.put("type_name", row.get("type_name") == null ? "姒涙顓婚崚鍡欑矋" : row.get("type_name"));
+                next.put("type_name", row.get("type_name") == null ? "未分类" : row.get("type_name"));
                 next.put("type_sort", row.get("type_sort") == null ? 0 : row.get("type_sort"));
                 next.put("friends", new java.util.ArrayList<Map<String, Object>>());
                 return next;

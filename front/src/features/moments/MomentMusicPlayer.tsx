@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { MusicLinkView } from "./types";
 
 type Props = {
@@ -11,6 +12,13 @@ interface AudioTrack {
   cover: string;
   /** Server-proxied audio URL — browser gets stable same-origin URL, server handles CDN token refresh */
   streamUrl: string;
+}
+
+function formatTime(s: number): string {
+  if (!isFinite(s) || isNaN(s)) return "00:00";
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
 }
 
 async function resolveMetaViaMeting(server: string, type: string, id: string): Promise<AudioTrack[]> {
@@ -30,53 +38,34 @@ async function resolveMetaViaMeting(server: string, type: string, id: string): P
 
 export default function MomentMusicPlayer({ music }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [tracks, setTracks] = useState<AudioTrack[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [playbackError, setError] = useState(false);
 
-  // Resolve metadata on mount / music change
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
+  const { data: metingTracks = [], isLoading, isError } = useQuery({
+    queryKey: ["momentMusic", music.server, music.type, music.id],
+    queryFn: () => resolveMetaViaMeting(music.server!, music.type!, music.id!),
+    enabled: Boolean(music.server && music.type && music.id),
+    staleTime: 10 * 60 * 1000,
+  });
 
-    const load = async () => {
-      if (music.server && music.type && music.id) {
-        try {
-          const resolved = await resolveMetaViaMeting(music.server, music.type, music.id);
-          if (cancelled) return;
-          if (resolved.length > 0) {
-            setTracks(resolved);
-            setLoading(false);
-            return;
-          }
-        } catch {
-          // Fall through to stored URL fallback
-        }
-      }
+  const tracks: AudioTrack[] = useMemo(() => {
+    if (metingTracks.length > 0) return metingTracks;
+    if (music.url) {
+      return [{
+        name: music.title || "未知歌曲",
+        artist: music.artist || "",
+        cover: music.cover || "",
+        streamUrl: music.url,
+      }];
+    }
+    return [];
+  }, [metingTracks, music.url, music.title, music.artist, music.cover]);
 
-      // Fallback: use stored URL (for manually uploaded audio files etc.)
-      if (music.url) {
-        setTracks([{
-          name: music.title || "未知歌曲",
-          artist: music.artist || "",
-          cover: music.cover || "",
-          streamUrl: music.url,
-        }]);
-        setLoading(false);
-      } else {
-        setError(true);
-        setLoading(false);
-      }
-    };
-
-    void load();
-    return () => { cancelled = true; };
-  }, [music.server, music.type, music.id, music.url, music.title, music.artist, music.cover]);
+  const loading = isLoading;
+  const error = (isError || playbackError) && tracks.length === 0;
 
   const current = tracks[currentIdx];
 
@@ -100,13 +89,6 @@ export default function MomentMusicPlayer({ music }: Props) {
       setPlaying(false);
       setCurrentTime(0);
     }
-  };
-
-  const formatTime = (s: number) => {
-    if (!isFinite(s) || isNaN(s)) return "00:00";
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
   if (loading) {

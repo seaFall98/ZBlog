@@ -1142,6 +1142,19 @@ watch(
           url: moment.content.audio.url,
         };
       }
+
+      // 恢复音乐元数据（编辑时显示已存储的音乐信息）
+      if (moment.content.music?.id) {
+        const m = moment.content.music as Record<string, string>;
+        musicInfo.value = {
+          title: m.title || '未知歌曲',
+          artist: m.artist || '',
+          pic: m.cover || '',
+          url: m.url || '',
+          type: (m.type as 'song' | 'album' | 'artist' | 'playlist') || 'song',
+          server: (m.server as 'netease' | 'tencent') || 'netease',
+        };
+      }
     }
   },
   { immediate: true }

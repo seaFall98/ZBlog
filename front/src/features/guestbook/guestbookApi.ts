@@ -1,27 +1,12 @@
 import { apiClient } from "../../lib/apiClient";
+import type { PageResponse } from "../../lib/apiEnvelope";
+import { isRecord, stringValue, type RawRecord } from "../../lib/typeGuards";
 import type { GuestbookMessageView, GuestbookSubmitResult } from "./types";
-
-type RawRecord = Record<string, unknown>;
-type PageResponse = {
-  list?: unknown;
-  total?: unknown;
-  page?: unknown;
-  page_size?: unknown;
-  pageSize?: unknown;
-};
 
 type SubmitGuestbookMessage = {
   nickname: string;
   content: string;
 };
-
-function isRecord(value: unknown): value is RawRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function stringValue(value: unknown): string {
-  return value === undefined || value === null ? "" : String(value);
-}
 
 export function mapGuestbookMessage(value: unknown): GuestbookMessageView | null {
   if (!isRecord(value)) return null;
@@ -54,7 +39,7 @@ export type GuestbookMessageListResult = {
 };
 
 export async function fetchGuestbookMessages(page = 1, pageSize = 50): Promise<GuestbookMessageListResult> {
-  const data = await apiClient.get<PageResponse>("/guestbook/messages", { page, page_size: pageSize });
+  const data = await apiClient.get<PageResponse<unknown>>("/guestbook/messages", { page, page_size: pageSize });
   const list = Array.isArray(data.list) ? data.list : [];
   const messages = list.map(mapGuestbookMessage).filter((message): message is GuestbookMessageView => Boolean(message));
   return {

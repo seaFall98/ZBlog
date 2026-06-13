@@ -1,20 +1,11 @@
 import { normalizeMediaUrl } from "../../lib/mediaUrl";
+import { isRecord, stringValue as toStringValue, type RawRecord } from "../../lib/typeGuards";
 import type { AlbumListResult, AlbumPhotoView, AlbumView } from "./types";
 
-type RawRecord = Record<string, unknown>;
 type AlbumListResponse = { list?: unknown; total?: unknown; page?: unknown; page_size?: unknown; pageSize?: unknown } | unknown[];
-
-function isRecord(value: unknown): value is RawRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
 
 function firstValue(record: RawRecord, keys: string[]): unknown {
   return keys.map((key) => record[key]).find((value) => value !== undefined && value !== null && value !== "");
-}
-
-function toStringValue(value: unknown): string {
-  if (value === undefined || value === null) return "";
-  return String(value);
 }
 
 function toNumberValue(value: unknown): number {

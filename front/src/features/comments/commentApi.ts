@@ -1,16 +1,8 @@
 import { apiClient } from "../../lib/apiClient";
+import { isRecord, stringValue, type RawRecord } from "../../lib/typeGuards";
 import type { CommentSubmitPayload, CommentView } from "./types";
 
-type RawRecord = Record<string, unknown>;
 type PageResponse = { list?: unknown };
-
-function isRecord(value: unknown): value is RawRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function stringValue(value: unknown): string {
-  return value === undefined || value === null ? "" : String(value);
-}
 
 function avatarFor(nickname: string): string {
   return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(nickname || "guest")}`;

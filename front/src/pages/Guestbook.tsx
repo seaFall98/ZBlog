@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SendIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
@@ -62,8 +62,6 @@ export default function Guestbook() {
   const [commentName, setCommentName] = useState("");
   const [commentContent, setCommentContent] = useState("");
   const [replyingTo, setReplyingTo] = useState<CommentView | null>(null);
-  const [comments, setComments] = useState<CommentView[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(true);
   const { page, setPage } = usePage();
   const { messages, total, loading, reload } = useGuestbookMessages(page, MESSAGE_PAGE_SIZE);
   const { profile } = useSiteProfile();
@@ -78,6 +76,11 @@ export default function Guestbook() {
     staleTime: 60 * 1000,
   });
   const danmakuMessages = danmakuData?.messages ?? [];
+
+  const { data: comments = [], isLoading: commentsLoading, refetch: refetchComments } = useQuery({
+    queryKey: ["guestbookComments"],
+    queryFn: () => fetchComments(COMMENT_TARGET_TYPE, COMMENT_TARGET_KEY, 50),
+  });
 
   const [submittedDanmakus, setSubmittedDanmakus] = useState<Danmaku[]>([]);
   const danmakuIdRef = useRef(1000);
@@ -96,21 +99,6 @@ export default function Guestbook() {
     })),
     ...submittedDanmakus,
   ], [danmakuMessages, submittedDanmakus]);
-
-  const loadComments = useCallback(async () => {
-    setCommentsLoading(true);
-    try {
-      setComments(await fetchComments(COMMENT_TARGET_TYPE, COMMENT_TARGET_KEY, 50));
-    } catch {
-      setComments([]);
-    } finally {
-      setCommentsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    queueMicrotask(() => { void loadComments(); });
-  }, [loadComments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +144,7 @@ export default function Guestbook() {
       setCommentContent("");
       setReplyingTo(null);
       toast.success("评论已提交");
-      void loadComments();
+      void refetchComments();
     } catch {
       toast.error("评论发送失败，请稍后再试");
     }

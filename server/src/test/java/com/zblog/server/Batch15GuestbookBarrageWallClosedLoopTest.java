@@ -38,9 +38,11 @@ class Batch15GuestbookBarrageWallClosedLoopTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     Map<?, ?> created = (Map<?, ?>) data(response);
     assertThat(created.get("id")).isNotNull();
-    assertThat(created.get("status")).isEqualTo("approved");
+    assertThat(created.get("status")).isEqualTo("pending");
     assertThat(created.get("message")).asString().isNotBlank();
-    assertThat(list(publicMessages())).anySatisfy(row -> assertPublicMessage(row, created.get("id"), "Batch15 Visitor"));
+    // Pending message does NOT appear in public list (requires approval)
+    assertThat(list(publicMessages())).noneSatisfy(row -> assertPublicMessage(row, created.get("id"), "Batch15 Visitor"));
+    // But it DOES appear in the admin list
 
     Map<?, ?> adminPage = adminGet("/api/v1/admin/guestbook/messages?keyword=Batch15%20public%20submit", authenticatedHeaders());
     assertThat(list(adminPage)).anySatisfy(row -> assertThat(((Map<?, ?>) row).get("id")).isEqualTo(created.get("id")));

@@ -156,7 +156,7 @@ export default function Moments() {
 
                     <div className="flex items-center justify-between mt-4">
                       <span className="text-xs md:block hidden" style={{ color: "var(--muted-ink)" }}>{toDateText(moment.date)}</span>
-                      <span className="text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>第 {idx + 1} 个瞬间</span>
+                      <span className="text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>第 {(page - 1) * PAGE_SIZE + idx + 1} 个瞬间</span>
                     </div>
                   </div>
                 </div>

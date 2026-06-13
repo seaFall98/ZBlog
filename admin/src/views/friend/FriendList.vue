@@ -279,10 +279,7 @@ const handleQuickFilterChange = () => {
 const fetchFriends = async () => {
   loading.value = true;
   try {
-    const [result] = await Promise.all([
-      getFriends(queryParams.value),
-      new Promise(resolve => setTimeout(resolve, 300)),
-    ]);
+    const result = await getFriends(queryParams.value);
     friendList.value = result.list;
     total.value = result.total;
   } catch {
