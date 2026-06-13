@@ -9,6 +9,10 @@ export type MusicLinkView = {
   artist?: string;
   cover?: string;
   url: string;
+  /** For Meting API re-resolution at render time */
+  server?: string;
+  type?: string;
+  id?: string;
 };
 
 export type VideoSourceView = {

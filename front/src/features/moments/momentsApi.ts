@@ -62,6 +62,9 @@ function musicFrom(value: unknown): MusicLinkView | null {
       title: title || `${server || "未知"} 音乐`,
       artist: artist || undefined,
       ...(cover ? { cover: normalizeMediaUrl(cover) } : {}),
+      server: server || undefined,
+      type: stringValue(value.type).trim() || undefined,
+      id: songId || undefined,
     };
   }
 
