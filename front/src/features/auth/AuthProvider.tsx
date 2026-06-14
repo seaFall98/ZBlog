@@ -67,6 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applySession = useCallback((nextSession: AuthSession | null) => {
     setSession(nextSession);
     persistSession(nextSession);
+    // Set token provider synchronously so it is available before any child effects run.
+    setApiAuthTokenProvider(() => nextSession?.accessToken ?? null);
   }, []);
 
   useEffect(() => {

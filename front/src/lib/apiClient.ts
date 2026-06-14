@@ -71,7 +71,9 @@ export function createApiClient(options: ApiClientOptions = {}) {
     const json = response.ok ? ((await response.json()) as unknown) : await tryReadJson(response);
 
     if (!response.ok) {
-      if (response.status === 401) {
+      if (response.status === 401 && authTokenProvider?.()) {
+        // Only clear session if we sent a token — avoids false positives
+        // when a public request legitimately returns 401.
         window.dispatchEvent(new Event("zblog:auth-expired"));
       }
       if (isApiEnvelope(json) && json.code !== 0) {
