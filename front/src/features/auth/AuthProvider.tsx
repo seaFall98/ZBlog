@@ -61,7 +61,16 @@ function persistSession(session: AuthSession | null) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<AuthSession | null>(() => readStoredSession());
+  const [session, setSession] = useState<AuthSession | null>(() => {
+    // Read stored session AND synchronously set the token provider so it is
+    // available before the first render and any child effects. This is the
+    // only way to eliminate the timing gap on initial page load.
+    const stored = readStoredSession();
+    if (stored) {
+      setApiAuthTokenProvider(() => stored.accessToken);
+    }
+    return stored;
+  });
   const [initializing, setInitializing] = useState(true);
 
   const applySession = useCallback((nextSession: AuthSession | null) => {
