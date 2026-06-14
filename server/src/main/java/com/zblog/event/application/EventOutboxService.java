@@ -55,6 +55,11 @@ public class EventOutboxService {
         "ARTICLE_SEARCH_DELETE", articleId, writeJson(Map.of("article_id", articleId)));
   }
 
+  public void createCommentReplyEvent(Map<String, Object> payload) {
+    long commentId = ((Number) payload.get("comment_id")).longValue();
+    eventOutboxRepository.createEvent("COMMENT_REPLY", "comment", commentId, writeJson(payload));
+  }
+
   public PageResponse<Map<String, Object>> list(int page, int pageSize, String status) {
     return eventOutboxRepository.list(page, pageSize, status);
   }

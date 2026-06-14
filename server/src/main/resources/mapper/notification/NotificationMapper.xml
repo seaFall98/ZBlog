@@ -18,6 +18,29 @@
     limit #{limit} offset #{offset}
   </select>
 
+  <select id="countByRecipient" resultType="long">
+    select count(*)
+    from notifications
+    where recipient_user_id = #{recipientUserId}
+      <if test="unreadOnly">and is_read = false</if>
+  </select>
+
+  <select id="countUnreadByRecipient" resultType="long">
+    select count(*)
+    from notifications
+    where recipient_user_id = #{recipientUserId}
+      and is_read = false
+  </select>
+
+  <select id="listRowsByRecipient" resultType="map">
+    select *
+    from notifications
+    where recipient_user_id = #{recipientUserId}
+      <if test="unreadOnly">and is_read = false</if>
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
   <select id="rowsById" resultType="map">
     select * from notifications where id = #{id}
   </select>
@@ -37,8 +60,13 @@
   </select>
 
   <insert id="insertNotification" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-    insert into notifications (type, title, content, link, data, target_id, sender)
-    values (#{type}, #{title}, #{content}, #{link}, #{data}, #{targetId}, #{sender})
+    insert into notifications (
+      type, title, content, link, data, target_id, sender, recipient_user_id, target_type, target_key, target_comment_id
+    )
+    values (
+      #{type}, #{title}, #{content}, #{link}, #{data}, #{targetId}, #{sender}, #{recipientUserId},
+      #{targetType}, #{targetKey}, #{targetCommentId}
+    )
   </insert>
 
   <update id="markRead">
@@ -52,4 +80,25 @@
     set is_read = true, read_at = current_timestamp
     where is_read = false
   </update>
+
+  <update id="markReadByRecipient">
+    update notifications
+    set is_read = true, read_at = current_timestamp
+    where id = #{id}
+      and recipient_user_id = #{recipientUserId}
+  </update>
+
+  <update id="markAllReadByRecipient">
+    update notifications
+    set is_read = true, read_at = current_timestamp
+    where recipient_user_id = #{recipientUserId}
+      and is_read = false
+  </update>
+
+  <delete id="deleteReadOlderThan">
+    delete from notifications
+    where is_read = true
+      and read_at is not null
+      and read_at &lt; #{threshold}
+  </delete>
 </mapper>

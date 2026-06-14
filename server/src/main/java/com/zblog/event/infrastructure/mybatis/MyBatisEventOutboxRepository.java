@@ -21,6 +21,10 @@ public class MyBatisEventOutboxRepository implements EventOutboxRepository {
     eventOutboxMapper.insertArticleEvent(eventType, aggregateId, payload);
   }
 
+  public void createEvent(String eventType, String aggregateType, long aggregateId, String payload) {
+    eventOutboxMapper.insertEvent(eventType, aggregateType, aggregateId, payload);
+  }
+
   public PageResponse<Map<String, Object>> list(int page, int pageSize, String status) {
     int offset = Math.max(0, page - 1) * pageSize;
     String normalizedStatus = status == null || status.isBlank() ? null : status;

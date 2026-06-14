@@ -35,6 +35,11 @@ public class RabbitMqConfig {
   }
 
   @Bean
+  Queue commentReplyQueue(EventProperties properties) {
+    return new Queue(properties.getCommentReplyQueue(), true);
+  }
+
+  @Bean
   Binding articlePublishedBinding(DirectExchange zblogEventsExchange, Queue articlePublishedQueue, EventProperties properties) {
     return BindingBuilder.bind(articlePublishedQueue)
         .to(zblogEventsExchange)
@@ -46,6 +51,13 @@ public class RabbitMqConfig {
     return BindingBuilder.bind(searchIndexQueue)
         .to(zblogEventsExchange)
         .with(properties.getSearchIndexRoutingKey());
+  }
+
+  @Bean
+  Binding commentReplyBinding(DirectExchange zblogEventsExchange, Queue commentReplyQueue, EventProperties properties) {
+    return BindingBuilder.bind(commentReplyQueue)
+        .to(zblogEventsExchange)
+        .with(properties.getCommentReplyRoutingKey());
   }
 
   @Bean

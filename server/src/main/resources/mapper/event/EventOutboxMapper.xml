@@ -8,6 +8,11 @@
     values (#{eventType}, 'article', #{aggregateId}, #{payload}, 'pending')
   </insert>
 
+  <insert id="insertEvent">
+    insert into event_outbox (event_type, aggregate_type, aggregate_id, payload, status)
+    values (#{eventType}, #{aggregateType}, #{aggregateId}, #{payload}, 'pending')
+  </insert>
+
   <select id="countRows" resultType="long">
     select count(*)
     from event_outbox

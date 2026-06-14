@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -72,7 +73,6 @@ public class SecurityConfig {
                         "/api/v1/tags/**",
                         "/api/v1/articles/**",
                         "/api/v1/stats/**",
-                        "/api/v1/comments/**",
                         "/api/v1/friends/**",
                         "/api/v1/moments/**",
                         "/api/v1/albums/**",
@@ -87,6 +87,8 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/comments/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

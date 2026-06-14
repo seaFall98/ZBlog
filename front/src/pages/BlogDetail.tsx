@@ -5,6 +5,7 @@ import PageLayout from "../components/layout/PageLayout";
 import ArticleContent from "../features/blog/ArticleContent";
 import ArticleToc from "../features/blog/ArticleToc";
 import { usePost } from "../features/blog/usePost";
+import CommentSection from "../features/comments/CommentSection";
 import { toDateText } from "../lib/text";
 import { toast } from "sonner";
 
@@ -165,6 +166,8 @@ export default function BlogDetail() {
                   </div>
                 </div>
               )}
+
+              <CommentSection targetType="article" targetKey={post.slug} />
             </div>
 
             {/* Sidebar */}

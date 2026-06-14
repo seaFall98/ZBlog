@@ -19,19 +19,19 @@ public class NotificationAdminController {
     this.notificationService = notificationService;
   }
 
-  @GetMapping({"/admin/notifications", "/notifications"})
+  @GetMapping("/admin/notifications")
   public ApiResponse<Map<String, Object>> list(
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(name = "page_size", defaultValue = "10") int pageSize) {
     return ApiResponse.ok(notificationService.list(page, pageSize));
   }
 
-  @PutMapping({"/admin/notifications/{id}/read", "/notifications/{id}/read"})
+  @PutMapping("/admin/notifications/{id}/read")
   public ApiResponse<Map<String, Object>> read(@PathVariable long id) {
     return ApiResponse.ok(notificationService.markRead(id));
   }
 
-  @PutMapping({"/admin/notifications/read-all", "/notifications/read-all"})
+  @PutMapping("/admin/notifications/read-all")
   public ApiResponse<Map<String, Object>> readAll() {
     return ApiResponse.ok(notificationService.markAllRead());
   }

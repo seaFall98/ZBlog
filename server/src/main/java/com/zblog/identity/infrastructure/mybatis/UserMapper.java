@@ -24,7 +24,8 @@ public interface UserMapper {
       @Param("nickname") String nickname,
       @Param("avatar") String avatar,
       @Param("badge") String badge,
-      @Param("website") String website);
+      @Param("website") String website,
+      @Param("bio") String bio);
 
   void updatePassword(@Param("id") long id, @Param("passwordHash") String passwordHash);
 

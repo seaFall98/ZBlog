@@ -1,4 +1,8 @@
+import { useEffect, useState } from "react";
+import { MessageCircleIcon } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout";
+import CommentSection from "../features/comments/CommentSection";
 import MomentMusicPlayer from "../features/moments/MomentMusicPlayer";
 import { AppPagination } from "../components/ui/app-pagination";
 import { useMoments } from "../features/moments/useMoments";
@@ -20,9 +24,23 @@ const PAGE_SIZE = 10;
 
 export default function Moments() {
   const { page, setPage } = usePage();
+  const [searchParams] = useSearchParams();
   const { moments, total, loading } = useMoments(page, PAGE_SIZE);
+  const [openComments, setOpenComments] = useState<Record<number, boolean>>({});
   const totalPages = Math.ceil(total / PAGE_SIZE);
   useNormalizePage(page, setPage, totalPages, loading);
+
+  useEffect(() => {
+    const momentId = Number(searchParams.get("momentId"));
+    const commentId = searchParams.get("commentId");
+    if (!momentId) return;
+    setOpenComments((current) => ({ ...current, [momentId]: true }));
+    if (commentId) {
+      window.setTimeout(() => {
+        document.querySelector(`#comment-${commentId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 350);
+    }
+  }, [searchParams]);
 
   return (
     <PageLayout>
@@ -156,8 +174,23 @@ export default function Moments() {
 
                     <div className="flex items-center justify-between mt-4">
                       <span className="text-xs md:block hidden" style={{ color: "var(--muted-ink)" }}>{toDateText(moment.date)}</span>
-                      <span className="text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>第 {(page - 1) * PAGE_SIZE + idx + 1} 个瞬间</span>
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setOpenComments((current) => ({ ...current, [moment.id]: !current[moment.id] }))}
+                          className="inline-flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                          style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}
+                        >
+                          <MessageCircleIcon size={13} />
+                          评论
+                        </button>
+                        <span className="text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>第 {(page - 1) * PAGE_SIZE + idx + 1} 个瞬间</span>
+                      </div>
                     </div>
+
+                    {openComments[moment.id] && (
+                      <CommentSection targetType="moment" targetKey={String(moment.id)} compact />
+                    )}
                   </div>
                 </div>
               );

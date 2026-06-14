@@ -32,6 +32,9 @@ public class RabbitEventMessageBroker implements EventMessageBroker {
     if ("ARTICLE_SEARCH_UPSERT".equals(event.eventType()) || "ARTICLE_SEARCH_DELETE".equals(event.eventType())) {
       return properties.getSearchIndexRoutingKey();
     }
+    if ("COMMENT_REPLY".equals(event.eventType())) {
+      return properties.getCommentReplyRoutingKey();
+    }
     return properties.getArticlePublishedRoutingKey();
   }
 }

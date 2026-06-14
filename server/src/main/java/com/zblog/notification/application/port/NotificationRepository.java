@@ -2,6 +2,7 @@ package com.zblog.notification.application.port;
 
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 public interface NotificationRepository {
 
@@ -10,6 +11,12 @@ public interface NotificationRepository {
   long countUnread();
 
   List<Map<String, Object>> list(int pageSize, int offset);
+
+  long countByRecipient(long recipientUserId, boolean unreadOnly);
+
+  long countUnreadByRecipient(long recipientUserId);
+
+  List<Map<String, Object>> listByRecipient(long recipientUserId, boolean unreadOnly, int pageSize, int offset);
 
   Map<String, Object> get(long id);
 
@@ -26,7 +33,26 @@ public interface NotificationRepository {
       Long targetId,
       String sender);
 
+  long createForRecipient(
+      long recipientUserId,
+      String type,
+      String title,
+      String content,
+      String link,
+      Map<String, Object> data,
+      Long targetId,
+      String targetType,
+      String targetKey,
+      Long targetCommentId,
+      String sender);
+
   void markRead(long id);
 
   int markAllRead();
+
+  void markReadByRecipient(long id, long recipientUserId);
+
+  int markAllReadByRecipient(long recipientUserId);
+
+  int deleteReadOlderThan(LocalDateTime threshold);
 }

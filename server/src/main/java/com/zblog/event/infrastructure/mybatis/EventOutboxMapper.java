@@ -13,6 +13,12 @@ public interface EventOutboxMapper {
       @Param("aggregateId") long aggregateId,
       @Param("payload") String payload);
 
+  void insertEvent(
+      @Param("eventType") String eventType,
+      @Param("aggregateType") String aggregateType,
+      @Param("aggregateId") long aggregateId,
+      @Param("payload") String payload);
+
   long countRows(@Param("status") String status);
 
   List<Map<String, Object>> listRows(

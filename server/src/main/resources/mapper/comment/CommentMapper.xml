@@ -3,14 +3,127 @@
   PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
   "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.zblog.comment.infrastructure.mybatis.CommentMapper">
-  <select id="listPublicRows" resultType="map">
-    select *
-    from comments
-    where target_type = #{targetType}
-      and target_key = #{targetKey}
-      and status = 1
-      and is_deleted = false
-    order by created_at desc, id desc
+  <sql id="publicCommentSelect">
+    select c.*,
+           u.nickname as user_nickname,
+           u.avatar as user_avatar,
+           u.badge as user_badge,
+           u.website as user_website,
+           u.role as user_role,
+           u.deleted_at as user_deleted_at,
+           pu.id as reply_user_id,
+           pu.nickname as reply_user_nickname,
+           pu.avatar as reply_user_avatar,
+           pu.badge as reply_user_badge,
+           pu.website as reply_user_website,
+           pu.role as reply_user_role,
+           pu.deleted_at as reply_user_deleted_at,
+           pc.nickname as reply_user_fallback_nickname,
+           coalesce(c.root_id, c.parent_id) as reply_root_id
+    from comments c
+    left join users u on u.id = c.user_id
+    left join comments pc on pc.id = c.parent_id
+    left join users pu on pu.id = pc.user_id
+  </sql>
+
+  <select id="countRootRows" resultType="long">
+    select count(*)
+    from comments c
+    where c.target_type = #{targetType}
+      and c.target_key = #{targetKey}
+      and c.status = 1
+      and c.root_id is null
+  </select>
+
+  <select id="countAllPublicRows" resultType="long">
+    select count(*)
+    from comments c
+    where c.target_type = #{targetType}
+      and c.target_key = #{targetKey}
+      and c.status = 1
+  </select>
+
+  <select id="listRootRows" resultType="map">
+    <include refid="publicCommentSelect"/>
+    where c.target_type = #{targetType}
+      and c.target_key = #{targetKey}
+      and c.status = 1
+      and c.root_id is null
+    order by c.created_at desc, c.id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="listInitialReplyRows" resultType="map">
+    select * from (
+      select q.*,
+             row_number() over (partition by q.reply_root_id order by q.created_at asc, q.id asc) as reply_rank
+      from (
+        <include refid="publicCommentSelect"/>
+        where c.status = 1
+          and (
+            c.root_id in
+            <foreach collection="rootIds" item="rootId" open="(" separator="," close=")">
+              #{rootId}
+            </foreach>
+            or c.parent_id in
+            <foreach collection="rootIds" item="rootId" open="(" separator="," close=")">
+              #{rootId}
+            </foreach>
+          )
+      ) q
+    ) ranked
+    where ranked.reply_rank &lt;= #{limitPerRoot}
+    order by ranked.reply_root_id asc, ranked.created_at asc, ranked.id asc
+  </select>
+
+  <select id="countReplies" resultType="long">
+    select count(*)
+    from comments c
+    where c.status = 1
+      and (c.root_id = #{rootId} or c.parent_id = #{rootId})
+  </select>
+
+  <select id="countRepliesForRoots" resultType="map">
+    select coalesce(c.root_id, c.parent_id) as root_id, count(*) as total
+    from comments c
+    where c.status = 1
+      and (
+        c.root_id in
+        <foreach collection="rootIds" item="rootId" open="(" separator="," close=")">
+          #{rootId}
+        </foreach>
+        or c.parent_id in
+        <foreach collection="rootIds" item="rootId" open="(" separator="," close=")">
+          #{rootId}
+        </foreach>
+      )
+    group by coalesce(c.root_id, c.parent_id)
+  </select>
+
+  <select id="listReplyRows" resultType="map">
+    <include refid="publicCommentSelect"/>
+    where c.status = 1
+      and (c.root_id = #{rootId} or c.parent_id = #{rootId})
+    order by c.created_at asc, c.id asc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="countRootsBefore" resultType="long">
+    select count(*)
+    from comments c
+    where c.target_type = #{targetType}
+      and c.target_key = #{targetKey}
+      and c.status = 1
+      and c.root_id is null
+      and (c.created_at &gt; #{createdAt} or (c.created_at = #{createdAt} and c.id &gt; #{id}))
+  </select>
+
+  <select id="countRepliesBefore" resultType="long">
+    select count(*)
+    from comments c
+    where c.status = 1
+      and (c.root_id = #{rootId} or c.parent_id = #{rootId})
+      and (c.created_at &lt; #{createdAt} or (c.created_at = #{createdAt} and c.id &lt; #{id}))
   </select>
 
   <sql id="adminWhere">
@@ -44,8 +157,8 @@
   </select>
 
   <insert id="insertComment" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-    insert into comments (target_type, target_key, parent_id, content, nickname, email, website, avatar)
-    values (#{targetType}, #{targetKey}, #{parentId}, #{content}, #{nickname}, #{email}, #{website}, #{avatar})
+    insert into comments (target_type, target_key, parent_id, root_id, content, nickname, email, website, avatar, user_id)
+    values (#{targetType}, #{targetKey}, #{parentId}, #{rootId}, #{content}, #{nickname}, #{email}, #{website}, #{avatar}, #{userId})
   </insert>
 
   <insert id="insertImportedComment" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
@@ -70,6 +183,7 @@
   </update>
 
   <select id="rowsById" resultType="map">
-    select * from comments where id = #{id}
+    <include refid="publicCommentSelect"/>
+    where c.id = #{id}
   </select>
 </mapper>

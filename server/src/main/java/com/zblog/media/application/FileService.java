@@ -34,6 +34,9 @@ public class FileService {
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           "text/plain");
   private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
+  private static final long MAX_AVATAR_FILE_SIZE = 2L * 1024 * 1024;
+  private static final Set<String> ALLOWED_AVATAR_CONTENT_TYPES =
+      Set.of("image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp");
 
   private final FileRepository fileRepository;
   private final FileStorage fileStorage;
@@ -44,7 +47,7 @@ public class FileService {
   }
 
   public Map<String, Object> upload(MultipartFile file, String type) throws IOException {
-    validate(file);
+    validate(file, type);
     String original = file.getOriginalFilename() == null ? "file" : file.getOriginalFilename();
     String safeOriginal = original.replaceAll("[^a-zA-Z0-9._-]", "_");
     String filename = Instant.now().toEpochMilli() + "_" + safeOriginal;
@@ -70,14 +73,23 @@ public class FileService {
         "file_size", file.getSize());
   }
 
-  private void validate(MultipartFile file) {
+  private void validate(MultipartFile file, String type) {
     if (file.isEmpty()) {
       throw new BusinessException(40001, "文件不能为空", HttpStatus.BAD_REQUEST);
+    }
+    String contentType = file.getContentType();
+    if ("用户头像".equals(type)) {
+      if (file.getSize() > MAX_AVATAR_FILE_SIZE) {
+        throw new BusinessException(40001, "头像大小不能超过2MB", HttpStatus.BAD_REQUEST);
+      }
+      if (contentType == null || !ALLOWED_AVATAR_CONTENT_TYPES.contains(contentType)) {
+        throw new BusinessException(40001, "头像仅支持 jpg、jpeg、png、webp、gif", HttpStatus.BAD_REQUEST);
+      }
+      return;
     }
     if (file.getSize() > MAX_FILE_SIZE) {
       throw new BusinessException(40001, "文件大小不能超过10MB", HttpStatus.BAD_REQUEST);
     }
-    String contentType = file.getContentType();
     if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
       throw new BusinessException(40001, "不支持的文件类型", HttpStatus.BAD_REQUEST);
     }

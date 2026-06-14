@@ -7,7 +7,23 @@ import java.util.Map;
 
 public interface CommentRepository {
 
-  List<Map<String, Object>> listPublicRows(String targetType, String targetKey);
+  long countRootRows(String targetType, String targetKey);
+
+  long countAllPublicRows(String targetType, String targetKey);
+
+  List<Map<String, Object>> listRootRows(String targetType, String targetKey, int limit, int offset);
+
+  List<Map<String, Object>> listInitialReplyRows(List<Long> rootIds, int limitPerRoot);
+
+  long countReplies(long rootId);
+
+  Map<Long, Long> countRepliesForRoots(List<Long> rootIds);
+
+  List<Map<String, Object>> listReplyRows(long rootId, int limit, int offset);
+
+  long countRootsBefore(String targetType, String targetKey, Object createdAt, long id);
+
+  long countRepliesBefore(long rootId, Object createdAt, long id);
 
   PageResponse<Map<String, Object>> listAdminRows(
       int page,
@@ -27,7 +43,9 @@ public interface CommentRepository {
       String nickname,
       String email,
       String website,
-      String avatar);
+      String avatar,
+      long userId,
+      Long rootId);
 
   long importComment(
       String targetType,
@@ -44,7 +62,7 @@ public interface CommentRepository {
 
   void toggleStatus(long id);
 
-  void delete(long id);
+  int delete(long id);
 
   Map<String, Object> find(long id);
 }

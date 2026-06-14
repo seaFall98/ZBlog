@@ -81,6 +81,10 @@
           <i class="ri-mail-send-line ri-lg"></i>
           <template #title>邮件 Outbox</template>
         </el-menu-item>
+        <el-menu-item index="/ops/scheduled-jobs">
+          <i class="ri-timer-line ri-lg"></i>
+          <template #title>定时任务</template>
+        </el-menu-item>
       </el-sub-menu>
 
       <el-sub-menu index="management">
@@ -140,6 +144,7 @@ const routeToParent: Record<string, string> = {
   '/ops/search': 'ops',
   '/ops/outbox': 'ops',
   '/ops/mail-outbox': 'ops',
+  '/ops/scheduled-jobs': 'ops',
   '/users': 'management',
   '/files': 'management',
   '/menus': 'management',

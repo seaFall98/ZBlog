@@ -3,6 +3,7 @@ package com.zblog.comment.controller;
 import com.zblog.comment.application.CommentService;
 import com.zblog.common.api.ApiResponse;
 import com.zblog.common.api.PageResponse;
+import java.security.Principal;
 import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -23,18 +24,42 @@ public class CommentController {
       @RequestParam(name = "target_type") String targetType,
       @RequestParam(name = "target_key") String targetKey,
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(name = "page_size", defaultValue = "50") int pageSize) {
-    return ApiResponse.ok(commentService.listPublic(targetType, targetKey, page, pageSize));
+      @RequestParam(name = "page_size", defaultValue = "10") int pageSize,
+      @RequestParam(name = "reply_page_size", defaultValue = "10") int replyPageSize) {
+    return ApiResponse.ok(commentService.listPublic(targetType, targetKey, page, pageSize, replyPageSize));
   }
 
-  @PostMapping({"/comments", "/admin/comments"})
-  public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, Object> request) {
-    return ApiResponse.ok(commentService.create(request));
+  @GetMapping("/comments/{rootId}/replies")
+  public ApiResponse<PageResponse<Map<String, Object>>> listReplies(
+      @PathVariable long rootId,
+      @RequestParam(defaultValue = "1") int page,
+      @RequestParam(name = "page_size", defaultValue = "10") int pageSize) {
+    return ApiResponse.ok(commentService.listReplies(rootId, page, pageSize));
+  }
+
+  @GetMapping("/comments/locate")
+  public ApiResponse<Map<String, Object>> locate(
+      @RequestParam(name = "target_type") String targetType,
+      @RequestParam(name = "target_key") String targetKey,
+      @RequestParam(name = "comment_id") long commentId,
+      @RequestParam(name = "page_size", defaultValue = "10") int pageSize,
+      @RequestParam(name = "reply_page_size", defaultValue = "10") int replyPageSize) {
+    return ApiResponse.ok(commentService.locate(targetType, targetKey, commentId, pageSize, replyPageSize));
+  }
+
+  @PostMapping("/comments")
+  public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, Object> request, Principal principal) {
+    return ApiResponse.ok(commentService.create(request, principal.getName()));
+  }
+
+  @PostMapping("/admin/comments")
+  public ApiResponse<Map<String, Object>> createAdmin(@RequestBody Map<String, Object> request) {
+    return ApiResponse.ok(commentService.createAdmin(request));
   }
 
   @DeleteMapping("/comments/{id}")
-  public ApiResponse<Void> deletePublic(@PathVariable long id) {
-    commentService.delete(id);
+  public ApiResponse<Void> deletePublic(@PathVariable long id, Principal principal) {
+    commentService.deletePublic(id, principal.getName());
     return ApiResponse.ok(null);
   }
 

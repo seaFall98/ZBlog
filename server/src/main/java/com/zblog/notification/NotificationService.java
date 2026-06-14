@@ -1,6 +1,9 @@
 package com.zblog.notification;
 
 import com.zblog.notification.application.port.NotificationRepository;
+import com.zblog.identity.application.port.UserRepository;
+import com.zblog.identity.domain.UserAccount;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -10,9 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
   private final NotificationRepository notificationRepository;
+  private final UserRepository userRepository;
+  private final RedisUnreadNotificationCount unreadCount;
 
-  public NotificationService(NotificationRepository notificationRepository) {
+  public NotificationService(
+      NotificationRepository notificationRepository, UserRepository userRepository, RedisUnreadNotificationCount unreadCount) {
     this.notificationRepository = notificationRepository;
+    this.userRepository = userRepository;
+    this.unreadCount = unreadCount;
   }
 
   public Map<String, Object> list(int page, int pageSize) {
@@ -21,6 +29,21 @@ public class NotificationService {
     long unread = notificationRepository.countUnread();
     List<Map<String, Object>> list = notificationRepository.list(pageSize, offset);
     return Map.of("list", list, "total", total, "page", page, "page_size", pageSize, "unread_count", unread);
+  }
+
+  public Map<String, Object> listForUser(String email, int page, int pageSize, boolean unreadOnly) {
+    UserAccount user = userRepository.findByEmail(email);
+    int offset = Math.max(0, page - 1) * pageSize;
+    long total = notificationRepository.countByRecipient(user.id(), unreadOnly);
+    long unread = unreadCount.get(user.id(), () -> notificationRepository.countUnreadByRecipient(user.id()));
+    List<Map<String, Object>> list =
+        notificationRepository.listByRecipient(user.id(), unreadOnly, pageSize, offset);
+    return Map.of("list", list, "total", total, "page", page, "page_size", pageSize, "unread_count", unread);
+  }
+
+  public Map<String, Object> unreadCountForUser(String email) {
+    UserAccount user = userRepository.findByEmail(email);
+    return Map.of("unread_count", unreadCount.get(user.id(), () -> notificationRepository.countUnreadByRecipient(user.id())));
   }
 
   public Map<String, Object> createFeedbackNotification(Map<String, Object> feedback) {
@@ -78,14 +101,70 @@ public class NotificationService {
     return notificationRepository.get(notificationId);
   }
 
+  public Map<String, Object> createCommentReplyNotification(
+      long recipientUserId,
+      long actorUserId,
+      String actorNickname,
+      String targetType,
+      String targetKey,
+      long commentId,
+      long parentId,
+      String content) {
+    String link =
+        switch (targetType) {
+          case "moment" -> "/moments?momentId=" + targetKey + "&commentId=" + commentId;
+          case "page" -> "guestbook".equals(targetKey)
+              ? "/guestbook?commentId=" + commentId
+              : "/" + targetKey + "?commentId=" + commentId;
+          default -> "/posts/" + targetKey + "?commentId=" + commentId;
+        };
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("actor_user_id", actorUserId);
+    data.put("actor_nickname", actorNickname);
+    data.put("target_type", targetType);
+    data.put("target_key", targetKey);
+    data.put("comment_id", commentId);
+    data.put("parent_id", parentId);
+    long id =
+        notificationRepository.createForRecipient(
+            recipientUserId,
+            "comment_reply",
+            actorNickname + " 回复了你的评论",
+            content.length() > 120 ? content.substring(0, 120) + "..." : content,
+            link,
+            data,
+            commentId,
+            targetType,
+            targetKey,
+            commentId,
+            "mq");
+    unreadCount.invalidate(recipientUserId);
+    return notificationRepository.get(id);
+  }
+
   public Map<String, Object> markRead(long id) {
     notificationRepository.markRead(id);
+    return notificationRepository.get(id);
+  }
+
+  public Map<String, Object> markReadForUser(String email, long id) {
+    UserAccount user = userRepository.findByEmail(email);
+    notificationRepository.markReadByRecipient(id, user.id());
+    unreadCount.invalidate(user.id());
     return notificationRepository.get(id);
   }
 
   @Transactional
   public Map<String, Object> markAllRead() {
     int affected = notificationRepository.markAllRead();
+    return Map.of("affected", affected, "unread_count", 0);
+  }
+
+  @Transactional
+  public Map<String, Object> markAllReadForUser(String email) {
+    UserAccount user = userRepository.findByEmail(email);
+    int affected = notificationRepository.markAllReadByRecipient(user.id());
+    unreadCount.invalidate(user.id());
     return Map.of("affected", affected, "unread_count", 0);
   }
 }
