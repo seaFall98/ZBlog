@@ -81,8 +81,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setApiAuthTokenProvider(() => session?.accessToken ?? null);
-    return () => setApiAuthTokenProvider(null);
+    // Only set (never clear) — clearing is done in applySession(null) on logout/auth-expired.
+    // React fires child effects before parent effects (bottom-up), so clearing here
+    // would race with child API calls on login.
+    if (session?.accessToken) {
+      setApiAuthTokenProvider(() => session.accessToken);
+    }
   }, [session?.accessToken]);
 
   const refreshingRef = useRef(false);
