@@ -29,6 +29,8 @@ public class JwtService {
     this.clock = clock;
   }
 
+  /** @deprecated Not used in P3. Use {@link #createUserToken} with role "ADMIN" instead. */
+  @Deprecated
   public String createAdminToken(String username) {
     return createToken(username, "admin");
   }

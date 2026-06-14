@@ -71,6 +71,9 @@ export function createApiClient(options: ApiClientOptions = {}) {
     const json = response.ok ? ((await response.json()) as unknown) : await tryReadJson(response);
 
     if (!response.ok) {
+      if (response.status === 401) {
+        window.dispatchEvent(new Event("zblog:auth-expired"));
+      }
       if (isApiEnvelope(json) && json.code !== 0) {
         throw new ApiEnvelopeError(json.code, json.message);
       }

@@ -368,11 +368,17 @@ export default function CommentSection({ targetType, targetKey, compact = false 
       });
       setReplyContent("");
       setReplyTo(null);
-      const location = await locateComment(targetType, targetKey, created.id, ROOT_PAGE_SIZE, REPLY_PAGE_SIZE);
-      await loadRoots(location.rootPage);
-      await loadReplies(location.rootId, location.replyPage);
-      setPendingScrollId(created.id);
       toast.success("回复已发布");
+      // Post-submission UI refresh (best-effort — reply was already persisted).
+      try {
+        const location = await locateComment(targetType, targetKey, created.id, ROOT_PAGE_SIZE, REPLY_PAGE_SIZE);
+        await loadRoots(location.rootPage);
+        await loadReplies(location.rootId, location.replyPage);
+        setPendingScrollId(created.id);
+      } catch {
+        // Refresh failed but the reply was created; reload from page 1.
+        await loadRoots(1);
+      }
     } catch {
       toast.error("回复发布失败");
     } finally {

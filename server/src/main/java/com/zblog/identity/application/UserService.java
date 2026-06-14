@@ -106,6 +106,9 @@ public class UserService {
     try {
       user = findActiveByEmail(email);
     } catch (BusinessException exception) {
+      // Anti-enumeration: burn CPU time so timing is indistinguishable from the success path.
+      byte[] burn = new byte[24];
+      secureRandom.nextBytes(burn);
       return Map.of("sent", true);
     }
     byte[] bytes = new byte[24];
@@ -113,7 +116,11 @@ public class UserService {
     String token = HexFormat.of().formatHex(bytes);
     // 重置 token 保持短时一次性语义，邮件投递通过 outbox 与用户流程解耦。
     passwordResetTokenRepository.create(user.email(), token, LocalDateTime.now().plusMinutes(30));
-    passwordResetMailer.sendResetToken(user.email(), token);
+    try {
+      passwordResetMailer.sendResetToken(user.email(), token);
+    } catch (RuntimeException ignored) {
+      // Do not leak account existence through mail server errors.
+    }
     return Map.of("sent", true);
   }
 

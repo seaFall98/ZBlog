@@ -37,7 +37,9 @@ public interface NotificationMapper {
 
   int markAllRead();
 
-  void markReadByRecipient(@Param("id") long id, @Param("recipientUserId") long recipientUserId);
+  int markReadByRecipient(@Param("id") long id, @Param("recipientUserId") long recipientUserId);
+
+  List<Map<String, Object>> rowsByIdForRecipient(@Param("id") long id, @Param("recipientUserId") long recipientUserId);
 
   int markAllReadByRecipient(@Param("recipientUserId") long recipientUserId);
 

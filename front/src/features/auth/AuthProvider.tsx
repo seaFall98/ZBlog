@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { authApi } from "./authApi";
 import type { AuthSession, AuthUser, LoginPayload, RegisterPayload, ResetPasswordPayload } from "./authTypes";
 import { setApiAuthTokenProvider } from "../../lib/apiClient";
@@ -74,10 +74,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setApiAuthTokenProvider(null);
   }, [session?.accessToken]);
 
+  const refreshingRef = useRef(false);
+
   const refresh = useCallback(async () => {
-    if (!session) return;
-    const response = await authApi.refresh();
-    applySession(toSession(response));
+    if (!session || refreshingRef.current) return;
+    refreshingRef.current = true;
+    try {
+      const response = await authApi.refresh();
+      applySession(toSession(response));
+    } finally {
+      refreshingRef.current = false;
+    }
   }, [applySession, session]);
 
   useEffect(() => {
@@ -119,6 +126,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, delay);
     return () => window.clearTimeout(timer);
   }, [applySession, refresh, session]);
+
+  // Listen for auth-expired events dispatched by the API client on 401 responses.
+  useEffect(() => {
+    const handler = () => applySession(null);
+    window.addEventListener("zblog:auth-expired", handler);
+    return () => window.removeEventListener("zblog:auth-expired", handler);
+  }, [applySession]);
 
   const login = useCallback(
     async (payload: LoginPayload) => {

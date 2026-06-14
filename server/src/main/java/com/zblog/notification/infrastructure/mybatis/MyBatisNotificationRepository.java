@@ -124,8 +124,15 @@ public class MyBatisNotificationRepository implements NotificationRepository {
     return notificationMapper.markAllRead();
   }
 
-  public void markReadByRecipient(long id, long recipientUserId) {
-    notificationMapper.markReadByRecipient(id, recipientUserId);
+  public int markReadByRecipient(long id, long recipientUserId) {
+    return notificationMapper.markReadByRecipient(id, recipientUserId);
+  }
+
+  public Map<String, Object> getForRecipient(long id, long recipientUserId) {
+    return notificationMapper.rowsByIdForRecipient(id, recipientUserId).stream()
+        .findFirst()
+        .map(this::mapRow)
+        .orElseThrow(() -> new BusinessException(404, "Notification not found", HttpStatus.NOT_FOUND));
   }
 
   public int markAllReadByRecipient(long recipientUserId) {

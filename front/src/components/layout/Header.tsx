@@ -220,7 +220,10 @@ export default function Header({ variant = "default" }: HeaderProps) {
                   placeholder="搜索..."
                   className="h-7 w-48 border-b border-warm-border bg-transparent px-1 text-sm outline-none"
                   style={{ borderColor: "var(--warm-border)", fontFamily: "var(--fontSans)" }}
-                  onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
+                  onBlur={() => {
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                    timeoutRef.current = setTimeout(() => setSearchOpen(false), 200);
+                  }}
                 />
               </form>
             )}

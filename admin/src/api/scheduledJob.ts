@@ -12,6 +12,7 @@ export function getScheduledJobs(params: { page: number; page_size: number }): P
   return request.get('/admin/scheduled-jobs', { params });
 }
 
+// Reserved for future "create job" UI. Endpoint is fully functional and tested.
 export function getScheduledJobHandlers(): Promise<ScheduledJobHandler[]> {
   return request.get('/admin/scheduled-jobs/handlers');
 }

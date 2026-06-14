@@ -90,6 +90,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/comments/**")
                     .permitAll()
+                    .requestMatchers("/api/v1/admin/**")
+                    .hasAnyRole("ADMIN", "SUPER_ADMIN")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

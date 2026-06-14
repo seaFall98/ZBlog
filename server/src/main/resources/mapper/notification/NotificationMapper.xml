@@ -88,6 +88,10 @@
       and recipient_user_id = #{recipientUserId}
   </update>
 
+  <select id="rowsByIdForRecipient" resultType="map">
+    select * from notifications where id = #{id} and recipient_user_id = #{recipientUserId}
+  </select>
+
   <update id="markAllReadByRecipient">
     update notifications
     set is_read = true, read_at = current_timestamp

@@ -126,11 +126,12 @@ public class CommentService {
       String startTime,
       String endTime) {
     AdminDateRange dateRange = AdminDateRange.parse(startTime, endTime);
+    String keywordWithWildcards = keyword != null && !keyword.isBlank() ? "%" + keyword + "%" : null;
     PageResponse<Map<String, Object>> rows =
         commentRepository.listAdminRows(
             page,
             pageSize,
-            keyword,
+            keywordWithWildcards,
             status,
             deleted,
             sub,
@@ -191,18 +192,28 @@ public class CommentService {
   }
 
   public Map<String, Object> createAdmin(Map<String, Object> request) {
+    String content = requiredText(request, "content");
+    if (content.length() > 2000) {
+      throw new BusinessException(400, "Comment content is too long", HttpStatus.BAD_REQUEST);
+    }
+    Long parentId = nullableNumber(request, "parent_id");
+    Long rootId = null;
+    if (parentId != null) {
+      Map<String, Object> parent = commentRepository.find(parentId);
+      rootId = rootIdFromParent(parent, parentId);
+    }
     long id =
         commentRepository.create(
             requiredText(request, "target_type"),
             requiredText(request, "target_key"),
-            nullableNumber(request, "parent_id"),
-            requiredText(request, "content"),
+            parentId,
+            content,
             textOrDefault(request, "nickname", "Guest"),
             text(request, "email"),
             text(request, "website"),
             text(request, "avatar"),
             0,
-            null);
+            rootId);
     return adminView(commentRepository.find(id));
   }
 
@@ -220,7 +231,7 @@ public class CommentService {
     Map<String, Object> comment = commentRepository.find(id);
     Object owner = comment.get("user_id");
     boolean isOwner = owner instanceof Number number && number.longValue() == user.id();
-    boolean isAdmin = "admin".equals(user.role()) || "super_admin".equals(user.role());
+    boolean isAdmin = "admin".equalsIgnoreCase(user.role()) || "super_admin".equalsIgnoreCase(user.role());
     if (!isOwner && !isAdmin) {
       throw new BusinessException(403, "Forbidden", HttpStatus.FORBIDDEN);
     }

@@ -1,11 +1,13 @@
 package com.zblog.notification;
 
+import com.zblog.common.exception.BusinessException;
 import com.zblog.notification.application.port.NotificationRepository;
 import com.zblog.identity.application.port.UserRepository;
 import com.zblog.identity.domain.UserAccount;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -144,19 +146,30 @@ public class NotificationService {
 
   public Map<String, Object> markRead(long id) {
     notificationRepository.markRead(id);
-    return notificationRepository.get(id);
+    Map<String, Object> result = notificationRepository.get(id);
+    // Best-effort: invalidate the recipient's unread count cache if present.
+    Object recipient = result.get("recipient_user_id");
+    if (recipient instanceof Number number && number.longValue() > 0) {
+      unreadCount.invalidate(number.longValue());
+    }
+    return result;
   }
 
   public Map<String, Object> markReadForUser(String email, long id) {
     UserAccount user = userRepository.findByEmail(email);
-    notificationRepository.markReadByRecipient(id, user.id());
+    int affected = notificationRepository.markReadByRecipient(id, user.id());
+    if (affected == 0) {
+      throw new BusinessException(404, "Notification not found", HttpStatus.NOT_FOUND);
+    }
     unreadCount.invalidate(user.id());
-    return notificationRepository.get(id);
+    return notificationRepository.getForRecipient(id, user.id());
   }
 
   @Transactional
   public Map<String, Object> markAllRead() {
     int affected = notificationRepository.markAllRead();
+    // Best-effort: Redis unread counts for affected users will naturally expire within TTL.
+    // Individual per-user invalidation is not feasible here because markAllRead is admin-scoped.
     return Map.of("affected", affected, "unread_count", 0);
   }
 

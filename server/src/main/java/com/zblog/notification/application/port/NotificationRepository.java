@@ -50,7 +50,9 @@ public interface NotificationRepository {
 
   int markAllRead();
 
-  void markReadByRecipient(long id, long recipientUserId);
+  int markReadByRecipient(long id, long recipientUserId);
+
+  Map<String, Object> getForRecipient(long id, long recipientUserId);
 
   int markAllReadByRecipient(long recipientUserId);
 
