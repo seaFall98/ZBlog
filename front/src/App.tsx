@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigationType } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { blogApi } from "./features/blog/blogApi";
@@ -68,12 +68,27 @@ function LinkPrefetch() {
   return null;
 }
 
+function ScrollToTop() {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+
+  useEffect(() => {
+    if (navigationType === "POP" || location.hash) return;
+    const params = new URLSearchParams(location.search);
+    if (params.has("commentId")) return;
+    window.scrollTo({ top: 0, left: 0 });
+  }, [location.hash, location.pathname, location.search, navigationType]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <SiteProfileProvider>
       <AuthProvider>
         <BrowserRouter>
           <LinkPrefetch />
+          <ScrollToTop />
           <Toaster
             position="top-right"
             toastOptions={{
