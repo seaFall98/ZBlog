@@ -32,7 +32,7 @@
     where c.target_type = #{targetType}
       and c.target_key = #{targetKey}
       and c.status = 1
-      and c.root_id is null
+      and c.parent_id is null
   </select>
 
   <select id="countAllPublicRows" resultType="long">
@@ -48,7 +48,7 @@
     where c.target_type = #{targetType}
       and c.target_key = #{targetKey}
       and c.status = 1
-      and c.root_id is null
+      and c.parent_id is null
     order by c.created_at desc, c.id desc
     limit #{limit} offset #{offset}
   </select>
@@ -60,6 +60,7 @@
       from (
         <include refid="publicCommentSelect"/>
         where c.status = 1
+          and c.parent_id is not null
           and (
             c.root_id in
             <foreach collection="rootIds" item="rootId" open="(" separator="," close=")">
@@ -80,6 +81,7 @@
     select count(*)
     from comments c
     where c.status = 1
+      and c.parent_id is not null
       and (c.root_id = #{rootId} or c.parent_id = #{rootId})
   </select>
 
@@ -87,6 +89,7 @@
     select coalesce(c.root_id, c.parent_id) as root_id, count(*) as total
     from comments c
     where c.status = 1
+      and c.parent_id is not null
       and (
         c.root_id in
         <foreach collection="rootIds" item="rootId" open="(" separator="," close=")">
@@ -103,6 +106,7 @@
   <select id="listReplyRows" resultType="map">
     <include refid="publicCommentSelect"/>
     where c.status = 1
+      and c.parent_id is not null
       and (c.root_id = #{rootId} or c.parent_id = #{rootId})
     order by c.created_at asc, c.id asc
     limit #{limit} offset #{offset}
@@ -114,7 +118,7 @@
     where c.target_type = #{targetType}
       and c.target_key = #{targetKey}
       and c.status = 1
-      and c.root_id is null
+      and c.parent_id is null
       and (c.created_at &gt; #{createdAt} or (c.created_at = #{createdAt} and c.id &gt; #{id}))
   </select>
 
@@ -122,6 +126,7 @@
     select count(*)
     from comments c
     where c.status = 1
+      and c.parent_id is not null
       and (c.root_id = #{rootId} or c.parent_id = #{rootId})
       and (c.created_at &lt; #{createdAt} or (c.created_at = #{createdAt} and c.id &lt; #{id}))
   </select>

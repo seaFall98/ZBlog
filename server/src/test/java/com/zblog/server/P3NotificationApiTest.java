@@ -151,6 +151,60 @@ class P3NotificationApiTest {
     assertThat((List<?>) page.get("list")).isEmpty();
   }
 
+  @Test
+  void rapidRepliesCreateOneNotificationPerReply() {
+    String targetKey = "p3-notification-burst-" + System.nanoTime();
+    HttpHeaders ownerHeaders = registerAndAuth("p3-notify-burst-owner-" + System.nanoTime() + "@example.com", "Notify Owner");
+    HttpHeaders actorHeaders = registerAndAuth("p3-notify-burst-actor-" + System.nanoTime() + "@example.com", "Notify Actor");
+
+    long parentId =
+        number(
+            data(
+                restTemplate.exchange(
+                    "/api/v1/comments",
+                    HttpMethod.POST,
+                    new HttpEntity<>(
+                        Map.of("target_type", "article", "target_key", targetKey, "content", "root comment"),
+                        ownerHeaders),
+                    Map.class)),
+            "id");
+
+    for (int i = 1; i <= 11; i++) {
+      data(
+          restTemplate.exchange(
+              "/api/v1/comments",
+              HttpMethod.POST,
+              new HttpEntity<>(
+                  Map.of(
+                      "target_type",
+                      "article",
+                      "target_key",
+                      targetKey,
+                      "parent_id",
+                      parentId,
+                      "content",
+                      "reply content " + i),
+                  actorHeaders),
+              Map.class));
+    }
+
+    Map<?, ?> drain = eventOutboxService.publishPending();
+    assertThat(number(drain, "published")).isGreaterThanOrEqualTo(11);
+
+    Map<?, ?> ownerPage =
+        data(
+            restTemplate.exchange(
+                "/api/v1/notifications?page=1&page_size=20",
+                HttpMethod.GET,
+                new HttpEntity<>(ownerHeaders),
+                Map.class));
+    assertThat(number(ownerPage, "unread_count")).isEqualTo(11);
+    List<?> list = (List<?>) ownerPage.get("list");
+    assertThat(list).hasSize(11);
+    assertThat(list)
+        .allSatisfy(row -> assertThat(((Map<?, ?>) row).get("type")).isEqualTo("comment_reply"));
+  }
+
   private HttpHeaders registerAndAuth(String email, String nickname) {
     ResponseEntity<Map> response =
         restTemplate.postForEntity(

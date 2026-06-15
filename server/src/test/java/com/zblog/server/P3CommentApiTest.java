@@ -186,6 +186,85 @@ class P3CommentApiTest {
     assertThat(((Number) location.get("reply_page")).longValue()).isEqualTo(2);
   }
 
+  @Test
+  void rootsRemainVisibleWhenRootIdIsBackfilledToSelf() {
+    String targetKey = "p3-comment-root-backfill-" + System.nanoTime();
+    HttpHeaders headers = registerAndAuth("p3-root-backfill-" + System.nanoTime() + "@example.com", "Root Backfill");
+
+    long rootId =
+        ((Number)
+                data(
+                        restTemplate.exchange(
+                            "/api/v1/comments",
+                            HttpMethod.POST,
+                            new HttpEntity<>(
+                                Map.of("target_type", "article", "target_key", targetKey, "content", "root"),
+                                headers),
+                            Map.class))
+                    .get("id"))
+            .longValue();
+    restTemplate.exchange(
+        "/api/v1/comments",
+        HttpMethod.POST,
+        new HttpEntity<>(
+            Map.of("target_type", "article", "target_key", targetKey, "parent_id", rootId, "content", "reply"),
+            headers),
+        Map.class);
+
+    // Simulate V28 applying to existing data: root comments may have root_id = id.
+    jdbcTemplate().update("update comments set root_id = id where id = ?", rootId);
+
+    Map<?, ?> listed =
+        data(
+            restTemplate.getForEntity(
+                "/api/v1/comments?target_type=article&target_key=" + targetKey + "&page=1&page_size=10",
+                Map.class));
+    assertThat((List<?>) listed.get("list")).hasSize(1);
+    Map<?, ?> root = ((List<Map<?, ?>>) listed.get("list")).getFirst();
+    assertThat(root.get("id").toString()).isEqualTo(String.valueOf(rootId));
+    assertThat(((Number) root.get("reply_total")).longValue()).isEqualTo(1);
+  }
+
+  @Test
+  void adminReplyUsesAuthenticatedAdminProfile() {
+    String targetKey = "p3-comment-admin-reply-" + System.nanoTime();
+    HttpHeaders ownerHeaders = registerAndAuth("p3-admin-target-" + System.nanoTime() + "@example.com", "Admin Target");
+    HttpHeaders adminHeaders = adminHeaders();
+
+    long parentId =
+        ((Number)
+                data(
+                        restTemplate.exchange(
+                            "/api/v1/comments",
+                            HttpMethod.POST,
+                            new HttpEntity<>(
+                                Map.of("target_type", "article", "target_key", targetKey, "content", "root"),
+                                ownerHeaders),
+                            Map.class))
+                    .get("id"))
+            .longValue();
+
+    ResponseEntity<Map> created =
+        restTemplate.exchange(
+            "/api/v1/admin/comments",
+            HttpMethod.POST,
+            new HttpEntity<>(
+                Map.of("target_type", "article", "target_key", targetKey, "parent_id", parentId, "content", "admin reply"),
+                adminHeaders),
+            Map.class);
+    assertThat(created.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    Map<?, ?> listed =
+        data(
+            restTemplate.getForEntity(
+                "/api/v1/comments?target_type=article&target_key=" + targetKey + "&page=1&page_size=10",
+                Map.class));
+    Map<?, ?> root = ((List<Map<?, ?>>) listed.get("list")).getFirst();
+    Map<?, ?> reply = (Map<?, ?>) ((List<?>) root.get("replies")).getFirst();
+    assertThat(((Map<?, ?>) reply.get("user")).get("nickname")).isEqualTo("admin");
+    assertThat(((Number) ((Map<?, ?>) reply.get("user")).get("id")).longValue()).isGreaterThan(0);
+  }
+
   private HttpHeaders registerAndAuth(String email, String nickname) {
     ResponseEntity<Map> response =
         restTemplate.postForEntity(
@@ -196,6 +275,22 @@ class P3CommentApiTest {
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(data(response).get("access_token").toString());
     return headers;
+  }
+
+  private HttpHeaders adminHeaders() {
+    ResponseEntity<Map> response =
+        restTemplate.postForEntity(
+            "/api/v1/auth/login", Map.of("username", "admin", "password", "admin123456"), Map.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(data(response).get("access_token").toString());
+    return headers;
+  }
+
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+  private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate() {
+    return jdbcTemplate;
   }
 
   private Map<?, ?> data(ResponseEntity<Map> response) {

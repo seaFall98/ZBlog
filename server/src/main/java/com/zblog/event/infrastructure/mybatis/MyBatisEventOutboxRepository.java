@@ -3,6 +3,7 @@ package com.zblog.event.infrastructure.mybatis;
 import com.zblog.common.api.PageResponse;
 import com.zblog.event.application.port.EventOutboxRepository;
 import com.zblog.event.domain.OutboxEvent;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,9 @@ public class MyBatisEventOutboxRepository implements EventOutboxRepository {
   }
 
   public List<OutboxEvent> pendingForPublish() {
-    return eventOutboxMapper.pendingForPublish().stream().map(this::toEvent).toList();
+    return eventOutboxMapper.pendingForPublish(LocalDateTime.now().minusMinutes(1)).stream()
+        .map(this::toEvent)
+        .toList();
   }
 
   public void markProcessing(long eventId) {

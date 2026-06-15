@@ -1,5 +1,6 @@
 package com.zblog.event.infrastructure.mybatis;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
@@ -24,7 +25,7 @@ public interface EventOutboxMapper {
   List<Map<String, Object>> listRows(
       @Param("status") String status, @Param("limit") int limit, @Param("offset") int offset);
 
-  List<Map<String, Object>> pendingForPublish();
+  List<Map<String, Object>> pendingForPublish(@Param("staleProcessingBefore") LocalDateTime staleProcessingBefore);
 
   void markProcessing(@Param("eventId") long eventId);
 

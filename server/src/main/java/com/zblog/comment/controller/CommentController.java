@@ -53,8 +53,8 @@ public class CommentController {
   }
 
   @PostMapping("/admin/comments")
-  public ApiResponse<Map<String, Object>> createAdmin(@RequestBody Map<String, Object> request) {
-    return ApiResponse.ok(commentService.createAdmin(request));
+  public ApiResponse<Map<String, Object>> createAdmin(@RequestBody Map<String, Object> request, Principal principal) {
+    return ApiResponse.ok(commentService.createAdmin(request, principal.getName()));
   }
 
   @DeleteMapping("/comments/{id}")

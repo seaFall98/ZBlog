@@ -107,6 +107,19 @@ const hasMore = ref(true);
 let timer: number;
 let previousUnreadCount = 0;
 
+const publicSiteBaseUrl = () => {
+  if (window.__APP_CONFIG__?.publicSiteUrl) {
+    return window.__APP_CONFIG__.publicSiteUrl.replace(/\/$/, '');
+  }
+  if (window.location.port === '4000') {
+    return `${window.location.protocol}//${window.location.hostname}:5173`;
+  }
+  return window.location.origin;
+};
+
+const isPublicSiteLink = (link: string) =>
+  link.startsWith('/posts/') || link.startsWith('/moments') || link.startsWith('/guestbook');
+
 // 统一的加载方法
 const loadNotifications = async (reset = false) => {
   // 防止重复加载
@@ -192,6 +205,10 @@ const handleNotificationClick = async (notification: Notification) => {
     visible.value = false;
     if (/^https?:\/\//i.test(notification.link)) {
       window.open(notification.link, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (isPublicSiteLink(notification.link)) {
+      window.open(`${publicSiteBaseUrl()}${notification.link}`, '_blank', 'noopener,noreferrer');
       return;
     }
     router.push(notification.link);

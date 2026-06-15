@@ -11,6 +11,9 @@ import com.zblog.identity.application.port.UserRepository;
 import com.zblog.identity.domain.UserAccount;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,6 +25,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class CommentService {
+
+  private static final ZoneId SHANGHAI_ZONE = ZoneId.of("Asia/Shanghai");
 
   private final CommentRepository commentRepository;
   private final UserRepository userRepository;
@@ -191,29 +196,52 @@ public class CommentService {
     return publicView(commentRepository.find(id));
   }
 
-  public Map<String, Object> createAdmin(Map<String, Object> request) {
+  public Map<String, Object> createAdmin(Map<String, Object> request, String email) {
+    UserAccount user = activeUser(email);
+    String targetType = requiredText(request, "target_type");
+    String targetKey = requiredText(request, "target_key");
     String content = requiredText(request, "content");
     if (content.length() > 2000) {
       throw new BusinessException(400, "Comment content is too long", HttpStatus.BAD_REQUEST);
     }
     Long parentId = nullableNumber(request, "parent_id");
     Long rootId = null;
+    Long recipientUserId = null;
     if (parentId != null) {
       Map<String, Object> parent = commentRepository.find(parentId);
+      if (!targetType.equals(text(parent, "target_type")) || !targetKey.equals(text(parent, "target_key"))) {
+        throw new BusinessException(400, "Invalid parent comment", HttpStatus.BAD_REQUEST);
+      }
       rootId = rootIdFromParent(parent, parentId);
+      Object owner = parent.get("user_id");
+      if (owner instanceof Number number && number.longValue() > 0 && number.longValue() != user.id()) {
+        recipientUserId = number.longValue();
+      }
     }
     long id =
         commentRepository.create(
-            requiredText(request, "target_type"),
-            requiredText(request, "target_key"),
+            targetType,
+            targetKey,
             parentId,
             content,
-            textOrDefault(request, "nickname", "Guest"),
-            text(request, "email"),
-            text(request, "website"),
-            text(request, "avatar"),
-            0,
+            user.nickname(),
+            user.email(),
+            user.website(),
+            user.avatar(),
+            user.id(),
             rootId);
+    if (recipientUserId != null) {
+      Map<String, Object> eventPayload = new LinkedHashMap<>();
+      eventPayload.put("recipient_user_id", recipientUserId);
+      eventPayload.put("actor_user_id", user.id());
+      eventPayload.put("actor_nickname", user.nickname());
+      eventPayload.put("target_type", targetType);
+      eventPayload.put("target_key", targetKey);
+      eventPayload.put("comment_id", id);
+      eventPayload.put("parent_id", parentId);
+      eventPayload.put("content", content);
+      eventOutboxService.createCommentReplyEvent(eventPayload);
+    }
     return adminView(commentRepository.find(id));
   }
 
@@ -309,7 +337,7 @@ public class CommentService {
     view.put("is_deleted", deleted);
     view.put("parent_id", row.get("parent_id"));
     view.put("root_id", rootId(row));
-    view.put("created_at", row.get("created_at").toString());
+    view.put("created_at", formatShanghai(row.get("created_at")));
     view.put("can_delete", false);
     String nickname = deleted || userDeleted ? "已注销用户" : publicNickname(row);
     String avatar = deleted || userDeleted ? "" : publicAvatar(row);
@@ -342,7 +370,7 @@ public class CommentService {
     view.put("content", row.get("content"));
     view.put("status", row.get("status"));
     view.put("parent_id", row.get("parent_id"));
-    view.put("created_at", row.get("created_at").toString());
+    view.put("created_at", formatShanghai(row.get("created_at")));
     view.put("deleted_at", row.get("deleted_at"));
     view.put(
         "target",
@@ -424,6 +452,22 @@ public class CommentService {
   private String text(Map<String, Object> request, String key) {
     Object value = request.get(key);
     return value == null ? "" : value.toString();
+  }
+
+  private String formatShanghai(Object value) {
+    if (value == null) {
+      return "";
+    }
+    if (value instanceof LocalDateTime dateTime) {
+      return dateTime.atZone(SHANGHAI_ZONE).toOffsetDateTime().toString();
+    }
+    if (value instanceof java.sql.Timestamp timestamp) {
+      return timestamp.toInstant().atZone(SHANGHAI_ZONE).toOffsetDateTime().toString();
+    }
+    if (value instanceof Instant instant) {
+      return instant.atZone(SHANGHAI_ZONE).toOffsetDateTime().toString();
+    }
+    return value.toString();
   }
 
   private String requiredText(Map<String, Object> request, String key) {
