@@ -205,12 +205,55 @@ class P3NotificationApiTest {
         .allSatisfy(row -> assertThat(((Map<?, ?>) row).get("type")).isEqualTo("comment_reply"));
   }
 
+  @Test
+  void guestbookRootCommentCreatesAdminNotification() {
+    HttpHeaders userHeaders = registerAndAuth("p3-guestbook-root-" + System.nanoTime() + "@example.com", "Guestbook Root");
+    HttpHeaders adminHeaders = adminHeaders();
+
+    long commentId =
+        number(
+            data(
+                restTemplate.exchange(
+                    "/api/v1/comments",
+                    HttpMethod.POST,
+                    new HttpEntity<>(
+                        Map.of("target_type", "page", "target_key", "guestbook", "content", "guestbook root"),
+                        userHeaders),
+                    Map.class)),
+            "id");
+
+    Map<?, ?> adminPage =
+        data(
+            restTemplate.exchange(
+                "/api/v1/admin/notifications?page=1&page_size=10",
+                HttpMethod.GET,
+                new HttpEntity<>(adminHeaders),
+                Map.class));
+    List<?> list = (List<?>) adminPage.get("list");
+    assertThat(list).isNotEmpty();
+    Map<?, ?> notification = (Map<?, ?>) list.getFirst();
+    assertThat(notification.get("type")).isEqualTo("comment_new");
+    assertThat(notification.get("title")).isEqualTo("新的留言");
+    assertThat(notification.get("link")).isEqualTo("/guestbook?commentId=" + commentId);
+    assertThat(number(notification, "target_id")).isEqualTo(commentId);
+  }
+
   private HttpHeaders registerAndAuth(String email, String nickname) {
     ResponseEntity<Map> response =
         restTemplate.postForEntity(
             "/api/v1/auth/register",
             Map.of("email", email, "nickname", nickname, "password", "reader123456"),
             Map.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(data(response).get("access_token").toString());
+    return headers;
+  }
+
+  private HttpHeaders adminHeaders() {
+    ResponseEntity<Map> response =
+        restTemplate.postForEntity(
+            "/api/v1/auth/login", Map.of("username", "admin", "password", "admin123456"), Map.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(data(response).get("access_token").toString());

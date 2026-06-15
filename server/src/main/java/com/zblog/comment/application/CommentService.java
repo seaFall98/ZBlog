@@ -9,6 +9,7 @@ import com.zblog.common.util.AdminDateRange;
 import com.zblog.event.application.EventOutboxService;
 import com.zblog.identity.application.port.UserRepository;
 import com.zblog.identity.domain.UserAccount;
+import com.zblog.notification.NotificationService;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -31,16 +32,19 @@ public class CommentService {
   private final CommentRepository commentRepository;
   private final UserRepository userRepository;
   private final EventOutboxService eventOutboxService;
+  private final NotificationService notificationService;
   private final ObjectMapper objectMapper;
 
   public CommentService(
       CommentRepository commentRepository,
       UserRepository userRepository,
       EventOutboxService eventOutboxService,
+      NotificationService notificationService,
       ObjectMapper objectMapper) {
     this.commentRepository = commentRepository;
     this.userRepository = userRepository;
     this.eventOutboxService = eventOutboxService;
+    this.notificationService = notificationService;
     this.objectMapper = objectMapper;
   }
 
@@ -192,6 +196,8 @@ public class CommentService {
       eventPayload.put("content", content);
       eventOutboxService.createCommentReplyEvent(
           eventPayload);
+    } else if (parentId == null && isGuestbookTarget(targetType, targetKey)) {
+      notificationService.createGuestbookRootCommentNotification(id, user.id(), user.nickname(), content);
     }
     return publicView(commentRepository.find(id));
   }
@@ -243,6 +249,10 @@ public class CommentService {
       eventOutboxService.createCommentReplyEvent(eventPayload);
     }
     return adminView(commentRepository.find(id));
+  }
+
+  private boolean isGuestbookTarget(String targetType, String targetKey) {
+    return "page".equals(targetType) && "guestbook".equals(targetKey);
   }
 
   public Map<String, Object> toggleStatus(long id) {

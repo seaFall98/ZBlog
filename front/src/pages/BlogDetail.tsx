@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { CalendarIcon, ClockIcon, TagIcon, ArrowLeftIcon, Share2Icon, BookmarkIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import ArticleContent from "../features/blog/ArticleContent";
@@ -11,9 +11,16 @@ import { toast } from "sonner";
 
 export default function BlogDetail() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { slug } = useParams();
   const { post, related, loading } = usePost(slug ?? "");
   const [bookmarked, setBookmarked] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has("commentId") || location.hash) return;
+    window.scrollTo({ top: 0, left: 0 });
+  }, [location.hash, location.search, slug]);
 
   const handleShare = () => {
     toast.success("链接已复制到剪贴板");

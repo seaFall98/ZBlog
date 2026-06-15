@@ -258,7 +258,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
                     className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none"
                     style={{ background: "var(--ink)", color: "var(--warm-white)" }}
                   >
-                    {unreadCount > 9 ? "9+" : unreadCount}
+                    {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
               </Link>

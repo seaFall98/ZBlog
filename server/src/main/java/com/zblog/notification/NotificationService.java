@@ -103,6 +103,26 @@ public class NotificationService {
     return notificationRepository.get(notificationId);
   }
 
+  public Map<String, Object> createGuestbookRootCommentNotification(
+      long commentId, long actorUserId, String actorNickname, String content) {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("actor_user_id", actorUserId);
+    data.put("actor_nickname", actorNickname);
+    data.put("target_type", "page");
+    data.put("target_key", "guestbook");
+    data.put("comment_id", commentId);
+    long id =
+        notificationRepository.create(
+            "comment_new",
+            "新的留言",
+            actorNickname + " 在留言板发布了新留言",
+            "/guestbook?commentId=" + commentId,
+            data,
+            commentId,
+            "direct");
+    return notificationRepository.get(id);
+  }
+
   public Map<String, Object> createCommentReplyNotification(
       long recipientUserId,
       long actorUserId,
