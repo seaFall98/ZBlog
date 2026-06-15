@@ -9,8 +9,34 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface CommentMapper {
 
-  List<Map<String, Object>> listPublicRows(
-      @Param("targetType") String targetType, @Param("targetKey") String targetKey);
+  long countRootRows(@Param("targetType") String targetType, @Param("targetKey") String targetKey);
+
+  long countAllPublicRows(@Param("targetType") String targetType, @Param("targetKey") String targetKey);
+
+  List<Map<String, Object>> listRootRows(
+      @Param("targetType") String targetType,
+      @Param("targetKey") String targetKey,
+      @Param("limit") int limit,
+      @Param("offset") int offset);
+
+  List<Map<String, Object>> listInitialReplyRows(
+      @Param("rootIds") List<Long> rootIds, @Param("limitPerRoot") int limitPerRoot);
+
+  long countReplies(@Param("rootId") long rootId);
+
+  List<Map<String, Object>> countRepliesForRoots(@Param("rootIds") List<Long> rootIds);
+
+  List<Map<String, Object>> listReplyRows(
+      @Param("rootId") long rootId, @Param("limit") int limit, @Param("offset") int offset);
+
+  long countRootsBefore(
+      @Param("targetType") String targetType,
+      @Param("targetKey") String targetKey,
+      @Param("createdAt") Object createdAt,
+      @Param("id") long id);
+
+  long countRepliesBefore(
+      @Param("rootId") long rootId, @Param("createdAt") Object createdAt, @Param("id") long id);
 
   long countAdminRows(
       @Param("keyword") String keyword,
@@ -36,7 +62,7 @@ public interface CommentMapper {
 
   void toggleStatus(@Param("id") long id);
 
-  void delete(@Param("id") long id);
+  int delete(@Param("id") long id);
 
   List<Map<String, Object>> rowsById(@Param("id") long id);
 }

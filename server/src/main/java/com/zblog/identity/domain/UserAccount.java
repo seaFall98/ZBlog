@@ -10,6 +10,7 @@ public record UserAccount(
     String avatar,
     String badge,
     String website,
+    String bio,
     String role,
     boolean enabled,
     Instant deletedAt,

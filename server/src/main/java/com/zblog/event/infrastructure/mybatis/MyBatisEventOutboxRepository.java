@@ -3,6 +3,7 @@ package com.zblog.event.infrastructure.mybatis;
 import com.zblog.common.api.PageResponse;
 import com.zblog.event.application.port.EventOutboxRepository;
 import com.zblog.event.domain.OutboxEvent;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,10 @@ public class MyBatisEventOutboxRepository implements EventOutboxRepository {
     eventOutboxMapper.insertArticleEvent(eventType, aggregateId, payload);
   }
 
+  public void createEvent(String eventType, String aggregateType, long aggregateId, String payload) {
+    eventOutboxMapper.insertEvent(eventType, aggregateType, aggregateId, payload);
+  }
+
   public PageResponse<Map<String, Object>> list(int page, int pageSize, String status) {
     int offset = Math.max(0, page - 1) * pageSize;
     String normalizedStatus = status == null || status.isBlank() ? null : status;
@@ -30,7 +35,9 @@ public class MyBatisEventOutboxRepository implements EventOutboxRepository {
   }
 
   public List<OutboxEvent> pendingForPublish() {
-    return eventOutboxMapper.pendingForPublish().stream().map(this::toEvent).toList();
+    return eventOutboxMapper.pendingForPublish(LocalDateTime.now().minusMinutes(1)).stream()
+        .map(this::toEvent)
+        .toList();
   }
 
   public void markProcessing(long eventId) {

@@ -25,7 +25,7 @@ public interface UserRepository {
 
   void updateLastLogin(long id);
 
-  void updateProfile(long id, String email, String nickname, String avatar, String badge, String website);
+  void updateProfile(long id, String email, String nickname, String avatar, String badge, String website, String bio);
 
   void updatePassword(long id, String passwordHash);
 
@@ -42,6 +42,7 @@ public interface UserRepository {
       String avatar,
       String badge,
       String website,
+      String bio,
       String role,
       boolean enabled);
 }

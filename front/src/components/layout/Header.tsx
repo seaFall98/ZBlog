@@ -4,8 +4,10 @@ import {
   ArchiveIcon,
   BookOpenIcon,
   BookmarkIcon,
+  BellIcon,
   ChevronDownIcon,
   ImageIcon,
+  LogOutIcon,
   MenuIcon,
   SearchIcon,
   TagIcon,
@@ -13,6 +15,8 @@ import {
   UserIcon,
   XIcon,
 } from "lucide-react";
+import { useAuth } from "../../features/auth/AuthProvider";
+import { notificationApi } from "../../features/notifications/notificationApi";
 import { useSiteProfile } from "../../features/site/useSiteProfile";
 import type { SiteMenuView } from "../../features/site/types";
 
@@ -64,11 +68,13 @@ type HeaderProps = {
 
 export default function Header({ variant = "default" }: HeaderProps) {
   const { profile, headerMenus } = useSiteProfile();
+  const { authenticated, user, logout } = useAuth();
   const navItems = mapHeaderMenusToNavItems(headerMenus);
   const isGuestbook = variant === "guestbook";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
@@ -85,6 +91,34 @@ export default function Header({ variant = "default" }: HeaderProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!authenticated) {
+      setUnreadCount(0);
+      return;
+    }
+
+    let alive = true;
+    const refreshUnreadCount = () => {
+      notificationApi
+        .unreadCount()
+        .then((count) => {
+          if (alive) setUnreadCount(count);
+        })
+        .catch(() => {
+          if (alive) setUnreadCount(0);
+        });
+    };
+
+    refreshUnreadCount();
+    window.addEventListener("focus", refreshUnreadCount);
+    window.addEventListener("zblog:notifications-read", refreshUnreadCount);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", refreshUnreadCount);
+      window.removeEventListener("zblog:notifications-read", refreshUnreadCount);
+    };
+  }, [authenticated]);
+
   const handleMouseEnter = (label: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setOpenMenu(label);
@@ -100,6 +134,12 @@ export default function Header({ variant = "default" }: HeaderProps) {
     if (!keyword) return;
     navigate(`/search?q=${encodeURIComponent(keyword)}`);
     setSearchOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+    setMobileOpen(false);
   };
 
   return (
@@ -180,7 +220,10 @@ export default function Header({ variant = "default" }: HeaderProps) {
                   placeholder="搜索..."
                   className="h-7 w-48 border-b border-warm-border bg-transparent px-1 text-sm outline-none"
                   style={{ borderColor: "var(--warm-border)", fontFamily: "var(--fontSans)" }}
-                  onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
+                  onBlur={() => {
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                    timeoutRef.current = setTimeout(() => setSearchOpen(false), 200);
+                  }}
                 />
               </form>
             )}
@@ -201,9 +244,46 @@ export default function Header({ variant = "default" }: HeaderProps) {
           >
             <GitHubIcon />
           </a>
-          <Link to="/login" className="text-muted-foreground transition-colors hover:text-foreground" aria-label="登录">
-            <UserIcon size={16} />
-          </Link>
+          {authenticated && user ? (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/notifications"
+                className="relative flex h-7 w-7 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:text-foreground"
+                style={{ borderColor: "var(--warm-border)" }}
+                aria-label="通知"
+              >
+                <BellIcon size={15} />
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none"
+                    style={{ background: "var(--ink)", color: "var(--warm-white)" }}
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                to="/profile"
+                className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border text-xs"
+                style={{ borderColor: "var(--warm-border)", color: "var(--ink)" }}
+                aria-label={user.nickname}
+              >
+                {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : user.nickname.slice(0, 1)}
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="退出登录"
+              >
+                <LogOutIcon size={16} />
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="text-muted-foreground transition-colors hover:text-foreground" aria-label="登录">
+              <UserIcon size={16} />
+            </Link>
+          )}
         </div>
 
         <button
@@ -263,9 +343,28 @@ export default function Header({ variant = "default" }: HeaderProps) {
               >
                 GitHub
               </a>
-              <Link to="/login" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
-                登录
-              </Link>
+              {authenticated && user ? (
+                <>
+                  <Link to="/notifications" className="flex items-center justify-between py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
+                    <span>通知</span>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full px-2 py-0.5 text-[11px]" style={{ background: "var(--ink)", color: "var(--warm-white)" }}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                  <Link to="/profile" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
+                    个人资料
+                  </Link>
+                  <button type="button" className="block py-2 text-left text-sm text-muted-foreground" onClick={handleLogout}>
+                    退出登录
+                  </button>
+                </>
+              ) : (
+                <Link to="/login" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
+                  登录
+                </Link>
+              )}
             </div>
           </nav>
         </div>

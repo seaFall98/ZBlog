@@ -31,15 +31,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         && SecurityContextHolder.getContext().getAuthentication() == null) {
       // 只在 token 可验证时写入 SecurityContext，解析失败按匿名请求继续进入授权判断。
       jwtService
-          .parseUsername(authorization.substring("Bearer ".length()))
+          .parseUser(authorization.substring("Bearer ".length()))
           .ifPresent(
-              username ->
+              user ->
                   SecurityContextHolder.getContext()
                       .setAuthentication(
                           new UsernamePasswordAuthenticationToken(
-                              username,
+                              user.username(),
                               null,
-                              List.of(new SimpleGrantedAuthority("ROLE_ADMIN")))));
+                              List.of(new SimpleGrantedAuthority("ROLE_" + user.role())))));
     }
 
     filterChain.doFilter(request, response);

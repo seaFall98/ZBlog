@@ -10,6 +10,8 @@ public class EventProperties {
   private String articlePublishedQueue = "zblog.article.published";
   private String searchIndexRoutingKey = "search.index";
   private String searchIndexQueue = "zblog.search.index";
+  private String commentReplyRoutingKey = "comment.reply";
+  private String commentReplyQueue = "zblog.comment.reply";
   private long publishFixedDelayMs = 5000;
 
   public String getExchange() {
@@ -50,6 +52,22 @@ public class EventProperties {
 
   public void setSearchIndexQueue(String searchIndexQueue) {
     this.searchIndexQueue = searchIndexQueue;
+  }
+
+  public String getCommentReplyRoutingKey() {
+    return commentReplyRoutingKey;
+  }
+
+  public void setCommentReplyRoutingKey(String commentReplyRoutingKey) {
+    this.commentReplyRoutingKey = commentReplyRoutingKey;
+  }
+
+  public String getCommentReplyQueue() {
+    return commentReplyQueue;
+  }
+
+  public void setCommentReplyQueue(String commentReplyQueue) {
+    this.commentReplyQueue = commentReplyQueue;
   }
 
   public long getPublishFixedDelayMs() {

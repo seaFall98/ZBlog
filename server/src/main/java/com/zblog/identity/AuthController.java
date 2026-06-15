@@ -3,6 +3,7 @@ package com.zblog.identity;
 import com.zblog.common.api.ApiResponse;
 import com.zblog.common.exception.BusinessException;
 import com.zblog.identity.application.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.Map;
@@ -25,8 +26,8 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-    return ApiResponse.ok(userService.login(request.username(), request.password()));
+  public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
+    return ApiResponse.ok(userService.login(request.username(), request.password(), remoteAddress(servletRequest)));
   }
 
   @PostMapping("/register")
@@ -58,5 +59,13 @@ public class AuthController {
   @PostMapping("/logout")
   public ApiResponse<Void> logout() {
     return ApiResponse.ok(null);
+  }
+
+  private String remoteAddress(HttpServletRequest request) {
+    String forwardedFor = request.getHeader("X-Forwarded-For");
+    if (forwardedFor != null && !forwardedFor.isBlank()) {
+      return forwardedFor.split(",")[0].trim();
+    }
+    return request.getRemoteAddr();
   }
 }

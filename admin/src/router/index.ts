@@ -128,6 +128,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ops/MailOutboxMonitor.vue'),
         meta: { title: '邮件 Outbox', requiresAuth: true },
       },
+      {
+        path: 'ops/scheduled-jobs',
+        name: 'ScheduledJobs',
+        component: () => import('@/views/ops/ScheduledJobList.vue'),
+        meta: { title: '定时任务', requiresAuth: true },
+      },
     ],
   },
   {

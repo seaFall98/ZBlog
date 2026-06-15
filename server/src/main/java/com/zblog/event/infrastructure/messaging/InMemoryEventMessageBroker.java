@@ -1,6 +1,7 @@
 package com.zblog.event.infrastructure.messaging;
 
 import com.zblog.event.application.ArticlePublishedEventConsumer;
+import com.zblog.event.application.CommentReplyEventConsumer;
 import com.zblog.event.application.port.EventMessageBroker;
 import com.zblog.event.domain.OutboxEvent;
 import com.zblog.search.infrastructure.messaging.SearchIndexEventConsumer;
@@ -14,15 +15,20 @@ public class InMemoryEventMessageBroker implements EventMessageBroker {
   // 测试 broker 同步 fan-out，模拟事件广播但不依赖 RabbitMQ。
   private final ArticlePublishedEventConsumer consumer;
   private final SearchIndexEventConsumer searchIndexEventConsumer;
+  private final CommentReplyEventConsumer commentReplyEventConsumer;
 
   public InMemoryEventMessageBroker(
-      ArticlePublishedEventConsumer consumer, SearchIndexEventConsumer searchIndexEventConsumer) {
+      ArticlePublishedEventConsumer consumer,
+      SearchIndexEventConsumer searchIndexEventConsumer,
+      CommentReplyEventConsumer commentReplyEventConsumer) {
     this.consumer = consumer;
     this.searchIndexEventConsumer = searchIndexEventConsumer;
+    this.commentReplyEventConsumer = commentReplyEventConsumer;
   }
 
   public void publish(OutboxEvent event) {
     consumer.consume(event.id(), event.eventType(), event.payload());
     searchIndexEventConsumer.consume(event.id(), event.eventType(), event.payload());
+    commentReplyEventConsumer.consume(event.id(), event.eventType(), event.payload());
   }
 }

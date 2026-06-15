@@ -70,8 +70,8 @@ public class MyBatisUserRepository implements UserRepository {
     userMapper.updateLastLogin(id);
   }
 
-  public void updateProfile(long id, String email, String nickname, String avatar, String badge, String website) {
-    userMapper.updateProfile(id, email, nickname, avatar, badge, website);
+  public void updateProfile(long id, String email, String nickname, String avatar, String badge, String website, String bio) {
+    userMapper.updateProfile(id, email, nickname, avatar, badge, website, bio);
   }
 
   public void updatePassword(long id, String passwordHash) {
@@ -114,6 +114,7 @@ public class MyBatisUserRepository implements UserRepository {
       String avatar,
       String badge,
       String website,
+      String bio,
       String role,
       boolean enabled) {
     Map<String, Object> params = new LinkedHashMap<>();
@@ -123,6 +124,7 @@ public class MyBatisUserRepository implements UserRepository {
     params.put("avatar", avatar);
     params.put("badge", badge);
     params.put("website", website);
+    params.put("bio", bio);
     params.put("role", role);
     params.put("enabled", enabled);
     userMapper.updateAdmin(params);
@@ -146,6 +148,7 @@ public class MyBatisUserRepository implements UserRepository {
         string(row.get("avatar")),
         string(row.get("badge")),
         string(row.get("website")),
+        string(row.get("bio")),
         string(row.get("role")),
         bool(row.get("is_enabled")),
         instant(row.get("deleted_at")),

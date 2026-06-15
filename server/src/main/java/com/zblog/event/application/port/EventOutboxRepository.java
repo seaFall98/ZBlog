@@ -9,6 +9,8 @@ public interface EventOutboxRepository {
 
   void createArticleEvent(String eventType, long aggregateId, String payload);
 
+  void createEvent(String eventType, String aggregateType, long aggregateId, String payload);
+
   PageResponse<Map<String, Object>> list(int page, int pageSize, String status);
 
   List<OutboxEvent> pendingForPublish();

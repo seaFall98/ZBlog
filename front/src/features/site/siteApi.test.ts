@@ -78,6 +78,7 @@ describe("mapFrontConfig", () => {
       backgroundImage: "/uploads/guestbook-cover.jpg",
       barrageBackgroundImage: "/uploads/guestbook-cover.jpg",
       guestbookIntro: "Leave a few words here.",
+      guestbookDanmakuLimit: 200,
       aboutStatusItems: [
         { icon: "camera", label: "Shooting", content: "Autumn streets", sort: 1 },
         { icon: "book-open", label: "Reading", content: "One Hundred Years", sort: 2 },

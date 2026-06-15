@@ -10,6 +10,7 @@ interface ImportMeta {
 
 interface AppConfig {
   apiUrl?: string;
+  publicSiteUrl?: string;
   faviconUrl?: string;
 }
 

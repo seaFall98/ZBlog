@@ -3,13 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { SendIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import { AppPagination } from "../components/ui/app-pagination";
-import { fetchComments, submitComment } from "../features/comments/commentApi";
-import type { CommentView } from "../features/comments/types";
+import CommentSection from "../features/comments/CommentSection";
 import { fetchGuestbookMessages, submitGuestbookMessage } from "../features/guestbook/guestbookApi";
 import { useGuestbookMessages } from "../features/guestbook/useGuestbookMessages";
 import { useSiteProfile } from "../features/site/useSiteProfile";
 import { useNormalizePage, usePage } from "../hooks/usePage";
-import { toDateText } from "../lib/text";
 import { toast } from "sonner";
 
 interface Danmaku {
@@ -27,41 +25,8 @@ const COMMENT_TARGET_KEY = "guestbook";
 const DEFAULT_GUESTBOOK_BACKGROUND = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1800&q=85";
 const MESSAGE_PAGE_SIZE = 10;
 
-type GuestbookCommentProps = {
-  comment: CommentView;
-  depth?: number;
-  replyingTo: string | null;
-  onReply: (comment: CommentView) => void;
-};
-
-function GuestbookComment({ comment, depth = 0, replyingTo, onReply }: GuestbookCommentProps) {
-  return (
-    <article className={`guestbook-comment ${depth > 0 ? "guestbook-comment--reply" : ""}`} id={`comment-${comment.id}`}>
-      <img className="guestbook-comment__avatar" src={comment.avatar} alt={comment.nickname} loading="lazy" />
-      <div className="guestbook-comment__body">
-        <header className="guestbook-comment__header">
-          <strong>{comment.nickname}</strong>
-          {comment.createdAt && <span>{toDateText(comment.createdAt)}</span>}
-        </header>
-        <p>{comment.content}</p>
-        <button type="button" onClick={() => onReply(comment)}>{replyingTo === comment.id ? "取消回复" : "回复"}</button>
-        {comment.replies.length > 0 && (
-          <div className="guestbook-comment__replies">
-            {comment.replies.map((reply) => (
-              <GuestbookComment key={reply.id} comment={reply} depth={depth + 1} replyingTo={replyingTo} onReply={onReply} />
-            ))}
-          </div>
-        )}
-      </div>
-    </article>
-  );
-}
-
 export default function Guestbook() {
   const [content, setContent] = useState("");
-  const [commentName, setCommentName] = useState("");
-  const [commentContent, setCommentContent] = useState("");
-  const [replyingTo, setReplyingTo] = useState<CommentView | null>(null);
   const { page, setPage } = usePage();
   const { messages, total, loading, reload } = useGuestbookMessages(page, MESSAGE_PAGE_SIZE);
   const { profile } = useSiteProfile();
@@ -76,11 +41,6 @@ export default function Guestbook() {
     staleTime: 60 * 1000,
   });
   const danmakuMessages = danmakuData?.messages ?? [];
-
-  const { data: comments = [], isLoading: commentsLoading, refetch: refetchComments } = useQuery({
-    queryKey: ["guestbookComments"],
-    queryFn: () => fetchComments(COMMENT_TARGET_TYPE, COMMENT_TARGET_KEY, 50),
-  });
 
   const [submittedDanmakus, setSubmittedDanmakus] = useState<Danmaku[]>([]);
   const danmakuIdRef = useRef(1000);
@@ -126,30 +86,6 @@ export default function Guestbook() {
     }
   };
 
-  const handleCommentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentName.trim() || !commentContent.trim()) {
-      toast.error("请填写昵称和评论内容");
-      return;
-    }
-
-    try {
-      await submitComment({
-        target_type: COMMENT_TARGET_TYPE,
-        target_key: COMMENT_TARGET_KEY,
-        nickname: commentName.trim(),
-        content: commentContent.trim(),
-        parent_id: replyingTo ? Number(replyingTo.id) : undefined,
-      });
-      setCommentContent("");
-      setReplyingTo(null);
-      toast.success("评论已提交");
-      void refetchComments();
-    } catch {
-      toast.error("评论发送失败，请稍后再试");
-    }
-  };
-
   return (
     <PageLayout headerVariant="guestbook" noMainTopPadding>
       <section className="guestbook-hero" style={{ backgroundImage: `url(${backgroundImage})` }}>
@@ -179,32 +115,9 @@ export default function Guestbook() {
       <section className="guestbook-board" aria-label="留言评论区">
         <div className="guestbook-board__heading">
           <h2>留言区</h2>
-          <span>{commentsLoading ? "正在加载" : `${comments.length} 条评论`}</span>
+          <span>留言与讨论</span>
         </div>
-
-        <form className="guestbook-comment-form" onSubmit={handleCommentSubmit}>
-          {replyingTo && (
-            <div className="guestbook-comment-form__replying">
-              正在回复 {replyingTo.nickname}
-              <button type="button" onClick={() => setReplyingTo(null)}>取消</button>
-            </div>
-          )}
-          <input type="text" value={commentName} onChange={(e) => setCommentName(e.target.value)} placeholder="你的昵称" aria-label="评论昵称" />
-          <textarea value={commentContent} onChange={(e) => setCommentContent(e.target.value)} placeholder="写下评论..." aria-label="评论内容" rows={4} />
-          <button type="submit"><SendIcon size={14} /> 发布评论</button>
-        </form>
-
-        <div className="guestbook-comments">
-          {comments.map((comment) => (
-            <GuestbookComment key={comment.id} comment={comment} replyingTo={replyingTo?.id ?? null} onReply={(item) => setReplyingTo((current) => current?.id === item.id ? null : item)} />
-          ))}
-        </div>
-
-        {comments.length === 0 && (
-          <div className="py-16 text-center">
-            <p style={{ color: "var(--muted-ink)" }}>{commentsLoading || loading ? "正在翻阅留言..." : "留言区暂时还是空白"}</p>
-          </div>
-        )}
+        <CommentSection targetType={COMMENT_TARGET_TYPE} targetKey={COMMENT_TARGET_KEY} compact />
       </section>
     </PageLayout>
   );

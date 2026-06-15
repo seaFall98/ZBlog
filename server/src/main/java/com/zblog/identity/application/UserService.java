@@ -19,6 +19,7 @@ import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,10 @@ public class UserService {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final SecurityProperties securityProperties;
+  private final LoginAttemptLimiter loginAttemptLimiter;
   private final SecureRandom secureRandom = new SecureRandom();
+  private static final Set<String> RESERVED_BADGES =
+      Set.of("站长", "博主", "管理员", "admin", "root", "super_admin");
 
   public UserService(
       UserRepository userRepository,
@@ -42,26 +46,42 @@ public class UserService {
       PasswordResetMailer passwordResetMailer,
       PasswordEncoder passwordEncoder,
       JwtService jwtService,
-      SecurityProperties securityProperties) {
+      SecurityProperties securityProperties,
+      LoginAttemptLimiter loginAttemptLimiter) {
     this.userRepository = userRepository;
     this.passwordResetTokenRepository = passwordResetTokenRepository;
     this.passwordResetMailer = passwordResetMailer;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.securityProperties = securityProperties;
+    this.loginAttemptLimiter = loginAttemptLimiter;
   }
 
   public LoginResponse login(String username, String password) {
-    UserAccount user = userRepository.findByEmail(username);
-    if (!user.enabled() || user.deletedAt() != null) {
-      throw new BusinessException(401, "User is disabled", HttpStatus.UNAUTHORIZED);
-    }
-    if (!StringUtils.hasText(user.passwordHash())
-        || !passwordEncoder.matches(password, user.passwordHash())) {
+    return login(username, password, "unknown");
+  }
+
+  public LoginResponse login(String username, String password, String remoteAddress) {
+    String email = username == null ? "" : username.trim().toLowerCase();
+    loginAttemptLimiter.assertNotLocked(email, remoteAddress);
+    try {
+      UserAccount user = userRepository.findByEmail(email);
+      if (!user.enabled() || user.deletedAt() != null) {
+        throw new BusinessException(401, "Invalid username or password", HttpStatus.UNAUTHORIZED);
+      }
+      if (!StringUtils.hasText(user.passwordHash())
+          || !passwordEncoder.matches(password, user.passwordHash())) {
+        throw new BusinessException(401, "Invalid username or password", HttpStatus.UNAUTHORIZED);
+      }
+      loginAttemptLimiter.clear(email, remoteAddress);
+      userRepository.updateLastLogin(user.id());
+      return tokenResponse(userRepository.findById(user.id()));
+    } catch (BusinessException exception) {
+      if (exception.status() == HttpStatus.UNAUTHORIZED) {
+        loginAttemptLimiter.recordFailure(email, remoteAddress);
+      }
       throw new BusinessException(401, "Invalid username or password", HttpStatus.UNAUTHORIZED);
     }
-    userRepository.updateLastLogin(user.id());
-    return tokenResponse(userRepository.findById(user.id()));
   }
 
   public LoginResponse register(Map<String, Object> request) {
@@ -82,13 +102,25 @@ public class UserService {
 
   public Map<String, Object> forgotPassword(Map<String, Object> request) {
     String email = requiredString(request, "email").toLowerCase();
-    UserAccount user = findActiveByEmail(email);
+    UserAccount user;
+    try {
+      user = findActiveByEmail(email);
+    } catch (BusinessException exception) {
+      // Anti-enumeration: burn CPU time so timing is indistinguishable from the success path.
+      byte[] burn = new byte[24];
+      secureRandom.nextBytes(burn);
+      return Map.of("sent", true);
+    }
     byte[] bytes = new byte[24];
     secureRandom.nextBytes(bytes);
     String token = HexFormat.of().formatHex(bytes);
     // 重置 token 保持短时一次性语义，邮件投递通过 outbox 与用户流程解耦。
     passwordResetTokenRepository.create(user.email(), token, LocalDateTime.now().plusMinutes(30));
-    passwordResetMailer.sendResetToken(user.email(), token);
+    try {
+      passwordResetMailer.sendResetToken(user.email(), token);
+    } catch (RuntimeException ignored) {
+      // Do not leak account existence through mail server errors.
+    }
     return Map.of("sent", true);
   }
 
@@ -112,14 +144,23 @@ public class UserService {
   public Map<String, Object> updateProfile(String email, Map<String, Object> request) {
     UserAccount user = findActiveByEmail(email);
     String nickname = optionalString(request, "nickname", user.nickname());
-    String newEmail = optionalString(request, "email", user.email());
+    String newEmail = optionalString(request, "email", user.email()).toLowerCase();
     String avatar = optionalString(request, "avatar", user.avatar());
-    String badge = nullableString(request.get("badge"));
-    String website = nullableString(request.get("website"));
-    if (!newEmail.equals(user.email()) && userRepository.existsByEmail(newEmail)) {
-      throw new BusinessException(409, "Email already exists", HttpStatus.CONFLICT);
+    String badge = nullableOrExisting(request, "badge", user.badge());
+    String website = nullableOrExisting(request, "website", user.website());
+    String bio = nullableOrExisting(request, "bio", user.bio());
+    validateBadge(badge);
+    if (!newEmail.equals(user.email())) {
+      String currentPassword = requiredString(request, "current_password");
+      if (!StringUtils.hasText(user.passwordHash())
+          || !passwordEncoder.matches(currentPassword, user.passwordHash())) {
+        throw new BusinessException(400, "当前密码错误", HttpStatus.BAD_REQUEST);
+      }
+      if (userRepository.existsByEmail(newEmail)) {
+        throw new BusinessException(409, "Email already exists", HttpStatus.CONFLICT);
+      }
     }
-    userRepository.updateProfile(user.id(), newEmail, nickname, avatar, badge, website);
+    userRepository.updateProfile(user.id(), newEmail, nickname, avatar, badge, website, bio);
     return toUserMap(userRepository.findById(user.id()), true);
   }
 
@@ -202,6 +243,7 @@ public class UserService {
         optionalString(request, "avatar", user.avatar()),
         nullableOrExisting(request, "badge", user.badge()),
         nullableOrExisting(request, "website", user.website()),
+        nullableOrExisting(request, "bio", user.bio()),
         optionalString(request, "role", user.role()),
         optionalBoolean(request, "is_enabled", user.enabled()));
     if (StringUtils.hasText(stringValue(request.get("password")))) {
@@ -238,7 +280,7 @@ public class UserService {
 
   private LoginResponse tokenResponse(UserAccount user) {
     return new LoginResponse(
-        jwtService.createAdminToken(user.email()),
+        jwtService.createUserToken(user.email(), user.role()),
         "Bearer",
         securityProperties.getTokenTtlMinutes() * 60,
         toUserMap(user, true));
@@ -266,6 +308,7 @@ public class UserService {
     map.put("avatar", user.avatar());
     map.put("badge", user.badge());
     map.put("website", user.website());
+    map.put("bio", user.bio());
     map.put("role", user.role());
     map.put("is_enabled", user.enabled());
     map.put("deleted_at", format(user.deletedAt()));
@@ -317,6 +360,16 @@ public class UserService {
   private String nullableString(Object value) {
     String string = stringValue(value).trim();
     return string.isEmpty() ? null : string;
+  }
+
+  private void validateBadge(String badge) {
+    if (!StringUtils.hasText(badge)) {
+      return;
+    }
+    String normalized = badge.trim().toLowerCase();
+    if (RESERVED_BADGES.contains(normalized) || RESERVED_BADGES.contains(badge.trim())) {
+      throw new BusinessException(400, "Badge is reserved", HttpStatus.BAD_REQUEST);
+    }
   }
 
   private int loginMethodCount(UserAccount user) {

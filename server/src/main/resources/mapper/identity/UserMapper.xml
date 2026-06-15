@@ -4,7 +4,7 @@
   "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.zblog.identity.infrastructure.mybatis.UserMapper">
   <sql id="userColumns">
-    id, email, password_hash, nickname, avatar, badge, website, role, is_enabled,
+    id, email, password_hash, nickname, avatar, badge, website, bio, role, is_enabled,
     deleted_at, last_login, github_id, google_id, qq_id, microsoft_id, feishu_open_id,
     created_at, updated_at
   </sql>
@@ -36,7 +36,7 @@
 
   <update id="updateProfile">
     update users
-    set email = #{email}, nickname = #{nickname}, avatar = #{avatar}, badge = #{badge}, website = #{website}, updated_at = current_timestamp
+    set email = #{email}, nickname = #{nickname}, avatar = #{avatar}, badge = #{badge}, website = #{website}, bio = #{bio}, updated_at = current_timestamp
     where id = #{id}
   </update>
 
@@ -97,7 +97,7 @@
 
   <update id="updateAdmin" parameterType="map">
     update users
-    set email = #{email}, nickname = #{nickname}, avatar = #{avatar}, badge = #{badge}, website = #{website},
+    set email = #{email}, nickname = #{nickname}, avatar = #{avatar}, badge = #{badge}, website = #{website}, bio = #{bio},
       role = #{role}, is_enabled = #{enabled}, updated_at = current_timestamp
     where id = #{id}
   </update>

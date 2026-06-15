@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.scheduler.ScheduledJobMapper">
+  <select id="countJobs" resultType="long">
+    select count(*) from scheduled_jobs
+  </select>
+
+  <select id="listJobs" resultType="map">
+    select *
+    from scheduled_jobs
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="rowsById" resultType="map">
+    select *
+    from scheduled_jobs
+    where id = #{id}
+  </select>
+
+  <update id="updateJob" parameterType="map">
+    update scheduled_jobs
+    set cron_expression = #{cronExpression},
+        parameters = #{parameters},
+        enabled = #{enabled},
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="updateEnabled">
+    update scheduled_jobs
+    set enabled = #{enabled},
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="updateLastRunAt">
+    update scheduled_jobs
+    set last_run_at = current_timestamp,
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <insert id="insertLog" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into scheduled_job_logs (job_id, job_name, handler_name, status)
+    values (#{jobId}, #{jobName}, #{handlerName}, #{status})
+  </insert>
+
+  <update id="finishLog" parameterType="map">
+    update scheduled_job_logs
+    set status = #{status},
+        message = #{message},
+        finished_at = current_timestamp,
+        duration_ms = #{durationMs}
+    where id = #{id}
+  </update>
+
+  <select id="countLogs" resultType="long">
+    select count(*) from scheduled_job_logs where job_id = #{jobId}
+  </select>
+
+  <select id="listLogs" resultType="map">
+    select *
+    from scheduled_job_logs
+    where job_id = #{jobId}
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+</mapper>

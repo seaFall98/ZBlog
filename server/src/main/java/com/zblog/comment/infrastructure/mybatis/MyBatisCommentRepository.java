@@ -17,8 +17,57 @@ public class MyBatisCommentRepository implements CommentRepository {
     this.commentMapper = commentMapper;
   }
 
-  public List<Map<String, Object>> listPublicRows(String targetType, String targetKey) {
-    return commentMapper.listPublicRows(targetType, targetKey);
+  public long countRootRows(String targetType, String targetKey) {
+    return commentMapper.countRootRows(targetType, targetKey);
+  }
+
+  public long countAllPublicRows(String targetType, String targetKey) {
+    return commentMapper.countAllPublicRows(targetType, targetKey);
+  }
+
+  public List<Map<String, Object>> listRootRows(String targetType, String targetKey, int limit, int offset) {
+    return commentMapper.listRootRows(targetType, targetKey, limit, offset);
+  }
+
+  public List<Map<String, Object>> listInitialReplyRows(List<Long> rootIds, int limitPerRoot) {
+    if (rootIds.isEmpty()) {
+      return List.of();
+    }
+    return commentMapper.listInitialReplyRows(rootIds, limitPerRoot);
+  }
+
+  public long countReplies(long rootId) {
+    return commentMapper.countReplies(rootId);
+  }
+
+  public Map<Long, Long> countRepliesForRoots(List<Long> rootIds) {
+    Map<Long, Long> counts = new LinkedHashMap<>();
+    for (Long rootId : rootIds) {
+      counts.put(rootId, 0L);
+    }
+    if (rootIds.isEmpty()) {
+      return counts;
+    }
+    for (Map<String, Object> row : commentMapper.countRepliesForRoots(rootIds)) {
+      Object root = row.get("root_id");
+      Object total = row.get("total");
+      if (root instanceof Number rootNumber && total instanceof Number totalNumber) {
+        counts.put(rootNumber.longValue(), totalNumber.longValue());
+      }
+    }
+    return counts;
+  }
+
+  public List<Map<String, Object>> listReplyRows(long rootId, int limit, int offset) {
+    return commentMapper.listReplyRows(rootId, limit, offset);
+  }
+
+  public long countRootsBefore(String targetType, String targetKey, Object createdAt, long id) {
+    return commentMapper.countRootsBefore(targetType, targetKey, createdAt, id);
+  }
+
+  public long countRepliesBefore(long rootId, Object createdAt, long id) {
+    return commentMapper.countRepliesBefore(rootId, createdAt, id);
   }
 
   public PageResponse<Map<String, Object>> listAdminRows(
@@ -48,8 +97,12 @@ public class MyBatisCommentRepository implements CommentRepository {
       String nickname,
       String email,
       String website,
-      String avatar) {
+      String avatar,
+      long userId,
+      Long rootId) {
     Map<String, Object> params = baseParams(targetType, targetKey, parentId, content, nickname, email, website, avatar);
+    params.put("userId", userId);
+    params.put("rootId", rootId);
     commentMapper.insertComment(params);
     return generatedId(params);
   }
@@ -78,8 +131,8 @@ public class MyBatisCommentRepository implements CommentRepository {
     commentMapper.toggleStatus(id);
   }
 
-  public void delete(long id) {
-    commentMapper.delete(id);
+  public int delete(long id) {
+    return commentMapper.delete(id);
   }
 
   public Map<String, Object> find(long id) {
