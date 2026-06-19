@@ -66,9 +66,10 @@ class P3SchedulerApiTest {
                 "/api/v1/admin/scheduled-jobs/handlers",
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
-                Map.class));
+    Map.class));
     List<?> list = (List<?>) handlers;
-    assertThat(list).singleElement().satisfies(row -> assertThat(((Map<?, ?>) row).get("name")).isEqualTo("notification-cleanup"));
+    List<String> handlerNames = list.stream().map(row -> ((Map<?, ?>) row).get("name").toString()).toList();
+    assertThat(handlerNames).containsExactly("feedback-cleanup", "notification-cleanup");
 
     ResponseEntity<Map> invalidCron =
         restTemplate.exchange(

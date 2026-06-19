@@ -13,6 +13,16 @@ public interface FeedbackMapper {
 
   List<Map<String, Object>> rowsByTicket(@Param("ticketNo") String ticketNo);
 
+  List<Map<String, Object>> rowsByAccessToken(@Param("accessToken") String accessToken);
+
+  long countByUserId(@Param("userId") long userId, @Param("status") String status);
+
+  List<Map<String, Object>> listByUserId(
+      @Param("userId") long userId,
+      @Param("status") String status,
+      @Param("limit") int limit,
+      @Param("offset") int offset);
+
   long countAdmin(
       @Param("keyword") String keyword,
       @Param("reportType") String reportType,
@@ -31,9 +41,19 @@ public interface FeedbackMapper {
 
   List<Map<String, Object>> rowsById(@Param("id") long id);
 
-  void update(@Param("id") long id, @Param("status") String status, @Param("reply") String reply);
+  void updateStatus(@Param("id") long id, @Param("status") String status);
+
+  void updateAdminReply(@Param("id") long id, @Param("reply") String reply);
+
+  void touchUserReply(@Param("id") long id);
+
+  void insertMessage(Map<String, Object> params);
+
+  List<Map<String, Object>> listMessages(@Param("feedbackId") long feedbackId);
 
   void delete(@Param("id") long id);
+
+  int deleteResolvedOrClosedOlderThan(@Param("threshold") LocalDateTime threshold);
 
   List<String> ownerEmailValues();
 }

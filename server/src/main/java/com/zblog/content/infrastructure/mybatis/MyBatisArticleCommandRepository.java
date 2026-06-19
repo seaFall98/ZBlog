@@ -29,13 +29,17 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
       String summary,
       String cover,
       Long categoryId,
-      List<Long> tagIds,
-      String location,
-      boolean top,
-      boolean essence,
-      boolean outdated) {
-    ArticleCommandInsertCommand command =
-        new ArticleCommandInsertCommand(
+	      List<Long> tagIds,
+	      String location,
+	      boolean top,
+	      boolean essence,
+	      boolean outdated,
+	      String copyrightType,
+	      String sourceUrl,
+	      String sourceTitle,
+	      String copyrightLicense) {
+	    ArticleCommandInsertCommand command =
+	        new ArticleCommandInsertCommand(
             title,
             slug,
             markdown,
@@ -44,10 +48,14 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
             summary,
             cover,
             categoryId,
-            location,
-            top,
-            essence,
-            outdated);
+	            location,
+	            top,
+	            essence,
+	            outdated,
+	            copyrightType,
+	            sourceUrl,
+	            sourceTitle,
+	            copyrightLicense);
     articleCommandMapper.insertArticle(command);
     long id = generatedId(command);
     replaceTags(id, tagIds);
@@ -64,13 +72,17 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
       String summary,
       String cover,
       Long categoryId,
-      List<Long> tagIds,
-      String location,
-      boolean top,
-      boolean essence,
-      boolean outdated) {
-    articleCommandMapper.updateArticle(
-        new ArticleCommandUpdateCommand(
+	      List<Long> tagIds,
+	      String location,
+	      boolean top,
+	      boolean essence,
+	      boolean outdated,
+	      String copyrightType,
+	      String sourceUrl,
+	      String sourceTitle,
+	      String copyrightLicense) {
+	    articleCommandMapper.updateArticle(
+	        new ArticleCommandUpdateCommand(
             id,
             title,
             slug,
@@ -80,10 +92,14 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
             summary,
             cover,
             categoryId,
-            location,
-            top,
-            essence,
-            outdated));
+	            location,
+	            top,
+	            essence,
+	            outdated,
+	            copyrightType,
+	            sourceUrl,
+	            sourceTitle,
+	            copyrightLicense));
     replaceTags(id, tagIds);
     return adminQueryRepository.getAdmin(id);
   }

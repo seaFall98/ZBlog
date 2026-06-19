@@ -7,4 +7,6 @@ public interface SubscriptionMailer {
   void sendSubscribeConfirm(Map<String, Object> subscriber);
 
   void sendUnsubscribeConfirm(Map<String, Object> subscriber);
+
+  void sendArticlePublished(Map<String, Object> subscriber, Map<String, Object> article);
 }

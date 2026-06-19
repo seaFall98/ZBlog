@@ -117,6 +117,45 @@
           />
         </el-form-item>
 
+        <el-divider content-position="left">版权信息</el-divider>
+
+        <div class="form-row form-row-three">
+          <el-form-item label="版权类型" prop="copyright_type" class="form-col-1-4">
+            <el-select v-model="formData.copyright_type" style="width: 100%">
+              <el-option label="原创" value="ORIGINAL" />
+              <el-option label="转载" value="REPOST" />
+              <el-option label="翻译" value="TRANSLATION" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="来源标题" prop="source_title" class="form-col-1-4">
+            <el-input
+              v-model="formData.source_title"
+              placeholder="转载/翻译时可填写"
+              clearable
+              maxlength="500"
+            />
+          </el-form-item>
+
+          <el-form-item label="许可协议" prop="copyright_license" class="form-col-1-2">
+            <el-input
+              v-model="formData.copyright_license"
+              placeholder="如 CC BY-NC-SA 4.0，可留空"
+              clearable
+              maxlength="120"
+            />
+          </el-form-item>
+        </div>
+
+        <el-form-item label="来源链接" prop="source_url">
+          <el-input
+            v-model="formData.source_url"
+            placeholder="转载/翻译来源链接，可留空"
+            clearable
+            maxlength="1000"
+          />
+        </el-form-item>
+
         <el-form-item label="文章封面" prop="cover">
           <div class="cover-upload-container">
             <!-- 左侧：上传器/预览 -->
@@ -325,10 +364,14 @@ const formData = reactive({
   slug: '',
   content: '',
   summary: '',
-    cover: '',
+  cover: '',
   category_id: undefined as number | undefined,
   tag_ids: [] as number[],
   location: '',
+  copyright_type: 'ORIGINAL' as 'ORIGINAL' | 'REPOST' | 'TRANSLATION',
+  source_url: '',
+  source_title: '',
+  copyright_license: '',
   is_top: false,
   is_essence: false,
   is_outdated: false,
@@ -343,10 +386,14 @@ const originalData = reactive({
   slug: '',
   content: '',
   summary: '',
-    cover: '',
+  cover: '',
   category_id: undefined as number | undefined,
   tag_ids: [] as number[],
   location: '',
+  copyright_type: 'ORIGINAL' as 'ORIGINAL' | 'REPOST' | 'TRANSLATION',
+  source_url: '',
+  source_title: '',
+  copyright_license: '',
   is_top: false,
   is_essence: false,
   is_outdated: false,
@@ -386,6 +433,10 @@ const saveDraftSilently = async () => {
       category_id: formData.category_id,
       tag_ids: Array.from(formData.tag_ids || []),
       location: formData.location.trim(),
+      copyright_type: formData.copyright_type,
+      source_url: formData.source_url.trim(),
+      source_title: formData.source_title.trim(),
+      copyright_license: formData.copyright_license.trim(),
       is_top: formData.is_top,
       is_essence: formData.is_essence,
       is_outdated: formData.is_outdated,
@@ -427,6 +478,10 @@ watch(
     category_id: formData.category_id,
     tag_ids: formData.tag_ids,
     location: formData.location,
+    copyright_type: formData.copyright_type,
+    source_url: formData.source_url,
+    source_title: formData.source_title,
+    copyright_license: formData.copyright_license,
     is_top: formData.is_top,
     is_essence: formData.is_essence,
   }),
@@ -478,6 +533,10 @@ const fetchArticle = async (id: number) => {
       tag_ids: article.tags?.map(tag => tag.id) || [],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       location: (article as any).location || '',
+      copyright_type: article.copyright_type || 'ORIGINAL',
+      source_url: article.source_url || '',
+      source_title: article.source_title || '',
+      copyright_license: article.copyright_license || '',
       is_top: article.is_top || false,
       is_essence: article.is_essence || false,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -589,6 +648,10 @@ const handleSave = async (autoRedirect: boolean = true) => {
       cover: formData.cover || '',
       tag_ids: Array.from(formData.tag_ids || []),
       location: formData.location.trim(),
+      copyright_type: formData.copyright_type,
+      source_url: formData.source_url.trim(),
+      source_title: formData.source_title.trim(),
+      copyright_license: formData.copyright_license.trim(),
       is_top: formData.is_top,
       is_essence: formData.is_essence,
       is_outdated: formData.is_outdated,
@@ -682,6 +745,10 @@ const hasFormChanged = (): boolean => {
     formData.category_id !== originalData.category_id ||
     !arraysEqual(formData.tag_ids, originalData.tag_ids) ||
     formData.location !== originalData.location ||
+    formData.copyright_type !== originalData.copyright_type ||
+    formData.source_url !== originalData.source_url ||
+    formData.source_title !== originalData.source_title ||
+    formData.copyright_license !== originalData.copyright_license ||
     formData.is_top !== originalData.is_top ||
     formData.is_essence !== originalData.is_essence ||
     formData.is_outdated !== originalData.is_outdated ||

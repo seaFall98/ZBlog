@@ -76,7 +76,14 @@ class P1FeedbackSubscriptionRssApiTest {
         restTemplate.postForEntity(
             "/api/v1/subscribe", Map.of("email", "subscriber@example.com"), Map.class);
     assertThat(subscribeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(data(subscribeResponse).get("active")).isEqualTo(true);
+    Map<?, ?> subscribed = data(subscribeResponse);
+    assertThat(subscribed.get("active")).isEqualTo(false);
+    assertThat(subscribed.get("status")).isEqualTo("PENDING");
+
+    ResponseEntity<Map> confirmResponse =
+        restTemplate.getForEntity(
+            "/api/v1/subscribe/confirm?token=" + subscribed.get("confirmation_token"), Map.class);
+    assertThat(data(confirmResponse).get("active")).isEqualTo(true);
 
     HttpHeaders headers = authenticatedHeaders();
     ResponseEntity<Map> listResponse =

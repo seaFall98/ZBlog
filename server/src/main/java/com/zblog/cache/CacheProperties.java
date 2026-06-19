@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "zblog.cache")
 public class CacheProperties {
 
-  private int articleViewDedupSeconds = 10;
+  private int articleViewDedupSeconds = 5;
   private int collectRateLimitPerMinute = 120;
   private int siteStatsCacheSeconds = 60;
 

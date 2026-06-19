@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MailIcon, SendIcon } from "lucide-react";
+import { toast } from "sonner";
 import { useSiteProfile } from "../../features/site/useSiteProfile";
 import type { SiteMenuView, SiteSocialLinkView } from "../../features/site/types";
+import { subscriptionApi } from "../../features/subscription/subscriptionApi";
 
 function isExternalUrl(value: string): boolean {
   return /^(https?:)?\/\//.test(value) || value.startsWith("mailto:");
@@ -61,13 +63,24 @@ function renderSocialIcon(link: SiteSocialLinkView) {
 export default function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
   const { profile, footerMenus } = useSiteProfile();
   const socialLinks = profile.socialLinks;
 
-  const handleSubscribe = (event: React.FormEvent) => {
+  const handleSubscribe = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (email.trim()) {
+    const value = email.trim();
+    if (!value || subscribing) return;
+    setSubscribing(true);
+    try {
+      await subscriptionApi.subscribe(value);
       setSubscribed(true);
+      setEmail("");
+      toast.success("确认邮件已写入发送队列");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "订阅失败，请稍后重试");
+    } finally {
+      setSubscribing(false);
     }
   };
 
@@ -160,8 +173,10 @@ export default function Footer() {
                 />
                 <button
                   type="submit"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm transition-colors hover:opacity-80"
+                  disabled={subscribing}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ background: "var(--ink)", color: "var(--warm-white)" }}
+                  aria-label="订阅更新"
                 >
                   <SendIcon size={14} />
                 </button>

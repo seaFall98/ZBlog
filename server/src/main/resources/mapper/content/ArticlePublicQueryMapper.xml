@@ -8,7 +8,8 @@
     select a.id, a.title, a.slug, '/posts/' || a.slug as url,
       a.content_html as content, a.content_markdown, a.summary, a.cover_url as cover,
       a.status, a.is_top, a.is_essence, a.is_outdated, a.view_count, a.comment_count,
-      a.location, a.published_at as publish_time, a.updated_at as update_time,
+      a.location, a.copyright_type, a.source_url, a.source_title, a.copyright_license,
+      a.published_at as publish_time, a.updated_at as update_time,
       c.id as category_id, c.name as category_name, c.slug as category_slug
     from articles a
     left join categories c on c.id = a.category_id

@@ -12,10 +12,22 @@ export async function fetchSiteStats(): Promise<SiteStatsView> {
   const data = await apiClient.get<RawRecord>("/stats/site");
   return {
     totalArticles: numberValue(data.total_articles),
+    totalWords: numberValue(data.total_words),
+    totalVisitors: numberValue(data.total_visitors),
     totalVisits: numberValue(data.total_page_views),
+    onlineUsers: numberValue(data.online_users),
+    totalComments: numberValue(data.total_comments),
+    totalFriends: numberValue(data.total_friends),
     totalPhotos: numberValue(data.total_photos),
     totalMessages: numberValue(data.total_guestbook_messages ?? data.total_comments),
     totalMoments: numberValue(data.total_moments),
+    totalCategories: numberValue(data.total_categories),
+    totalTags: numberValue(data.total_tags),
+    todayVisitors: numberValue(data.today_visitors),
+    todayPageviews: numberValue(data.today_pageviews),
+    yesterdayVisitors: numberValue(data.yesterday_visitors),
+    yesterdayPageviews: numberValue(data.yesterday_pageviews),
+    monthPageviews: numberValue(data.month_pageviews),
   };
 }
 

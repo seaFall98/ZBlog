@@ -4,12 +4,37 @@
   "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.zblog.feedback.infrastructure.mybatis.FeedbackMapper">
   <insert id="insertFeedback" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-    insert into feedbacks (ticket_no, report_url, report_type, form_content, email, user_agent, ip)
-    values (#{ticketNo}, #{reportUrl}, #{reportType}, #{formContentJson}, #{email}, #{userAgent}, #{ip})
+    insert into feedbacks (
+      ticket_no, access_token, user_id, report_url, report_type, form_content, email, user_agent, ip, status, updated_at
+    )
+    values (
+      #{ticketNo}, #{accessToken}, #{userId}, #{reportUrl}, #{reportType}, #{formContentJson},
+      #{email}, #{userAgent}, #{ip}, 'PENDING', current_timestamp
+    )
   </insert>
 
   <select id="rowsByTicket" resultType="map">
     select * from feedbacks where ticket_no = #{ticketNo} and deleted_at is null
+  </select>
+
+  <select id="rowsByAccessToken" resultType="map">
+    select * from feedbacks where access_token = #{accessToken} and deleted_at is null
+  </select>
+
+  <select id="countByUserId" resultType="long">
+    select count(*) from feedbacks
+    where user_id = #{userId}
+      and deleted_at is null
+      <if test="status != null">and status = #{status}</if>
+  </select>
+
+  <select id="listByUserId" resultType="map">
+    select * from feedbacks
+    where user_id = #{userId}
+      and deleted_at is null
+      <if test="status != null">and status = #{status}</if>
+    order by updated_at desc, feedback_time desc, id desc
+    limit #{limit} offset #{offset}
   </select>
 
   <sql id="adminWhere">
@@ -33,7 +58,7 @@
   <select id="listAdmin" resultType="map">
     select * from feedbacks
     <include refid="adminWhere"/>
-    order by feedback_time desc, id desc
+    order by updated_at desc, feedback_time desc, id desc
     limit #{limit} offset #{offset}
   </select>
 
@@ -41,15 +66,57 @@
     select * from feedbacks where id = #{id} and deleted_at is null
   </select>
 
-  <update id="update">
+  <update id="updateStatus">
     update feedbacks
-    set status = #{status}, admin_reply = #{reply},
-      reply_time = case when #{reply} &lt;&gt; '' then current_timestamp else reply_time end
+    set status = #{status},
+      updated_at = current_timestamp,
+      resolved_at = case when #{status} = 'RESOLVED' then current_timestamp else resolved_at end,
+      closed_at = case when #{status} = 'CLOSED' then current_timestamp else closed_at end
     where id = #{id} and deleted_at is null
   </update>
 
+  <update id="updateAdminReply">
+    update feedbacks
+    set admin_reply = #{reply},
+      reply_time = case when #{reply} &lt;&gt; '' then current_timestamp else reply_time end,
+      last_admin_reply_at = case when #{reply} &lt;&gt; '' then current_timestamp else last_admin_reply_at end,
+      updated_at = current_timestamp
+    where id = #{id} and deleted_at is null
+  </update>
+
+  <update id="touchUserReply">
+    update feedbacks
+    set last_user_reply_at = current_timestamp,
+      updated_at = current_timestamp
+    where id = #{id} and deleted_at is null
+  </update>
+
+  <insert id="insertMessage" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into feedback_messages (
+      feedback_id, actor_type, actor_user_id, message_type, content, attachments_json, from_status, to_status
+    )
+    values (
+      #{feedbackId}, #{actorType}, #{actorUserId}, #{messageType}, #{content}, #{attachmentsJson}, #{fromStatus}, #{toStatus}
+    )
+  </insert>
+
+  <select id="listMessages" resultType="map">
+    select *
+    from feedback_messages
+    where feedback_id = #{feedbackId}
+    order by created_at asc, id asc
+  </select>
+
   <update id="delete">
     update feedbacks set deleted_at = current_timestamp where id = #{id}
+  </update>
+
+  <update id="deleteResolvedOrClosedOlderThan">
+    update feedbacks
+    set deleted_at = current_timestamp
+    where deleted_at is null
+      and status in ('RESOLVED', 'CLOSED')
+      and coalesce(closed_at, resolved_at, updated_at, reply_time, feedback_time) &lt; #{threshold}
   </update>
 
   <select id="ownerEmailValues" resultType="string">

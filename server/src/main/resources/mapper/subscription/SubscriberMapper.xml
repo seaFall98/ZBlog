@@ -8,13 +8,56 @@
   </select>
 
   <insert id="insertSubscriber" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-    insert into subscribers (email, unsubscribe_token, active)
-    values (#{email}, #{unsubscribeToken}, true)
+    insert into subscribers (email, unsubscribe_token, active, status, confirmation_token)
+    values (#{email}, #{unsubscribeToken}, true, 'ACTIVE', #{unsubscribeToken})
   </insert>
+
+  <insert id="insertSubscriberV2" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    insert into subscribers (email, unsubscribe_token, active, status, confirmation_token)
+    values (#{email}, #{unsubscribeToken}, false, 'PENDING', #{confirmationToken})
+  </insert>
+
+  <update id="resetPending">
+    update subscribers
+    set active = false,
+        status = 'PENDING',
+        unsubscribe_token = #{unsubscribeToken},
+        confirmation_token = #{confirmationToken},
+        confirmed_at = null,
+        unsubscribed_at = null,
+        bounced_at = null,
+        deleted_at = null,
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="activate">
+    update subscribers
+    set active = true,
+        status = 'ACTIVE',
+        confirmed_at = coalesce(confirmed_at, current_timestamp),
+        unsubscribed_at = null,
+        bounced_at = null,
+        deleted_at = null,
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <select id="idsByConfirmationToken" resultType="long">
+    select id
+    from subscribers
+    where confirmation_token = #{token} and deleted_at is null
+  </select>
 
   <update id="reactivate">
     update subscribers
-    set active = true, deleted_at = null, updated_at = current_timestamp
+    set active = true,
+        status = 'ACTIVE',
+        confirmed_at = coalesce(confirmed_at, current_timestamp),
+        unsubscribed_at = null,
+        bounced_at = null,
+        deleted_at = null,
+        updated_at = current_timestamp
     where id = #{id}
   </update>
 
@@ -26,7 +69,10 @@
 
   <update id="deactivate">
     update subscribers
-    set active = false, updated_at = current_timestamp
+    set active = false,
+        status = 'UNSUBSCRIBED',
+        unsubscribed_at = current_timestamp,
+        updated_at = current_timestamp
     where id = #{id}
   </update>
 
@@ -34,22 +80,91 @@
     select count(*) from subscribers where deleted_at is null
   </select>
 
+  <select id="countAdminRows" resultType="long">
+    select count(*)
+    from subscribers
+    <where>
+      deleted_at is null
+      <if test="keyword != null">
+        and lower(email) like #{keyword}
+      </if>
+      <if test="status != null">
+        and status = #{status}
+      </if>
+    </where>
+  </select>
+
   <select id="listAdminRows" resultType="map">
-    select id, email, active, created_at, updated_at
+    select id, email, unsubscribe_token, active, status, confirmation_token, confirmed_at,
+      unsubscribed_at, bounced_at, failure_count, last_delivery_status, last_delivery_error,
+      last_delivery_at, created_at, updated_at
     from subscribers
     where deleted_at is null
     order by created_at desc, id desc
     limit #{limit} offset #{offset}
   </select>
 
+  <select id="listAdminRowsV2" resultType="map">
+    select id, email, unsubscribe_token, active, status, confirmation_token, confirmed_at,
+      unsubscribed_at, bounced_at, failure_count, last_delivery_status, last_delivery_error,
+      last_delivery_at, created_at, updated_at
+    from subscribers
+    <where>
+      deleted_at is null
+      <if test="keyword != null">
+        and lower(email) like #{keyword}
+      </if>
+      <if test="status != null">
+        and status = #{status}
+      </if>
+    </where>
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="listActiveRows" resultType="map">
+    select id, email, unsubscribe_token, status
+    from subscribers
+    where deleted_at is null and status = 'ACTIVE'
+    order by id asc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <update id="recordDeliveryQueued">
+    update subscribers
+    set last_delivery_status = 'queued',
+        last_delivery_error = null,
+        last_delivery_at = current_timestamp,
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
+  <update id="markBounced">
+    update subscribers
+    set active = false,
+        status = 'BOUNCED',
+        bounced_at = current_timestamp,
+        failure_count = failure_count + 1,
+        last_delivery_status = 'failed',
+        last_delivery_error = #{errorMessage},
+        last_delivery_at = current_timestamp,
+        updated_at = current_timestamp
+    where id = #{id}
+  </update>
+
   <update id="delete">
     update subscribers
-    set deleted_at = current_timestamp, active = false, updated_at = current_timestamp
+    set deleted_at = current_timestamp,
+        active = false,
+        status = 'UNSUBSCRIBED',
+        updated_at = current_timestamp
     where id = #{id}
   </update>
 
   <select id="rowsById" resultType="map">
-    select id, email, unsubscribe_token, active, created_at, updated_at
+    select id, email, unsubscribe_token, active, status, confirmation_token, confirmed_at,
+      unsubscribed_at, bounced_at, failure_count, last_delivery_status, last_delivery_error,
+      last_delivery_at, created_at, updated_at
     from subscribers
     where id = #{id} and deleted_at is null
   </select>

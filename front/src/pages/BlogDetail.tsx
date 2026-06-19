@@ -1,19 +1,74 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CalendarIcon, ClockIcon, TagIcon, ArrowLeftIcon, Share2Icon, BookmarkIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, EyeIcon, TagIcon, ArrowLeftIcon, Share2Icon, BookmarkIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import ArticleContent from "../features/blog/ArticleContent";
 import ArticleToc from "../features/blog/ArticleToc";
+import type { PostView } from "../features/blog/types";
 import { usePost } from "../features/blog/usePost";
 import CommentSection from "../features/comments/CommentSection";
+import { usePageViewCollector } from "../features/stats/usePageViewCollector";
 import { toDateText } from "../lib/text";
 import { toast } from "sonner";
+
+function CopyrightNotice({ post }: { post: PostView }) {
+  const sourceLabel = post.sourceTitle || post.sourceUrl;
+
+  if (post.copyrightType === "REPOST") {
+    return (
+      <div className="mt-12 p-5 text-sm leading-relaxed" style={{ background: "var(--section-bg)", border: "1px solid var(--warm-border)", color: "var(--muted-ink)" }}>
+        本文为转载内容，原文
+        {post.sourceUrl ? (
+          <a href={post.sourceUrl} target="_blank" rel="noreferrer" className="mx-1 underline underline-offset-4" style={{ color: "var(--ink)" }}>
+            {sourceLabel || "链接"}
+          </a>
+        ) : sourceLabel ? (
+          <span className="mx-1" style={{ color: "var(--ink)" }}>{sourceLabel}</span>
+        ) : (
+          "信息"
+        )}
+        归原作者所有。{post.copyrightLicense ? `许可协议：${post.copyrightLicense}` : "本站仅作整理与引用。"}
+      </div>
+    );
+  }
+
+  if (post.copyrightType === "TRANSLATION") {
+    return (
+      <div className="mt-12 p-5 text-sm leading-relaxed" style={{ background: "var(--section-bg)", border: "1px solid var(--warm-border)", color: "var(--muted-ink)" }}>
+        本文为翻译内容，参考来源
+        {post.sourceUrl ? (
+          <a href={post.sourceUrl} target="_blank" rel="noreferrer" className="mx-1 underline underline-offset-4" style={{ color: "var(--ink)" }}>
+            {sourceLabel || "链接"}
+          </a>
+        ) : sourceLabel ? (
+          <span className="mx-1" style={{ color: "var(--ink)" }}>{sourceLabel}</span>
+        ) : (
+          "未填写"
+        )}
+        。{post.copyrightLicense ? `许可协议：${post.copyrightLicense}` : "翻译仅用于学习与交流。"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-12 p-5 text-sm leading-relaxed" style={{ background: "var(--section-bg)", border: "1px solid var(--warm-border)", color: "var(--muted-ink)" }}>
+      本文为原创文章，转载请注明出处。{post.copyrightLicense ? `许可协议：${post.copyrightLicense}` : ""}
+    </div>
+  );
+}
 
 export default function BlogDetail() {
   const navigate = useNavigate();
   const { slug } = useParams();
   const { post, related, loading } = usePost(slug ?? "");
   const [bookmarked, setBookmarked] = useState(false);
+  const [displayViewCount, setDisplayViewCount] = useState(0);
+
+  useEffect(() => {
+    setDisplayViewCount(post?.viewCount ?? 0);
+  }, [post?.id, post?.viewCount]);
+
+  usePageViewCollector(post?.id, { onArticleViewCount: setDisplayViewCount });
 
   const handleShare = () => {
     toast.success("链接已复制到剪贴板");
@@ -105,6 +160,9 @@ export default function BlogDetail() {
                 <span className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-ink)" }}>
                   <ClockIcon size={11} />{post.readTime} 分钟阅读
                 </span>
+                <span className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-ink)" }}>
+                  <EyeIcon size={11} />{displayViewCount.toLocaleString()} 次阅读
+                </span>
               </div>
 
               {/* Title */}
@@ -117,6 +175,8 @@ export default function BlogDetail() {
 
               {/* Content */}
               <ArticleContent post={post} />
+
+              <CopyrightNotice post={post} />
 
               {/* Tags */}
               {post.tags.length > 0 && (

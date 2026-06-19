@@ -9,6 +9,7 @@ import {
   ImageIcon,
   LogOutIcon,
   MenuIcon,
+  MessageSquareTextIcon,
   SearchIcon,
   TagIcon,
   type LucideIcon,
@@ -247,6 +248,14 @@ export default function Header({ variant = "default" }: HeaderProps) {
           {authenticated && user ? (
             <div className="flex items-center gap-2">
               <Link
+                to="/feedback/mine"
+                className="flex h-7 w-7 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:text-foreground"
+                style={{ borderColor: "var(--warm-border)" }}
+                aria-label="我的反馈"
+              >
+                <MessageSquareTextIcon size={15} />
+              </Link>
+              <Link
                 to="/notifications"
                 className="relative flex h-7 w-7 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:text-foreground"
                 style={{ borderColor: "var(--warm-border)" }}
@@ -352,6 +361,9 @@ export default function Header({ variant = "default" }: HeaderProps) {
                         {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     )}
+                  </Link>
+                  <Link to="/feedback/mine" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
+                    我的反馈
                   </Link>
                   <Link to="/profile" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
                     个人资料

@@ -21,6 +21,11 @@ export type PostView = {
   publishedAt: string;
   coverUrl: string;
   readTime: number;
+  viewCount: number;
+  copyrightType: "ORIGINAL" | "REPOST" | "TRANSLATION";
+  sourceUrl: string;
+  sourceTitle: string;
+  copyrightLicense: string;
   featured: boolean;
   source: DataSource;
 };

@@ -36,7 +36,7 @@ mybatis:
 
 zblog:
   cache:
-    article-view-dedup-seconds: ${ZBLOG_ARTICLE_VIEW_DEDUP_SECONDS:10}
+    article-view-dedup-seconds: ${ZBLOG_ARTICLE_VIEW_DEDUP_SECONDS:5}
     collect-rate-limit-per-minute: ${ZBLOG_COLLECT_RATE_LIMIT_PER_MINUTE:120}
     site-stats-cache-seconds: ${ZBLOG_SITE_STATS_CACHE_SECONDS:60}
   mq:

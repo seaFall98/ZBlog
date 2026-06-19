@@ -63,7 +63,6 @@ public class SecurityConfig {
                         "/api/v1/auth/google",
                         "/api/v1/auth/qq",
                         "/api/v1/auth/microsoft",
-                        "/api/v1/feedback/**",
                         "/api/v1/upload",
                         "/api/v1/collect",
                         "/api/v1/subscribe/**",
@@ -87,6 +86,12 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/feedback")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/feedback/ticket/**", "/api/v1/feedback/token/**")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/feedback/*/messages")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/comments/**")
                     .permitAll()

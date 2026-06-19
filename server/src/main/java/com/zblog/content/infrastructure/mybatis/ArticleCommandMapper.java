@@ -31,9 +31,13 @@ public interface ArticleCommandMapper {
     private final String cover;
     private final Long categoryId;
     private final String location;
-    private final boolean top;
-    private final boolean essence;
-    private final boolean outdated;
+	    private final boolean top;
+	    private final boolean essence;
+	    private final boolean outdated;
+	    private final String copyrightType;
+	    private final String sourceUrl;
+	    private final String sourceTitle;
+	    private final String copyrightLicense;
 
     ArticleCommandInsertCommand(
         String title,
@@ -44,10 +48,14 @@ public interface ArticleCommandMapper {
         String summary,
         String cover,
         Long categoryId,
-        String location,
-        boolean top,
-        boolean essence,
-        boolean outdated) {
+	        String location,
+	        boolean top,
+	        boolean essence,
+	        boolean outdated,
+	        String copyrightType,
+	        String sourceUrl,
+	        String sourceTitle,
+	        String copyrightLicense) {
       this.title = title;
       this.slug = slug;
       this.markdown = markdown;
@@ -57,9 +65,13 @@ public interface ArticleCommandMapper {
       this.cover = cover;
       this.categoryId = categoryId;
       this.location = location;
-      this.top = top;
-      this.essence = essence;
-      this.outdated = outdated;
+	      this.top = top;
+	      this.essence = essence;
+	      this.outdated = outdated;
+	      this.copyrightType = copyrightType;
+	      this.sourceUrl = sourceUrl;
+	      this.sourceTitle = sourceTitle;
+	      this.copyrightLicense = copyrightLicense;
     }
 
     public Long getId() {
@@ -114,10 +126,26 @@ public interface ArticleCommandMapper {
       return essence;
     }
 
-    public boolean isOutdated() {
-      return outdated;
-    }
-  }
+	    public boolean isOutdated() {
+	      return outdated;
+	    }
+
+	    public String getCopyrightType() {
+	      return copyrightType;
+	    }
+
+	    public String getSourceUrl() {
+	      return sourceUrl;
+	    }
+
+	    public String getSourceTitle() {
+	      return sourceTitle;
+	    }
+
+	    public String getCopyrightLicense() {
+	      return copyrightLicense;
+	    }
+	  }
 
   record ArticleCommandUpdateCommand(
       long id,
@@ -129,8 +157,12 @@ public interface ArticleCommandMapper {
       String summary,
       String cover,
       Long categoryId,
-      String location,
-      boolean top,
-      boolean essence,
-      boolean outdated) {}
+	      String location,
+	      boolean top,
+	      boolean essence,
+	      boolean outdated,
+	      String copyrightType,
+	      String sourceUrl,
+	      String sourceTitle,
+	      String copyrightLicense) {}
 }

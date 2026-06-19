@@ -8,6 +8,7 @@ import com.zblog.content.application.port.ArticleEventPublisher;
 import com.zblog.content.application.port.ArticleAdminQueryRepository;
 import com.zblog.content.application.port.ArticleCommandRepository;
 import com.zblog.content.application.port.ArticleSearchProjectionRepository;
+import com.zblog.content.domain.ArticleCopyrightType;
 import java.util.List;
 import java.util.Map;
 import org.springframework.dao.DuplicateKeyException;
@@ -135,7 +136,11 @@ public class ArticleService {
               nullableText(request, "location"),
               bool(request, "is_top"),
               bool(request, "is_essence"),
-              bool(request, "is_outdated"));
+              bool(request, "is_outdated"),
+              copyrightType(request, "ORIGINAL"),
+              textOrDefault(request, "source_url", ""),
+              textOrDefault(request, "source_title", ""),
+              textOrDefault(request, "copyright_license", ""));
     } catch (DuplicateKeyException exception) {
       throw new BusinessException(40901, "Article slug already exists: " + slug, HttpStatus.CONFLICT);
     }
@@ -170,7 +175,11 @@ public class ArticleService {
               nullableTextOrDefault(request, "location", value(existing, "location")),
               boolOrDefault(request, "is_top", (Boolean) existing.get("is_top")),
               boolOrDefault(request, "is_essence", (Boolean) existing.get("is_essence")),
-              boolOrDefault(request, "is_outdated", (Boolean) existing.get("is_outdated")));
+              boolOrDefault(request, "is_outdated", (Boolean) existing.get("is_outdated")),
+              copyrightType(request, value(existing, "copyright_type")),
+              textOrExisting(request, "source_url", value(existing, "source_url")),
+              textOrExisting(request, "source_title", value(existing, "source_title")),
+              textOrExisting(request, "copyright_license", value(existing, "copyright_license")));
     } catch (DuplicateKeyException exception) {
       throw new BusinessException(40901, "Article slug already exists: " + slug, HttpStatus.CONFLICT);
     }
@@ -240,6 +249,18 @@ public class ArticleService {
   private String textOrDefault(Map<String, Object> request, String key, String defaultValue) {
     String value = text(request, key);
     return value.isBlank() ? defaultValue : value;
+  }
+
+  private String textOrExisting(Map<String, Object> request, String key, String defaultValue) {
+    return request.containsKey(key) ? text(request, key) : defaultValue;
+  }
+
+  private String copyrightType(Map<String, Object> request, String defaultValue) {
+    try {
+      return ArticleCopyrightType.from(textOrDefault(request, "copyright_type", defaultValue)).name();
+    } catch (IllegalArgumentException exception) {
+      throw new BusinessException(40090, "Unsupported article copyright type", HttpStatus.BAD_REQUEST);
+    }
   }
 
   private String nullableText(Map<String, Object> request, String key) {

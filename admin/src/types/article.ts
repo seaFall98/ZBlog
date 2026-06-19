@@ -15,6 +15,10 @@ export interface Article {
   view_count: number;
   comment_count: number;
   location?: string;
+  copyright_type?: 'ORIGINAL' | 'REPOST' | 'TRANSLATION';
+  source_url?: string;
+  source_title?: string;
+  copyright_license?: string;
   publish_time?: string;
   update_time?: string;
   category?: {
@@ -37,6 +41,10 @@ export interface CreateArticleRequest {
   category_id?: number;
   tag_ids?: number[];
   location?: string;
+  copyright_type?: 'ORIGINAL' | 'REPOST' | 'TRANSLATION';
+  source_url?: string;
+  source_title?: string;
+  copyright_license?: string;
   is_top?: boolean;
   is_essence?: boolean;
   is_outdated?: boolean; // 是否过时
@@ -52,6 +60,10 @@ export interface UpdateArticleRequest {
   category_id?: number;
   tag_ids?: number[];
   location?: string;
+  copyright_type?: 'ORIGINAL' | 'REPOST' | 'TRANSLATION';
+  source_url?: string;
+  source_title?: string;
+  copyright_license?: string;
   is_top?: boolean;
   is_essence?: boolean;
   is_outdated?: boolean; // 是否过时

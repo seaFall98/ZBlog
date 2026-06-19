@@ -33,11 +33,18 @@ public class SubscriptionController {
     return ApiResponse.ok(subscriptionService.unsubscribe(token));
   }
 
+  @GetMapping("/subscribe/confirm")
+  public ApiResponse<Map<String, Object>> confirm(@RequestParam String token) {
+    return ApiResponse.ok(subscriptionService.confirm(token));
+  }
+
   @GetMapping("/admin/subscribers")
   public ApiResponse<PageResponse<Map<String, Object>>> listAdmin(
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(name = "page_size", defaultValue = "10") int pageSize) {
-    return ApiResponse.ok(subscriptionService.listAdmin(page, pageSize));
+      @RequestParam(name = "page_size", defaultValue = "10") int pageSize,
+      @RequestParam(required = false) String keyword,
+      @RequestParam(required = false) String status) {
+    return ApiResponse.ok(subscriptionService.listAdmin(page, pageSize, keyword, status));
   }
 
   @DeleteMapping("/admin/subscribers/{id}")
