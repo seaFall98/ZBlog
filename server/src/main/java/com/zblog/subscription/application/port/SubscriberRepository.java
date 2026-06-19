@@ -28,7 +28,7 @@ public interface SubscriberRepository {
 
   PageResponse<Map<String, Object>> listAdmin(int page, int pageSize, String keyword, String status);
 
-  List<Map<String, Object>> listActiveSubscribers(int limit, int offset);
+  List<Map<String, Object>> listActiveSubscribersAfterId(int limit, long afterId);
 
   void recordDeliveryQueued(long id);
 

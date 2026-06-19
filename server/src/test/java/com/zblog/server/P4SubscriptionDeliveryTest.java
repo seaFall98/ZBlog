@@ -40,7 +40,8 @@ class P4SubscriptionDeliveryTest {
 
     Map<?, ?> activeSubscribe = data(restTemplate.postForEntity("/api/v1/subscribe", Map.of("email", activeEmail), Map.class));
     assertThat(activeSubscribe.get("status")).isEqualTo("PENDING");
-    assertThat(activeSubscribe.get("confirmation_token")).isNotNull();
+    assertThat(activeSubscribe.keySet().stream().map(Object::toString).toList())
+        .doesNotContain("confirmation_token", "unsubscribe_token");
 
     data(restTemplate.postForEntity("/api/v1/subscribe", Map.of("email", pendingEmail), Map.class));
 
@@ -83,6 +84,63 @@ class P4SubscriptionDeliveryTest {
         jdbcTemplate.queryForObject("select last_delivery_status from subscribers where email = ?", String.class, activeEmail);
     assertThat(activeStatus).isEqualTo("queued");
     assertThat(articleId).isPositive();
+  }
+
+  @Test
+  void publicSubscribeDoesNotDowngradeActiveSubscriberOrExposeTokens() {
+    String email = "p4-subscription-existing-active@example.com";
+
+    data(restTemplate.postForEntity("/api/v1/subscribe", Map.of("email", email), Map.class));
+    String confirmToken =
+        jdbcTemplate.queryForObject(
+            "select confirmation_token from subscribers where email = ?", String.class, email);
+    data(restTemplate.getForEntity("/api/v1/subscribe/confirm?token=" + confirmToken, Map.class));
+
+    Map<?, ?> resubscribe =
+        data(restTemplate.postForEntity("/api/v1/subscribe", Map.of("email", email), Map.class));
+
+    assertThat(resubscribe.get("status")).isEqualTo("ACTIVE");
+    assertThat(resubscribe.get("active")).isEqualTo(true);
+    assertThat(resubscribe.keySet().stream().map(Object::toString).toList())
+        .doesNotContain("confirmation_token", "unsubscribe_token");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "select status from subscribers where email = ?", String.class, email))
+        .isEqualTo("ACTIVE");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                select count(*) from mail_outbox
+                where recipient = ? and mail_type = 'subscribe_confirm'
+                """,
+                Long.class,
+                email))
+        .isEqualTo(1L);
+  }
+
+  @Test
+  void publicSubscribeRestoresSoftDeletedSubscriberWithoutExposingTokens() {
+    String email = "p4-subscription-soft-deleted@example.com";
+    jdbcTemplate.update(
+        """
+        insert into subscribers (email, unsubscribe_token, active, status, confirmation_token, deleted_at)
+        values (?, 'p4-soft-deleted-unsubscribe-token', false, 'UNSUBSCRIBED',
+          'p4-soft-deleted-confirmation-token', current_timestamp)
+        """,
+        email);
+
+    Map<?, ?> resubscribe =
+        data(restTemplate.postForEntity("/api/v1/subscribe", Map.of("email", email), Map.class));
+
+    assertThat(resubscribe.get("status")).isEqualTo("PENDING");
+    assertThat(resubscribe.keySet().stream().map(Object::toString).toList())
+        .doesNotContain("confirmation_token", "unsubscribe_token");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "select count(*) from subscribers where email = ? and deleted_at is null",
+                Long.class,
+                email))
+        .isEqualTo(1L);
   }
 
   private long createArticle(HttpHeaders headers, String slug, String title, boolean publish) {

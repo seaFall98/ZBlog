@@ -46,6 +46,21 @@ class P4FeedbackBackendTest {
     assertThat(submitted.get("status")).isEqualTo("PENDING");
     assertThat((List<?>) submitted.get("messages")).hasSize(1);
 
+    Map<?, ?> ticketSummary =
+        data(
+            restTemplate.getForEntity(
+                "/api/v1/feedback/ticket/" + submitted.get("ticket_no"), Map.class));
+    assertThat(ticketSummary.get("ticket_no")).isEqualTo(submitted.get("ticket_no"));
+    assertThat(ticketSummary.get("status")).isEqualTo("PENDING");
+    assertThat(ticketSummary.keySet().stream().map(Object::toString).toList())
+        .doesNotContain("access_token", "form_content", "messages", "email", "ip", "user_agent");
+
+    Map<?, ?> tokenDetail =
+        data(
+            restTemplate.getForEntity(
+                "/api/v1/feedback/token/" + submitted.get("access_token"), Map.class));
+    assertThat((List<?>) tokenDetail.get("messages")).hasSize(1);
+
     Map<?, ?> mine =
         data(
             restTemplate.exchange(

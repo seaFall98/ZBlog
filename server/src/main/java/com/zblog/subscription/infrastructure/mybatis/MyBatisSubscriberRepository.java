@@ -80,8 +80,8 @@ public class MyBatisSubscriberRepository implements SubscriberRepository {
     return new PageResponse<>(rows, subscriberMapper.countAdminRows(like, normalizedStatus), page, pageSize);
   }
 
-  public List<Map<String, Object>> listActiveSubscribers(int limit, int offset) {
-    List<Map<String, Object>> rows = subscriberMapper.listActiveRows(limit, offset);
+  public List<Map<String, Object>> listActiveSubscribersAfterId(int limit, long afterId) {
+    List<Map<String, Object>> rows = subscriberMapper.listActiveRowsAfterId(limit, afterId);
     rows.forEach(this::normalizeRow);
     return rows;
   }

@@ -41,7 +41,7 @@ public interface SubscriberMapper {
       @Param("limit") int limit,
       @Param("offset") int offset);
 
-  List<Map<String, Object>> listActiveRows(@Param("limit") int limit, @Param("offset") int offset);
+  List<Map<String, Object>> listActiveRowsAfterId(@Param("limit") int limit, @Param("afterId") long afterId);
 
   void recordDeliveryQueued(@Param("id") long id);
 

@@ -38,15 +38,23 @@ public class SubscriptionService {
     String confirmationToken = token();
     List<Long> existing = subscriberRepository.findIdsByEmail(email);
     long id;
+    Map<String, Object> subscriber;
     if (existing.isEmpty()) {
       id = subscriberRepository.create(email, unsubscribeToken, confirmationToken);
+      subscriber = subscriberRepository.get(id);
+      subscriptionMailer.sendSubscribeConfirm(subscriber);
+      return publicSubscriber(subscriber);
     } else {
       id = existing.getFirst();
+      subscriber = subscriberOrNull(id);
+      if (subscriber != null && "ACTIVE".equalsIgnoreCase(text(subscriber, "status"))) {
+        return publicSubscriber(subscriber);
+      }
       subscriberRepository.resetPending(id, unsubscribeToken, confirmationToken);
+      subscriber = subscriberRepository.get(id);
+      subscriptionMailer.sendSubscribeConfirm(subscriber);
+      return publicSubscriber(subscriber);
     }
-    Map<String, Object> subscriber = subscriberRepository.get(id);
-    subscriptionMailer.sendSubscribeConfirm(subscriber);
-    return subscriber;
   }
 
   @Transactional
@@ -57,7 +65,7 @@ public class SubscriptionService {
     }
     long id = ids.getFirst();
     subscriberRepository.activate(id);
-    return subscriberRepository.get(id);
+    return publicSubscriber(subscriberRepository.get(id));
   }
 
   @Transactional
@@ -70,7 +78,7 @@ public class SubscriptionService {
     subscriberRepository.deactivate(id);
     Map<String, Object> subscriber = subscriberRepository.get(id);
     subscriptionMailer.sendUnsubscribeConfirm(subscriber);
-    return subscriber;
+    return publicSubscriber(subscriber);
   }
 
   public PageResponse<Map<String, Object>> listAdmin(int page, int pageSize) {
@@ -87,27 +95,29 @@ public class SubscriptionService {
 
   @Transactional
   public Map<String, Object> enqueueArticlePublished(Map<String, Object> article) {
-    int offset = 0;
+    long afterId = 0;
     int total = 0;
     int queued = 0;
     int failed = 0;
     while (true) {
-      List<Map<String, Object>> subscribers = subscriberRepository.listActiveSubscribers(DELIVERY_BATCH_SIZE, offset);
+      List<Map<String, Object>> subscribers =
+          subscriberRepository.listActiveSubscribersAfterId(DELIVERY_BATCH_SIZE, afterId);
       if (subscribers.isEmpty()) {
         break;
       }
       for (Map<String, Object> subscriber : subscribers) {
+        long subscriberId = ((Number) subscriber.get("id")).longValue();
+        afterId = subscriberId;
         total++;
         try {
           subscriptionMailer.sendArticlePublished(subscriber, article);
-          subscriberRepository.recordDeliveryQueued(((Number) subscriber.get("id")).longValue());
+          subscriberRepository.recordDeliveryQueued(subscriberId);
           queued++;
         } catch (RuntimeException exception) {
-          subscriberRepository.markBounced(((Number) subscriber.get("id")).longValue(), exception.getMessage());
+          subscriberRepository.markBounced(subscriberId, exception.getMessage());
           failed++;
         }
       }
-      offset += subscribers.size();
       if (subscribers.size() < DELIVERY_BATCH_SIZE) {
         break;
       }
@@ -126,5 +136,23 @@ public class SubscriptionService {
 
   private String token() {
     return UUID.randomUUID().toString().replace("-", "");
+  }
+
+  private Map<String, Object> subscriberOrNull(long id) {
+    try {
+      return subscriberRepository.get(id);
+    } catch (BusinessException exception) {
+      if (exception.status() == HttpStatus.NOT_FOUND) {
+        return null;
+      }
+      throw exception;
+    }
+  }
+
+  private Map<String, Object> publicSubscriber(Map<String, Object> subscriber) {
+    Map<String, Object> safe = new LinkedHashMap<>(subscriber);
+    safe.remove("confirmation_token");
+    safe.remove("unsubscribe_token");
+    return safe;
   }
 }

@@ -122,12 +122,12 @@
     limit #{limit} offset #{offset}
   </select>
 
-  <select id="listActiveRows" resultType="map">
+  <select id="listActiveRowsAfterId" resultType="map">
     select id, email, unsubscribe_token, status
     from subscribers
-    where deleted_at is null and status = 'ACTIVE'
+    where deleted_at is null and status = 'ACTIVE' and id &gt; #{afterId}
     order by id asc
-    limit #{limit} offset #{offset}
+    limit #{limit}
   </select>
 
   <update id="recordDeliveryQueued">

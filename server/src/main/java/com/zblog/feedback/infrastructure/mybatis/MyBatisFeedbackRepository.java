@@ -56,7 +56,7 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
   public Map<String, Object> getByTicket(String ticketNo) {
     return feedbackMapper.rowsByTicket(ticketNo).stream()
         .findFirst()
-        .map(this::mapRow)
+        .map(this::mapPublicTicketRow)
         .orElseThrow(() -> new BusinessException(404, "Feedback not found", HttpStatus.NOT_FOUND));
   }
 
@@ -164,6 +164,20 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
     row.put("status_tone", status.tone());
     row.put("allowed_next_statuses", status.allowedNext().stream().map(FeedbackStatus::name).toList());
     row.put("messages", listMessages(((Number) source.get("id")).longValue()));
+    return row;
+  }
+
+  private Map<String, Object> mapPublicTicketRow(Map<String, Object> source) {
+    FeedbackStatus status = FeedbackStatus.from(string(source.get("status")));
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("ticket_no", source.get("ticket_no"));
+    row.put("report_type", source.get("report_type"));
+    row.put("report_url", source.get("report_url"));
+    row.put("status", status.name());
+    row.put("status_label", status.label());
+    row.put("status_tone", status.tone());
+    row.put("feedback_time", source.get("feedback_time"));
+    row.put("updated_at", source.get("updated_at"));
     return row;
   }
 
