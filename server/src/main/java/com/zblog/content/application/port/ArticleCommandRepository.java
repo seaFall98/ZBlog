@@ -14,11 +14,15 @@ public interface ArticleCommandRepository {
       String summary,
       String cover,
       Long categoryId,
-      List<Long> tagIds,
-      String location,
-      boolean top,
-      boolean essence,
-      boolean outdated);
+	      List<Long> tagIds,
+	      String location,
+	      boolean top,
+	      boolean essence,
+	      boolean outdated,
+	      String copyrightType,
+	      String sourceUrl,
+	      String sourceTitle,
+	      String copyrightLicense);
 
   Map<String, Object> update(
       long id,
@@ -30,11 +34,15 @@ public interface ArticleCommandRepository {
       String summary,
       String cover,
       Long categoryId,
-      List<Long> tagIds,
-      String location,
-      boolean top,
-      boolean essence,
-      boolean outdated);
+	      List<Long> tagIds,
+	      String location,
+	      boolean top,
+	      boolean essence,
+	      boolean outdated,
+	      String copyrightType,
+	      String sourceUrl,
+	      String sourceTitle,
+	      String copyrightLicense);
 
   Map<String, Object> publish(long id);
 

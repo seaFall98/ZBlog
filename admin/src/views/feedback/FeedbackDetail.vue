@@ -1,380 +1,177 @@
 <template>
   <div class="feedback-detail-page">
-    <el-card v-loading="loading">
+    <el-card v-loading="loading" class="detail-card" shadow="never">
       <template #header>
-        <div class="card-header">
-          <span class="title">反馈详情 #{{ feedback?.ticket_no }}</span>
-          <el-button @click="handleBack">返回列表</el-button>
+        <div class="page-header">
+          <div>
+            <el-button link @click="handleBack">返回列表</el-button>
+            <div class="title-row">
+              <h2>{{ feedback?.ticket_no || '反馈详情' }}</h2>
+              <el-tag v-if="feedback" :type="getStatusTagType(feedback.status)" effect="light">
+                {{ feedback.status_label || getStatusLabel(feedback.status) }}
+              </el-tag>
+            </div>
+            <p>查看用户提交内容、消息线程与状态流转记录。</p>
+          </div>
+          <el-button :loading="loading" @click="fetchDetail">刷新</el-button>
         </div>
       </template>
 
-      <div v-if="feedback" class="feedback-detail">
-        <!-- 基本信息 -->
-        <el-descriptions title="基本信息" :column="2" border>
-          <el-descriptions-item label="工单号">
-            {{ feedback.ticket_no }}
-          </el-descriptions-item>
-
-          <el-descriptions-item label="举报URL">
-            <a :href="feedback.report_url" target="_blank" class="url-link">
+      <template v-if="feedback">
+        <div class="summary-grid">
+          <section class="summary-panel main">
+            <div class="panel-label">反馈内容</div>
+            <div class="report-title">
+              <el-tag :type="getReportTypeTagType(feedback.report_type)" effect="plain">{{ getReportTypeLabel(feedback.report_type) }}</el-tag>
+              <span>{{ feedback.form_content?.description || '无描述' }}</span>
+            </div>
+            <div class="report-body" v-if="feedback.form_content?.reason">{{ feedback.form_content.reason }}</div>
+            <a v-if="feedback.report_url" class="report-url" :href="feedback.report_url" target="_blank" rel="noopener noreferrer">
               {{ feedback.report_url }}
             </a>
-          </el-descriptions-item>
+          </section>
 
-          <el-descriptions-item label="举报类型">
-            <el-tag :type="getReportTypeTagType(feedback.report_type)">
-              {{ getReportTypeLabel(feedback.report_type) }}
-            </el-tag>
-          </el-descriptions-item>
-
-          <el-descriptions-item label="状态">
-            <el-tag :type="getStatusTagType(feedback.status)">
-              {{ getStatusLabel(feedback.status) }}
-            </el-tag>
-          </el-descriptions-item>
-
-          <el-descriptions-item label="联系邮箱">
-            {{ feedback.email || '未填写' }}
-          </el-descriptions-item>
-
-          <el-descriptions-item label="IP地址">
-            {{ feedback.ip }}
-          </el-descriptions-item>
-
-          <el-descriptions-item label="反馈时间">
-            {{ formatDate(feedback.feedback_time) }}
-          </el-descriptions-item>
-
-          <el-descriptions-item label="回复时间">
-            {{ feedback.reply_time ? formatDate(feedback.reply_time) : '未回复' }}
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <!-- 反馈内容 - 根据类型显示不同的字段 -->
-        <div class="content-section">
-          <h3 class="section-title">反馈详情</h3>
-          <div class="content-box">
-            <div v-if="feedback.form_content" class="form-content">
-              <!-- 版权侵权内容投诉 -->
-              <template v-if="feedback.report_type === 'copyright'">
-                <div v-if="feedback.form_content.description" class="form-field">
-                  <strong>侵权说明:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.description }}
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <strong>权利人证明文件:</strong>
-                  <div class="field-value">
-                    <div
-                      v-if="getCopyrightProofFiles(feedback.form_content).length"
-                      class="attachment-list"
-                    >
-                      <div
-                        v-for="(file, index) in getCopyrightProofFiles(feedback.form_content)"
-                        :key="index"
-                        class="attachment-item"
-                      >
-                        <el-link :href="file" target="_blank" type="primary">
-                          <i class="el-icon-paperclip"></i>
-                          {{ getFileName(file) }}
-                        </el-link>
-                      </div>
-                    </div>
-                    <span v-else class="empty-text">未上传</span>
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <strong>侵权内容证明:</strong>
-                  <div class="field-value">
-                    <div
-                      v-if="getCopyrightInfringementFiles(feedback.form_content).length"
-                      class="attachment-list"
-                    >
-                      <div
-                        v-for="(file, index) in getCopyrightInfringementFiles(
-                          feedback.form_content
-                        )"
-                        :key="index"
-                        class="attachment-item"
-                      >
-                        <el-link :href="file" target="_blank" type="primary">
-                          <i class="el-icon-paperclip"></i>
-                          {{ getFileName(file) }}
-                        </el-link>
-                      </div>
-                    </div>
-                    <span v-else class="empty-text">未上传</span>
-                  </div>
-                </div>
-              </template>
-
-              <!-- 不当内容举报投诉 -->
-              <template v-else-if="feedback.report_type === 'inappropriate'">
-                <div v-if="feedback.form_content.reason" class="form-field">
-                  <strong>投诉原因:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.reason }}
-                  </div>
-                </div>
-
-                <div v-if="feedback.form_content.description" class="form-field">
-                  <strong>投诉内容:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.description }}
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <strong>证据截图:</strong>
-                  <div class="field-value">
-                    <div
-                      v-if="feedback.form_content.attachmentFiles?.length"
-                      class="attachment-list"
-                    >
-                      <div
-                        v-for="(file, index) in feedback.form_content.attachmentFiles"
-                        :key="index"
-                        class="attachment-item"
-                      >
-                        <el-link :href="file" target="_blank" type="primary">
-                          <i class="el-icon-paperclip"></i>
-                          {{ getFileName(file) }}
-                        </el-link>
-                      </div>
-                    </div>
-                    <span v-else class="empty-text">未上传</span>
-                  </div>
-                </div>
-              </template>
-
-              <!-- 文章摘要问题反馈 -->
-              <template v-else-if="feedback.report_type === 'summary'">
-                <div v-if="feedback.form_content.reason" class="form-field">
-                  <strong>问题类型:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.reason }}
-                  </div>
-                </div>
-
-                <div v-if="feedback.form_content.description" class="form-field">
-                  <strong>反馈内容:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.description }}
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <strong>相关截图:</strong>
-                  <div class="field-value">
-                    <div
-                      v-if="feedback.form_content.attachmentFiles?.length"
-                      class="attachment-list"
-                    >
-                      <div
-                        v-for="(file, index) in feedback.form_content.attachmentFiles"
-                        :key="index"
-                        class="attachment-item"
-                      >
-                        <el-link :href="file" target="_blank" type="primary">
-                          <i class="el-icon-paperclip"></i>
-                          {{ getFileName(file) }}
-                        </el-link>
-                      </div>
-                    </div>
-                    <span v-else class="empty-text">未上传</span>
-                  </div>
-                </div>
-              </template>
-
-              <!-- 功能建议优化反馈 -->
-              <template v-else-if="feedback.report_type === 'suggestion'">
-                <div v-if="feedback.form_content.description" class="form-field">
-                  <strong>功能描述:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.description }}
-                  </div>
-                </div>
-
-                <div v-if="feedback.form_content.reason" class="form-field">
-                  <strong>使用场景:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.reason }}
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <strong>相关附件:</strong>
-                  <div class="field-value">
-                    <div
-                      v-if="feedback.form_content.attachmentFiles?.length"
-                      class="attachment-list"
-                    >
-                      <div
-                        v-for="(file, index) in feedback.form_content.attachmentFiles"
-                        :key="index"
-                        class="attachment-item"
-                      >
-                        <el-link :href="file" target="_blank" type="primary">
-                          <i class="el-icon-paperclip"></i>
-                          {{ getFileName(file) }}
-                        </el-link>
-                      </div>
-                    </div>
-                    <span v-else class="empty-text">未上传</span>
-                  </div>
-                </div>
-              </template>
-
-              <!-- 未知类型的通用显示 -->
-              <template v-else>
-                <div v-if="feedback.form_content.description" class="form-field">
-                  <strong>详细描述:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.description }}
-                  </div>
-                </div>
-
-                <div v-if="feedback.form_content.reason" class="form-field">
-                  <strong>原因/类型:</strong>
-                  <div class="field-value">
-                    {{ feedback.form_content.reason }}
-                  </div>
-                </div>
-
-                <div v-if="feedback.form_content.attachmentFiles?.length" class="form-field">
-                  <strong>附件文件:</strong>
-                  <div class="field-value">
-                    <div class="attachment-list">
-                      <div
-                        v-for="(file, index) in feedback.form_content.attachmentFiles"
-                        :key="index"
-                        class="attachment-item"
-                      >
-                        <el-link :href="file" target="_blank" type="primary">
-                          <i class="el-icon-paperclip"></i>
-                          {{ getFileName(file) }}
-                        </el-link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
-            <div v-else class="empty-content">暂无详细内容</div>
-          </div>
+          <section class="summary-panel">
+            <div class="panel-label">提交信息</div>
+            <dl class="meta-list">
+              <div>
+                <dt>提交时间</dt>
+                <dd>{{ formatDateTime(feedback.feedback_time) }}</dd>
+              </div>
+              <div>
+                <dt>更新时间</dt>
+                <dd>{{ formatDateTime(feedback.updated_at || feedback.feedback_time) }}</dd>
+              </div>
+              <div>
+                <dt>用户</dt>
+                <dd>{{ feedback.user_id ? `用户 #${feedback.user_id}` : '匿名用户' }}</dd>
+              </div>
+              <div>
+                <dt>邮箱</dt>
+                <dd>{{ feedback.email || '未留邮箱' }}</dd>
+              </div>
+            </dl>
+          </section>
         </div>
 
-        <!-- 管理员回复 -->
-        <div class="content-section">
-          <h3 class="section-title">管理员回复</h3>
-          <div class="content-box" v-if="feedback.admin_reply">
-            <pre>{{ feedback.admin_reply }}</pre>
+        <section v-if="attachmentFiles.length" class="attachment-panel">
+          <div class="panel-label">附件</div>
+          <div class="attachment-list">
+            <a v-for="file in attachmentFiles" :key="file" :href="file" target="_blank" rel="noopener noreferrer">
+              {{ getFileName(file) }}
+            </a>
           </div>
-          <el-empty v-else description="暂无回复" :image-size="80" />
-        </div>
+        </section>
 
-        <!-- 处理表单 -->
-        <el-divider />
+        <div class="workspace-grid">
+          <section class="timeline-panel">
+            <div class="section-title">处理时间线</div>
+            <el-empty v-if="!messages.length" description="暂无消息" />
+            <el-timeline v-else>
+              <el-timeline-item
+                v-for="message in messages"
+                :key="message.id"
+                :timestamp="formatDateTime(message.created_at)"
+                :type="getMessageTimelineType(message)"
+                placement="top"
+              >
+                <div class="message-card">
+                  <div class="message-title">{{ getMessageTitle(message) }}</div>
+                  <div class="message-content">{{ message.content }}</div>
+                </div>
+              </el-timeline-item>
+            </el-timeline>
+          </section>
 
-        <div class="process-section">
-          <h3 class="section-title">处理反馈</h3>
-          <el-form :model="form" label-width="100px" @submit.prevent="handleSubmit">
-            <el-form-item label="状态">
-              <el-radio-group v-model="form.status">
-                <el-radio-button label="resolved">已解决</el-radio-button>
-                <el-radio-button label="closed">已关闭</el-radio-button>
-              </el-radio-group>
-            </el-form-item>
+          <aside class="action-panel">
+            <div class="section-title">处理动作</div>
 
-            <el-form-item label="管理员回复">
-              <el-input
-                v-model="form.admin_reply"
-                type="textarea"
-                :rows="8"
-                placeholder="请输入回复内容..."
+            <div class="status-actions">
+              <div class="action-label">状态流转</div>
+              <div class="status-button-grid">
+                <el-button
+                  v-for="status in nextStatuses"
+                  :key="status"
+                  :type="getStatusButtonType(status)"
+                  plain
+                  :disabled="statusChanging"
+                  @click="handleStatusChange(status)"
+                >
+                  {{ getStatusLabel(status) }}
+                </el-button>
+              </div>
+              <el-alert
+                v-if="!nextStatuses.length"
+                type="info"
+                :closable="false"
+                show-icon
+                title="当前状态暂无可用流转"
               />
-            </el-form-item>
+            </div>
 
-            <el-form-item>
-              <el-button type="primary" @click="handleSubmit" :loading="submitting">
-                保存
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </div>
+            <el-form class="reply-form" label-position="top" @submit.prevent>
+              <el-form-item label="管理员回复">
+                <el-input
+                  v-model="replyForm.content"
+                  type="textarea"
+                  :rows="7"
+                  maxlength="2000"
+                  show-word-limit
+                  placeholder="写给用户看的处理说明、追问或最终结论。"
+                />
+              </el-form-item>
+              <div class="reply-actions">
+                <el-button :loading="replying" type="primary" :disabled="!replyForm.content.trim()" @click="handleReply">
+                  发送回复
+                </el-button>
+                <el-button :loading="statusChanging" :disabled="!replyForm.content.trim()" @click="handleReplyAndWait">
+                  回复并等待补充
+                </el-button>
+              </div>
+            </el-form>
 
-        <!-- 技术信息 -->
-        <el-divider />
-        <div class="content-section">
-          <h3 class="section-title">技术信息</h3>
-          <div class="content-box tech-info">
-            <div><strong>User Agent:</strong></div>
-            <div>{{ feedback.user_agent }}</div>
-          </div>
+            <div class="operator-note">
+              状态变更会自动通知登录用户；匿名工单如果留了邮箱，会写入邮件 outbox 等待后续邮件服务发送。
+            </div>
+          </aside>
         </div>
-      </div>
+      </template>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
-import { getFeedbackDetail, updateFeedback } from '@/api/feedback';
-import type { Feedback, FeedbackStatus, ReportType } from '@/types/feedback';
-import { formatDate } from '@/utils/date';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import type { Feedback, FeedbackMessage, FeedbackStatus, ReportType } from '@/types/feedback';
+import { getFeedbackDetail, replyFeedback, updateFeedbackStatus } from '@/api/feedback';
+import { formatDateTime } from '@/utils/date';
+
+type TagType = 'success' | 'warning' | 'danger' | 'info' | 'primary';
 
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
-const submitting = ref(false);
+const replying = ref(false);
+const statusChanging = ref(false);
 const feedbackId = ref(Number(route.params.id));
 const feedback = ref<Feedback | null>(null);
-const form = ref<{
-  status: FeedbackStatus;
-  admin_reply: string;
-}>({
-  status: 'resolved',
-  admin_reply: '',
-});
+const replyForm = reactive({ content: '' });
 
-/**
- * 获取反馈详情
- */
+const messages = computed(() => feedback.value?.messages || []);
+const attachmentFiles = computed(() => feedback.value?.form_content?.attachmentFiles || []);
+const nextStatuses = computed<FeedbackStatus[]>(() => feedback.value?.allowed_next_statuses || []);
+
 const fetchDetail = async () => {
   loading.value = true;
   try {
-    const res = await getFeedbackDetail(feedbackId.value);
-    feedback.value = res;
-  } catch (_error) {
-    ElMessage.error('获取反馈详情失败');
+    feedback.value = await getFeedbackDetail(feedbackId.value);
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '获取反馈详情失败');
     handleBack();
   } finally {
     loading.value = false;
-  }
-};
-
-/**
- * 提交更新
- */
-const handleSubmit = async () => {
-  submitting.value = true;
-  try {
-    await updateFeedback(feedbackId.value, form.value);
-    ElMessage.success('更新成功');
-    // 清空表单
-    form.value.status = 'resolved';
-    form.value.admin_reply = '';
-    // 刷新详情
-    await fetchDetail();
-  } catch (_error) {
-    ElMessage.error('更新失败');
-  } finally {
-    submitting.value = false;
   }
 };
 
@@ -382,21 +179,75 @@ const handleBack = () => {
   router.push('/feedback');
 };
 
+const handleReply = async () => {
+  if (!feedback.value || !replyForm.content.trim()) return;
+  replying.value = true;
+  try {
+    feedback.value = await replyFeedback(feedback.value.id, { content: replyForm.content.trim() });
+    replyForm.content = '';
+    ElMessage.success('回复已发送');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '回复发送失败');
+  } finally {
+    replying.value = false;
+  }
+};
+
+const handleReplyAndWait = async () => {
+  if (!feedback.value || !replyForm.content.trim()) return;
+  statusChanging.value = true;
+  try {
+    await replyFeedback(feedback.value.id, { content: replyForm.content.trim() });
+    feedback.value = await updateFeedbackStatus(feedback.value.id, {
+      status: 'WAITING_USER',
+      content: '管理员需要用户补充更多信息。',
+    });
+    replyForm.content = '';
+    ElMessage.success('已回复并切换为待用户补充');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+    await fetchDetail();
+  } finally {
+    statusChanging.value = false;
+  }
+};
+
+const handleStatusChange = async (status: FeedbackStatus) => {
+  if (!feedback.value) return;
+  const statusLabel = getStatusLabel(status);
+  try {
+    await ElMessageBox.confirm(`确定将工单状态切换为“${statusLabel}”吗？`, '状态流转', {
+      type: 'warning',
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+    });
+    statusChanging.value = true;
+    feedback.value = await updateFeedbackStatus(feedback.value.id, {
+      status,
+      content: `管理员将工单状态切换为“${statusLabel}”。`,
+    });
+    ElMessage.success('状态已更新');
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error instanceof Error ? error.message : '状态更新失败');
+    }
+  } finally {
+    statusChanging.value = false;
+  }
+};
+
 const getReportTypeLabel = (reportType: ReportType) => {
-  const labels: Record<string, string> = {
-    copyright: '版权侵权内容投诉',
-    inappropriate: '不当内容举报投诉',
-    summary: '文章摘要问题反馈',
-    suggestion: '功能建议优化反馈',
+  const labels: Record<ReportType, string> = {
+    copyright: '版权反馈',
+    inappropriate: '不当内容',
+    summary: '内容勘误',
+    suggestion: '功能建议',
   };
   return labels[reportType] || reportType;
 };
 
-// Element Plus 标签类型
-type TagType = 'success' | 'warning' | 'danger' | 'info';
-
 const getReportTypeTagType = (reportType: ReportType): TagType => {
-  const types: Record<string, TagType> = {
+  const types: Record<ReportType, TagType> = {
     copyright: 'warning',
     inappropriate: 'danger',
     summary: 'info',
@@ -407,195 +258,272 @@ const getReportTypeTagType = (reportType: ReportType): TagType => {
 
 const getStatusLabel = (status: FeedbackStatus) => {
   const labels: Record<FeedbackStatus, string> = {
-    pending: '待处理',
-    resolved: '已解决',
-    closed: '已关闭',
+    PENDING: '待处理',
+    IN_PROGRESS: '处理中',
+    WAITING_USER: '待用户补充',
+    RESOLVED: '已解决',
+    CLOSED: '已关闭',
   };
   return labels[status] || status;
 };
 
 const getStatusTagType = (status: FeedbackStatus): TagType => {
   const types: Record<FeedbackStatus, TagType> = {
-    pending: 'warning',
-    resolved: 'success',
-    closed: 'info',
+    PENDING: 'warning',
+    IN_PROGRESS: 'primary',
+    WAITING_USER: 'warning',
+    RESOLVED: 'success',
+    CLOSED: 'info',
   };
   return types[status] || 'info';
 };
 
-/**
- * 从URL中提取文件名
- */
+const getStatusButtonType = (status: FeedbackStatus): TagType => {
+  if (status === 'RESOLVED') return 'success';
+  if (status === 'CLOSED') return 'info';
+  if (status === 'WAITING_USER') return 'warning';
+  return 'primary';
+};
+
+const getMessageTitle = (message: FeedbackMessage) => {
+  if (message.message_type === 'STATUS_CHANGE') {
+    const toStatus = message.to_status ? getStatusLabel(message.to_status) : '状态更新';
+    return `状态变更为 ${toStatus}`;
+  }
+  if (message.actor_type === 'ADMIN') return '管理员回复';
+  if (message.actor_type === 'SYSTEM') return '系统记录';
+  return '用户回复';
+};
+
+const getMessageTimelineType = (message: FeedbackMessage): TagType => {
+  if (message.actor_type === 'ADMIN') return 'primary';
+  if (message.message_type === 'STATUS_CHANGE') return 'success';
+  return 'info';
+};
+
 const getFileName = (url: string) => {
   if (!url) return '未命名文件';
   try {
     const parts = url.split('/');
-    const fileName = parts[parts.length - 1];
-    return fileName ? decodeURIComponent(fileName) : '未命名文件';
+    return decodeURIComponent(parts[parts.length - 1] || url);
   } catch {
     return url;
   }
 };
 
-/**
- * 获取版权侵权的权利人证明文件
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const getCopyrightProofFiles = (content: any) => {
-  if (!content.attachmentFiles?.length) return [];
-
-  try {
-    const meta = JSON.parse(content.reason || '{}');
-    const proofCount = meta.proofCount || 0;
-    return content.attachmentFiles.slice(0, proofCount);
-  } catch {
-    // 如果解析失败，默认前一半是权利人证明
-    const half = Math.ceil(content.attachmentFiles.length / 2);
-    return content.attachmentFiles.slice(0, half);
-  }
-};
-
-/**
- * 获取版权侵权的侵权内容证明文件
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const getCopyrightInfringementFiles = (content: any) => {
-  if (!content.attachmentFiles?.length) return [];
-
-  try {
-    const meta = JSON.parse(content.reason || '{}');
-    const proofCount = meta.proofCount || 0;
-    return content.attachmentFiles.slice(proofCount);
-  } catch {
-    // 如果解析失败，默认后一半是侵权证据
-    const half = Math.ceil(content.attachmentFiles.length / 2);
-    return content.attachmentFiles.slice(half);
-  }
-};
-
-onMounted(() => {
-  fetchDetail();
-});
+onMounted(fetchDetail);
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .feedback-detail-page {
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  padding: 20px;
+}
 
-    .title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #303133;
-    }
-  }
+.detail-card {
+  border-radius: 12px;
+}
 
-  .feedback-detail {
-    .content-section {
-      margin-top: 24px;
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
 
-      .section-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #303133;
-        margin-bottom: 12px;
-      }
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
 
-      .content-box {
-        padding: 16px;
-        background-color: #f5f7fa;
-        border-radius: 4px;
-        border: 1px solid #dcdfe6;
+.title-row h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 650;
+}
 
-        pre {
-          margin: 0;
-          font-family: inherit;
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          line-height: 1.6;
-          color: #606266;
-        }
+.page-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
 
-        .form-content {
-          .form-field {
-            margin-bottom: 16px;
+.summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
+  gap: 16px;
+}
 
-            &:last-child {
-              margin-bottom: 0;
-            }
+.summary-panel,
+.attachment-panel,
+.timeline-panel,
+.action-panel {
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  background: #fff;
+}
 
-            strong {
-              color: #303133;
-              display: block;
-              margin-bottom: 8px;
-              font-size: 14px;
-            }
+.summary-panel,
+.attachment-panel {
+  padding: 18px;
+}
 
-            .field-value {
-              color: #606266;
-              line-height: 1.6;
+.summary-panel.main {
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+}
 
-              .empty-text {
-                color: #909399;
-                font-style: italic;
-              }
+.panel-label,
+.section-title,
+.action-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
-              .attachment-list {
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-              }
+.report-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.7;
+}
 
-              .attachment-item {
-                .el-link {
-                  display: inline-flex;
-                  align-items: center;
-                  gap: 4px;
-                }
-              }
-            }
-          }
-        }
+.report-body {
+  margin-top: 14px;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
 
-        .empty-content {
-          color: #909399;
-          text-align: center;
-          font-style: italic;
-        }
-      }
-    }
+.report-url {
+  display: block;
+  margin-top: 14px;
+  overflow-wrap: anywhere;
+  color: #2563eb;
+  font-size: 13px;
+  text-decoration: none;
+}
 
-    .url-link {
-      color: #409eff;
-      text-decoration: none;
+.meta-list {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 0;
+}
 
-      &:hover {
-        text-decoration: underline;
-      }
-    }
+.meta-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
 
-    .tech-info {
-      .field-value {
-        margin-top: 8px;
-        font-family: monospace;
-        font-size: 12px;
-        color: #666;
-        word-break: break-all;
-      }
-    }
+.meta-list dt {
+  color: #94a3b8;
+  font-size: 12px;
+}
 
-    .process-section {
-      margin-top: 24px;
+.meta-list dd {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  text-align: right;
+}
 
-      .section-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #303133;
-        margin-bottom: 16px;
-      }
-    }
+.attachment-panel {
+  margin-top: 16px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.attachment-list a {
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: #2563eb;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.timeline-panel,
+.action-panel {
+  padding: 20px;
+}
+
+.message-card {
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.message-title {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.message-content {
+  margin-top: 8px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.status-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.status-button-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.reply-form {
+  margin-top: 24px;
+}
+
+.reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.operator-note {
+  margin-top: 18px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 12px;
+}
+
+@media (max-width: 1180px) {
+  .summary-grid,
+  .workspace-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -163,7 +163,7 @@ class Batch21Phase4ArticleCommandMyBatisTest {
   }
 
   @Test
-  void updateKeepsFieldOverwriteTagReplacementAndPublishedSearchUpsert() {
+	  void updateKeepsFieldOverwriteTagReplacementAndPublishedSearchUpsert() {
     HttpHeaders headers = authenticatedHeaders();
     long categoryId = createCategory(headers, "Batch21 Phase4 Update Category", "batch21-phase4-update-category");
     long tagA = createTag(headers, "Batch21 Phase4 Update Tag A", "batch21-phase4-update-tag-a");
@@ -211,6 +211,68 @@ class Batch21Phase4ArticleCommandMyBatisTest {
     assertThat(updatedAt(articleId)).isNotNull();
     assertThat(tagIds(articleId)).containsExactly(tagB);
     assertThat(outboxCount("ARTICLE_SEARCH_UPSERT", articleId)).isEqualTo(beforeUpserts + 1);
+	  }
+
+  @Test
+  void articleCopyrightMetadataPersistsForAdminAndPublicArticleViews() {
+    HttpHeaders headers = authenticatedHeaders();
+    ResponseEntity<Map> created =
+        restTemplate.exchange(
+            "/api/v1/admin/articles",
+            HttpMethod.POST,
+            new HttpEntity<>(
+                Map.ofEntries(
+                    Map.entry("title", "Batch21 P4 Copyright"),
+                    Map.entry("slug", "batch21-p4-copyright"),
+                    Map.entry("summary", "copyright summary"),
+                    Map.entry("content", "# Batch21 P4 Copyright\n\nbody"),
+                    Map.entry("copyright_type", "REPOST"),
+                    Map.entry("source_url", "https://example.com/original"),
+                    Map.entry("source_title", "Original article"),
+                    Map.entry("copyright_license", "CC BY-NC-SA 4.0"),
+                    Map.entry("is_publish", true)),
+                headers),
+            Map.class);
+
+    assertThat(created.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<?, ?> createdArticle = data(created);
+    long articleId = number(createdArticle, "id");
+    createdArticleIds.add(articleId);
+    assertThat(createdArticle.get("copyright_type")).isEqualTo("REPOST");
+    assertThat(createdArticle.get("source_url")).isEqualTo("https://example.com/original");
+    assertThat(createdArticle.get("source_title")).isEqualTo("Original article");
+    assertThat(createdArticle.get("copyright_license")).isEqualTo("CC BY-NC-SA 4.0");
+
+    Map<?, ?> publicArticle = data(restTemplate.getForEntity("/api/v1/articles/batch21-p4-copyright", Map.class));
+    assertThat(publicArticle.get("copyright_type")).isEqualTo("REPOST");
+    assertThat(publicArticle.get("source_url")).isEqualTo("https://example.com/original");
+    assertThat(publicArticle.get("source_title")).isEqualTo("Original article");
+    assertThat(publicArticle.get("copyright_license")).isEqualTo("CC BY-NC-SA 4.0");
+
+    ResponseEntity<Map> updated =
+        restTemplate.exchange(
+            "/api/v1/admin/articles/" + articleId,
+            HttpMethod.PUT,
+            new HttpEntity<>(
+                Map.ofEntries(
+                    Map.entry("title", "Batch21 P4 Copyright Updated"),
+                    Map.entry("slug", "batch21-p4-copyright"),
+                    Map.entry("summary", "copyright updated summary"),
+                    Map.entry("content", "# Batch21 P4 Copyright Updated\n\nbody"),
+                    Map.entry("copyright_type", "TRANSLATION"),
+                    Map.entry("source_url", "https://example.com/translated-source"),
+                    Map.entry("source_title", "Translated source"),
+                    Map.entry("copyright_license", "CC BY 4.0"),
+                    Map.entry("is_publish", true)),
+                headers),
+            Map.class);
+
+    assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<?, ?> updatedArticle = data(updated);
+    assertThat(updatedArticle.get("copyright_type")).isEqualTo("TRANSLATION");
+    assertThat(updatedArticle.get("source_url")).isEqualTo("https://example.com/translated-source");
+    assertThat(updatedArticle.get("source_title")).isEqualTo("Translated source");
+    assertThat(updatedArticle.get("copyright_license")).isEqualTo("CC BY 4.0");
   }
 
   @Test

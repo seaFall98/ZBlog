@@ -45,7 +45,10 @@ class P1FeedbackSubscriptionRssApiTest {
 
     ResponseEntity<Map> ticketResponse =
         restTemplate.getForEntity("/api/v1/feedback/ticket/" + submitted.get("ticket_no"), Map.class);
-    assertThat(data(ticketResponse).get("email")).isEqualTo("feedback@example.com");
+    Map<?, ?> ticket = data(ticketResponse);
+    assertThat(ticket.get("ticket_no")).isEqualTo(submitted.get("ticket_no"));
+    assertThat(ticket.keySet().stream().map(Object::toString).toList())
+        .doesNotContain("access_token", "form_content", "messages", "ip", "user_agent");
 
     HttpHeaders headers = authenticatedHeaders();
     ResponseEntity<Map> listResponse =
@@ -76,7 +79,11 @@ class P1FeedbackSubscriptionRssApiTest {
         restTemplate.postForEntity(
             "/api/v1/subscribe", Map.of("email", "subscriber@example.com"), Map.class);
     assertThat(subscribeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(data(subscribeResponse).get("active")).isEqualTo(true);
+    Map<?, ?> subscribed = data(subscribeResponse);
+    assertThat(subscribed.get("active")).isEqualTo(false);
+    assertThat(subscribed.get("status")).isEqualTo("PENDING");
+    assertThat(subscribed.keySet().stream().map(Object::toString).toList())
+        .doesNotContain("confirmation_token", "unsubscribe_token");
 
     HttpHeaders headers = authenticatedHeaders();
     ResponseEntity<Map> listResponse =

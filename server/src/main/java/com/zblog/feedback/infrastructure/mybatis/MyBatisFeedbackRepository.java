@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zblog.common.api.PageResponse;
 import com.zblog.common.exception.BusinessException;
 import com.zblog.feedback.application.port.FeedbackRepository;
+import com.zblog.feedback.domain.FeedbackActorType;
+import com.zblog.feedback.domain.FeedbackMessageType;
+import com.zblog.feedback.domain.FeedbackStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -28,6 +31,8 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
 
   public long create(
       String ticketNo,
+      String accessToken,
+      Long userId,
       String reportUrl,
       String reportType,
       String formContentJson,
@@ -36,6 +41,8 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
       String ip) {
     Map<String, Object> params = new LinkedHashMap<>();
     params.put("ticketNo", ticketNo);
+    params.put("accessToken", accessToken);
+    params.put("userId", userId);
     params.put("reportUrl", reportUrl);
     params.put("reportType", reportType);
     params.put("formContentJson", formContentJson);
@@ -49,8 +56,27 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
   public Map<String, Object> getByTicket(String ticketNo) {
     return feedbackMapper.rowsByTicket(ticketNo).stream()
         .findFirst()
+        .map(this::mapPublicTicketRow)
+        .orElseThrow(() -> new BusinessException(404, "Feedback not found", HttpStatus.NOT_FOUND));
+  }
+
+  public Map<String, Object> getByAccessToken(String accessToken) {
+    return feedbackMapper.rowsByAccessToken(accessToken).stream()
+        .findFirst()
         .map(this::mapRow)
         .orElseThrow(() -> new BusinessException(404, "Feedback not found", HttpStatus.NOT_FOUND));
+  }
+
+  public PageResponse<Map<String, Object>> listByUserId(long userId, Map<String, String> params) {
+    int page = number(params, "page", 1);
+    int pageSize = number(params, "page_size", 10);
+    int offset = Math.max(0, page - 1) * pageSize;
+    String status = normalizeStatus(params.get("status"));
+    return new PageResponse<>(
+        feedbackMapper.listByUserId(userId, status, pageSize, offset).stream().map(this::mapRow).toList(),
+        feedbackMapper.countByUserId(userId, status),
+        page,
+        pageSize);
   }
 
   public PageResponse<Map<String, Object>> listAdmin(Map<String, String> params) {
@@ -59,7 +85,7 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
     int offset = Math.max(0, page - 1) * pageSize;
     String keyword = like(params.get("keyword"));
     String reportType = blankToNull(params.get("report_type"));
-    String status = blankToNull(params.get("status"));
+    String status = normalizeStatus(params.get("status"));
     LocalDateTime start = parseStart(params.get("start_time"));
     LocalDateTime end = parseEnd(params.get("end_time"));
     return new PageResponse<>(
@@ -76,12 +102,49 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
         .orElseThrow(() -> new BusinessException(404, "Feedback not found", HttpStatus.NOT_FOUND));
   }
 
-  public void update(long id, String status, String reply) {
-    feedbackMapper.update(id, status, reply);
+  public void updateStatus(long id, String status) {
+    feedbackMapper.updateStatus(id, status);
+  }
+
+  public void updateAdminReply(long id, String reply) {
+    feedbackMapper.updateAdminReply(id, reply);
+  }
+
+  public void touchUserReply(long id) {
+    feedbackMapper.touchUserReply(id);
+  }
+
+  public void insertMessage(
+      long feedbackId,
+      String actorType,
+      Long actorUserId,
+      String messageType,
+      String content,
+      String attachmentsJson,
+      String fromStatus,
+      String toStatus) {
+    Map<String, Object> params = new LinkedHashMap<>();
+    params.put("feedbackId", feedbackId);
+    params.put("actorType", actorType);
+    params.put("actorUserId", actorUserId);
+    params.put("messageType", messageType);
+    params.put("content", content == null ? "" : content);
+    params.put("attachmentsJson", attachmentsJson == null || attachmentsJson.isBlank() ? "[]" : attachmentsJson);
+    params.put("fromStatus", fromStatus);
+    params.put("toStatus", toStatus);
+    feedbackMapper.insertMessage(params);
+  }
+
+  public List<Map<String, Object>> listMessages(long feedbackId) {
+    return feedbackMapper.listMessages(feedbackId).stream().map(this::mapMessageRow).toList();
   }
 
   public void delete(long id) {
     feedbackMapper.delete(id);
+  }
+
+  public int deleteResolvedOrClosedOlderThan(LocalDateTime threshold) {
+    return feedbackMapper.deleteResolvedOrClosedOlderThan(threshold);
   }
 
   public String ownerEmail() {
@@ -95,6 +158,36 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
   private Map<String, Object> mapRow(Map<String, Object> source) {
     Map<String, Object> row = new LinkedHashMap<>(source);
     row.put("form_content", readJson(string(source.get("form_content"))));
+    FeedbackStatus status = FeedbackStatus.from(string(source.get("status")));
+    row.put("status", status.name());
+    row.put("status_label", status.label());
+    row.put("status_tone", status.tone());
+    row.put("allowed_next_statuses", status.allowedNext().stream().map(FeedbackStatus::name).toList());
+    row.put("messages", listMessages(((Number) source.get("id")).longValue()));
+    return row;
+  }
+
+  private Map<String, Object> mapPublicTicketRow(Map<String, Object> source) {
+    FeedbackStatus status = FeedbackStatus.from(string(source.get("status")));
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("ticket_no", source.get("ticket_no"));
+    row.put("report_type", source.get("report_type"));
+    row.put("report_url", source.get("report_url"));
+    row.put("status", status.name());
+    row.put("status_label", status.label());
+    row.put("status_tone", status.tone());
+    row.put("feedback_time", source.get("feedback_time"));
+    row.put("updated_at", source.get("updated_at"));
+    return row;
+  }
+
+  private Map<String, Object> mapMessageRow(Map<String, Object> source) {
+    Map<String, Object> row = new LinkedHashMap<>(source);
+    FeedbackActorType actorType = FeedbackActorType.from(string(source.get("actor_type")));
+    FeedbackMessageType messageType = FeedbackMessageType.from(string(source.get("message_type")));
+    row.put("actor_type", actorType.name());
+    row.put("message_type", messageType.name());
+    row.put("attachments", readJsonList(string(source.get("attachments_json"))));
     return row;
   }
 
@@ -103,6 +196,14 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
       return objectMapper.readValue(json, new TypeReference<>() {});
     } catch (JsonProcessingException exception) {
       throw new BusinessException(500, "Invalid feedback content", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private List<Object> readJsonList(String json) {
+    try {
+      return objectMapper.readValue(json == null || json.isBlank() ? "[]" : json, new TypeReference<>() {});
+    } catch (JsonProcessingException exception) {
+      throw new BusinessException(500, "Invalid feedback attachment data", HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -121,6 +222,13 @@ public class MyBatisFeedbackRepository implements FeedbackRepository {
 
   private String blankToNull(String value) {
     return value == null || value.isBlank() ? null : value;
+  }
+
+  private String normalizeStatus(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return FeedbackStatus.from(value).name();
   }
 
   private LocalDateTime parseStart(String value) {

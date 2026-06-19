@@ -133,12 +133,30 @@
     v-model="subscriberDialogVisible"
     title="本站订阅者"
     width="90%"
-    style="max-width: 700px"
+    style="max-width: 980px"
     :align-center="true"
     destroy-on-close
   >
+    <div class="subscriber-toolbar">
+      <el-input
+        v-model="subscriberQuery.keyword"
+        clearable
+        placeholder="搜索邮箱"
+        class="subscriber-keyword"
+        @keyup.enter="fetchSubscribers"
+        @clear="fetchSubscribers"
+      />
+      <el-select v-model="subscriberQuery.status" clearable placeholder="订阅状态" class="subscriber-status" @change="fetchSubscribers">
+        <el-option label="待确认" value="PENDING" />
+        <el-option label="已确认" value="ACTIVE" />
+        <el-option label="已退订" value="UNSUBSCRIBED" />
+        <el-option label="暂停发送" value="BOUNCED" />
+      </el-select>
+      <el-button :loading="subscriberLoading" @click="fetchSubscribers">刷新</el-button>
+    </div>
+
     <el-table :data="subscriberList" v-loading="subscriberLoading" style="width: 100%">
-      <el-table-column label="邮箱地址" min-width="160">
+      <el-table-column label="邮箱地址" min-width="220">
         <template #default="{ row }">
           <div style="display: flex; align-items: center; gap: 8px">
             <el-icon size="16" color="#409eff">
@@ -148,19 +166,33 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="80" align="center">
+      <el-table-column label="状态" width="120" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.active ? 'success' : 'info'" size="small">
-            {{ row.active ? '活跃' : '已退订' }}
+          <el-tag :type="getSubscriberStatusTagType(row.status)" size="small">
+            {{ row.status_label || getSubscriberStatusLabel(row.status) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="订阅时间" width="100" align="center">
+      <el-table-column label="投递状态" min-width="180">
+        <template #default="{ row }">
+          <div class="delivery-cell">
+            <span>{{ row.last_delivery_status || '暂无投递' }}</span>
+            <small v-if="row.last_delivery_at">{{ formatDateTime(row.last_delivery_at) }}</small>
+            <small v-if="row.last_delivery_error" class="delivery-error">{{ row.last_delivery_error }}</small>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="确认时间" width="160" align="center">
+        <template #default="{ row }">
+          {{ row.confirmed_at ? formatDateTime(row.confirmed_at) : '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="订阅时间" width="160" align="center">
         <template #default="{ row }">
           {{ formatDateTime(row.created_at) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="80" align="center" fixed="right">
+      <el-table-column label="操作" width="90" align="center" fixed="right">
         <template #default="{ row }">
           <el-button type="danger" link size="small" @click="handleDeleteSubscriber(row.id)">
             删除
@@ -189,7 +221,7 @@ import { Message, Bell, Check, Refresh } from '@element-plus/icons-vue';
 import CommonList from '@/components/common/CommonList.vue';
 import RssFeedFilter from './components/RssFeedFilter.vue';
 import type { RssArticle, RssArticleQuery } from '@/types/rssfeed';
-import type { Subscriber } from '@/types/subscriber';
+import type { Subscriber, SubscriberStatus } from '@/types/subscriber';
 import type { Friend } from '@/types/friend';
 import { getRssArticles, markRssArticleRead, markAllRssArticlesRead, refreshRssFeeds } from '@/api/rssfeed';
 import { getSubscribers, deleteSubscriber } from '@/api/subscriber';
@@ -342,7 +374,32 @@ const subscriberDialogVisible = ref(false);
 const subscriberLoading = ref(false);
 const subscriberList = ref<Subscriber[]>([]);
 const subscriberTotal = ref(0);
-const subscriberQuery = reactive({ page: 1, page_size: 10 });
+const subscriberQuery = reactive<{ page: number; page_size: number; keyword?: string; status?: SubscriberStatus }>({
+  page: 1,
+  page_size: 10,
+});
+
+type SubscriberTagType = 'success' | 'warning' | 'danger' | 'info';
+
+const getSubscriberStatusLabel = (status: SubscriberStatus) => {
+  const labels: Record<SubscriberStatus, string> = {
+    PENDING: '待确认',
+    ACTIVE: '已确认',
+    UNSUBSCRIBED: '已退订',
+    BOUNCED: '暂停发送',
+  };
+  return labels[status] || status;
+};
+
+const getSubscriberStatusTagType = (status: SubscriberStatus): SubscriberTagType => {
+  const types: Record<SubscriberStatus, SubscriberTagType> = {
+    PENDING: 'warning',
+    ACTIVE: 'success',
+    UNSUBSCRIBED: 'info',
+    BOUNCED: 'danger',
+  };
+  return types[status] || 'info';
+};
 
 /**
  * 打开订阅者弹窗
@@ -450,6 +507,37 @@ onMounted(() => {
 .friend-link:hover {
   color: var(--el-color-primary);
   text-decoration: underline;
+}
+
+.subscriber-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.subscriber-keyword {
+  width: min(280px, 100%);
+}
+
+.subscriber-status {
+  width: 150px;
+}
+
+.delivery-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--el-text-color-regular);
+  font-size: 12px;
+}
+
+.delivery-cell small {
+  color: var(--el-text-color-secondary);
+}
+
+.delivery-cell .delivery-error {
+  color: var(--el-color-danger);
 }
 
 // 默认显示文字，移动端显示图标

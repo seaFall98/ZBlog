@@ -4,6 +4,7 @@ import com.zblog.common.api.ApiResponse;
 import com.zblog.common.api.PageResponse;
 import com.zblog.feedback.application.FeedbackService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.security.Principal;
 import java.util.Map;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,13 +28,30 @@ public class FeedbackController {
 
   @PostMapping("/feedback")
   public ApiResponse<Map<String, Object>> submit(
-      @RequestBody Map<String, Object> request, HttpServletRequest servletRequest) {
-    return ApiResponse.ok(feedbackService.submit(request, servletRequest));
+      @RequestBody Map<String, Object> request, HttpServletRequest servletRequest, Principal principal) {
+    return ApiResponse.ok(feedbackService.submit(request, servletRequest, principal));
   }
 
   @GetMapping("/feedback/ticket/{ticketNo}")
   public ApiResponse<Map<String, Object>> getByTicket(@PathVariable String ticketNo) {
     return ApiResponse.ok(feedbackService.getByTicket(ticketNo));
+  }
+
+  @GetMapping("/feedback/token/{accessToken}")
+  public ApiResponse<Map<String, Object>> getByAccessToken(@PathVariable String accessToken) {
+    return ApiResponse.ok(feedbackService.getByAccessToken(accessToken));
+  }
+
+  @GetMapping("/feedback/mine")
+  public ApiResponse<PageResponse<Map<String, Object>>> mine(
+      Principal principal, @RequestParam Map<String, String> params) {
+    return ApiResponse.ok(feedbackService.listMine(principal.getName(), params));
+  }
+
+  @PostMapping("/feedback/{id}/messages")
+  public ApiResponse<Map<String, Object>> addUserMessage(
+      @PathVariable long id, @RequestBody Map<String, Object> request, Principal principal) {
+    return ApiResponse.ok(feedbackService.addUserMessage(id, request, principal));
   }
 
   @GetMapping("/admin/feedback")
@@ -51,6 +69,18 @@ public class FeedbackController {
   public ApiResponse<Map<String, Object>> updateAdmin(
       @PathVariable long id, @RequestBody Map<String, Object> request) {
     return ApiResponse.ok(feedbackService.update(id, request));
+  }
+
+  @PostMapping("/admin/feedback/{id}/messages")
+  public ApiResponse<Map<String, Object>> addAdminMessage(
+      @PathVariable long id, @RequestBody Map<String, Object> request) {
+    return ApiResponse.ok(feedbackService.addAdminMessage(id, request));
+  }
+
+  @PutMapping("/admin/feedback/{id}/status")
+  public ApiResponse<Map<String, Object>> updateAdminStatus(
+      @PathVariable long id, @RequestBody Map<String, Object> request) {
+    return ApiResponse.ok(feedbackService.updateAdminStatus(id, request));
   }
 
   @DeleteMapping("/admin/feedback/{id}")

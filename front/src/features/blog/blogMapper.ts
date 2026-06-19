@@ -98,6 +98,10 @@ export function mapArticleToPostView(article: RawRecord, source: DataSource = "a
   const featured = toBooleanValue(firstValue(article, ["featured", "is_top", "isTop", "is_essence", "isEssence"]));
   const readTimeValue = firstValue(article, ["readTime", "read_time", "reading_time", "readingTime"]);
   const readTime = Number(readTimeValue) || estimateReadTime(contentHtml || summary || title);
+  const viewCount = Number(firstValue(article, ["view_count", "viewCount", "views"])) || 0;
+  const rawCopyrightType = toStringValue(firstValue(article, ["copyright_type", "copyrightType"])).toUpperCase();
+  const copyrightType =
+    rawCopyrightType === "REPOST" || rawCopyrightType === "TRANSLATION" ? rawCopyrightType : "ORIGINAL";
 
   return {
     id: id || slug,
@@ -112,6 +116,11 @@ export function mapArticleToPostView(article: RawRecord, source: DataSource = "a
     publishedAt,
     coverUrl,
     readTime,
+    viewCount,
+    copyrightType,
+    sourceUrl: toStringValue(firstValue(article, ["source_url", "sourceUrl"])),
+    sourceTitle: toStringValue(firstValue(article, ["source_title", "sourceTitle"])),
+    copyrightLicense: toStringValue(firstValue(article, ["copyright_license", "copyrightLicense"])),
     featured,
     source,
   };

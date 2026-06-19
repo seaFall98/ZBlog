@@ -1,191 +1,147 @@
 <template>
   <div class="feedback-list-page">
-    <!-- 筛选面板 -->
-    <transition name="filter-slide">
-      <feedback-filter
-        v-if="showFilter"
-        v-model="queryParams"
-        @search="fetchList"
-        @close="showFilter = false"
-      />
-    </transition>
-
-    <common-list
-      title="反馈投诉"
-      :data="list"
-      :loading="loading"
-      :total="total"
-      :show-create="false"
-      :filter-active="showFilter"
-      :filter-count="filterCount"
-      v-model:page="queryParams.page"
-      v-model:page-size="queryParams.page_size"
-      @refresh="fetchList"
-      @filter="toggleFilter"
-      @update:page="fetchList"
-      @update:pageSize="fetchList"
-    >
-      <!-- 快速筛选 -->
-      <template #toolbar-before>
-        <template v-if="!showFilter">
-          <el-select
-            v-model="quickFilters.report_type"
-            placeholder="反馈类型"
-            clearable
-            class="quick-filter-769"
-            style="width: 150px"
-            @change="handleQuickFilterChange"
-          >
-            <el-option label="版权侵权" value="copyright" />
-            <el-option label="不当内容" value="inappropriate" />
-            <el-option label="摘要问题" value="summary" />
-            <el-option label="功能建议" value="suggestion" />
-          </el-select>
-          <el-select
-            v-model="quickFilters.status"
-            placeholder="状态"
-            clearable
-            class="quick-filter-769"
-            style="width: 110px"
-            @change="handleQuickFilterChange"
-          >
-            <el-option label="待处理" value="pending" />
-            <el-option label="已解决" value="resolved" />
-            <el-option label="已关闭" value="closed" />
-          </el-select>
-        </template>
+    <el-card class="feedback-card" shadow="never">
+      <template #header>
+        <div class="page-header">
+          <div>
+            <div class="page-title">反馈工单</div>
+            <div class="page-subtitle">处理前台反馈、版权投诉与内容勘误，状态变化会写入工单时间线。</div>
+          </div>
+          <el-button :loading="loading" @click="fetchList">刷新</el-button>
+        </div>
       </template>
 
-      <el-table-column label="工单号" width="150" align="center">
-        <template #default="{ row }">
-          <span>{{ row.ticket_no }}</span>
-        </template>
-      </el-table-column>
+      <div class="toolbar">
+        <el-input
+          v-model="queryParams.keyword"
+          clearable
+          placeholder="搜索工单号、地址、邮箱"
+          class="toolbar-keyword"
+          @keyup.enter="handleSearch"
+          @clear="handleSearch"
+        />
+        <el-select v-model="queryParams.report_type" clearable placeholder="反馈类型" class="toolbar-select" @change="handleSearch">
+          <el-option v-for="item in reportTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+        <el-select v-model="queryParams.status" clearable placeholder="工单状态" class="toolbar-select" @change="handleSearch">
+          <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+        <el-button type="primary" @click="handleSearch">筛选</el-button>
+      </div>
 
-      <el-table-column label="类型" width="200" align="center">
-        <template #default="{ row }">
-          <el-tag :type="getReportTypeTagType(row.report_type)">
-            {{ getReportTypeLabel(row.report_type) }}
-          </el-tag>
-        </template>
-      </el-table-column>
+      <div class="status-strip">
+        <button
+          v-for="item in quickStatus"
+          :key="item.value || 'all'"
+          type="button"
+          :class="['status-pill', { active: queryParams.status === item.value }]"
+          @click="setQuickStatus(item.value)"
+        >
+          {{ item.label }}
+        </button>
+      </div>
 
-      <el-table-column label="投诉地址" min-width="200" align="center">
-        <template #default="{ row }">
-          <span :title="row.report_url">
-            {{ truncateUrl(row.report_url) }}
-          </span>
-        </template>
-      </el-table-column>
+      <el-table v-loading="loading" :data="list" row-key="id" class="feedback-table" @row-click="row => handleView(row.id)">
+        <el-table-column label="工单" min-width="260">
+          <template #default="{ row }">
+            <div class="ticket-cell">
+              <div class="ticket-title">
+                <span>{{ row.ticket_no }}</span>
+                <el-tag :type="getReportTypeTagType(row.report_type)" effect="plain">{{ getReportTypeLabel(row.report_type) }}</el-tag>
+              </div>
+              <div class="ticket-desc">{{ row.form_content?.description || row.report_url || '无描述' }}</div>
+              <div class="ticket-url">{{ row.report_url || '无关联地址' }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="140">
+          <template #default="{ row }">
+            <el-tag :type="getStatusTagType(row.status)" effect="light">{{ row.status_label || getStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="联系信息" min-width="180">
+          <template #default="{ row }">
+            <div class="muted">{{ row.email || (row.user_id ? `用户 #${row.user_id}` : '匿名用户') }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="时间" width="190">
+          <template #default="{ row }">
+            <div class="time-cell">
+              <span>提交 {{ formatDateTime(row.feedback_time) }}</span>
+              <span>更新 {{ formatDateTime(row.updated_at || row.feedback_time) }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click.stop="handleView(row.id)">处理</el-button>
+            <el-button link type="danger" @click.stop="handleDelete(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
 
-      <el-table-column label="联系方式" width="200" align="center">
-        <template #default="{ row }">
-          <span v-if="row.email">{{ row.email }}</span>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="状态" width="120" align="center">
-        <template #default="{ row }">
-          <el-tag :type="getStatusTagType(row.status)">
-            {{ getStatusLabel(row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="反馈时间" width="180" align="center">
-        <template #default="{ row }">
-          {{ formatDateTime(row.feedback_time) }}
-        </template>
-      </el-table-column>
-
-      <el-table-column label="操作" width="180" align="center" fixed="right">
-        <template #default="{ row }">
-          <el-button type="primary" size="small" text @click="handleView(row.id)">
-            查看详情
-          </el-button>
-          <el-button type="danger" size="small" text @click="handleDelete(row.id)">
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </common-list>
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
+          :total="total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="fetchList"
+          @current-change="fetchList"
+        />
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import CommonList from '@/components/common/CommonList.vue';
-import FeedbackFilter from './components/FeedbackFilter.vue';
-import { getFeedbackList, deleteFeedback } from '@/api/feedback';
-import type { Feedback, FeedbackStatus, FeedbackListQuery, ReportType } from '@/types/feedback';
+import type { Feedback, FeedbackListQuery, FeedbackStatus, ReportType } from '@/types/feedback';
+import { deleteFeedback, getFeedbackList } from '@/api/feedback';
 import { formatDateTime } from '@/utils/date';
+
+type TagType = 'success' | 'warning' | 'danger' | 'info' | 'primary';
 
 const router = useRouter();
 const loading = ref(false);
 const list = ref<Feedback[]>([]);
 const total = ref(0);
-const showFilter = ref(false);
 const queryParams = ref<FeedbackListQuery>({ page: 1, page_size: 10 });
 
-// 快速筛选相关
-const quickFilters = reactive({
-  report_type: undefined as ReportType | undefined,
-  status: undefined as FeedbackStatus | undefined,
-});
+const reportTypeOptions: Array<{ value: ReportType; label: string }> = [
+  { value: 'suggestion', label: '功能建议' },
+  { value: 'summary', label: '内容勘误' },
+  { value: 'inappropriate', label: '不当内容' },
+  { value: 'copyright', label: '版权反馈' },
+];
 
-/**
- * 计算当前应用的筛选条件数量
- */
-const filterCount = computed(() => {
-  let count = 0;
-  if (queryParams.value.keyword) count++;
-  if (queryParams.value.report_type) count++;
-  if (queryParams.value.status) count++;
-  if (queryParams.value.start_time && queryParams.value.end_time) count++;
-  return count;
-});
+const statusOptions: Array<{ value: FeedbackStatus; label: string }> = [
+  { value: 'PENDING', label: '待处理' },
+  { value: 'IN_PROGRESS', label: '处理中' },
+  { value: 'WAITING_USER', label: '待用户补充' },
+  { value: 'RESOLVED', label: '已解决' },
+  { value: 'CLOSED', label: '已关闭' },
+];
 
-/**
- * 切换筛选面板显示状态
- */
-const toggleFilter = () => {
-  showFilter.value = !showFilter.value;
-  if (!showFilter.value) {
-    syncQuickFiltersFromQueryParams();
-  }
-};
+const quickStatus: Array<{ value?: FeedbackStatus; label: string }> = [
+  { label: '全部' },
+  { value: 'PENDING', label: '待处理' },
+  { value: 'IN_PROGRESS', label: '处理中' },
+  { value: 'WAITING_USER', label: '待补充' },
+  { value: 'RESOLVED', label: '已解决' },
+];
 
-/**
- * 从 queryParams 同步筛选条件到快速筛选
- */
-const syncQuickFiltersFromQueryParams = () => {
-  quickFilters.report_type = queryParams.value.report_type;
-  quickFilters.status = queryParams.value.status;
-};
-
-/**
- * 处理快速筛选变化
- */
-const handleQuickFilterChange = () => {
-  // 将快速筛选条件同步到查询参数
-  queryParams.value.report_type = quickFilters.report_type;
-  queryParams.value.status = quickFilters.status;
-  // 重置到第一页并搜索
-  queryParams.value.page = 1;
-  fetchList();
-};
-
-// 获取反馈列表
 const fetchList = async () => {
   loading.value = true;
   try {
     const res = await getFeedbackList(queryParams.value);
     list.value = res.list || [];
     total.value = res.total || 0;
-  } catch (_error) {
-    ElMessage.error('获取反馈列表失败');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '获取反馈列表失败');
     list.value = [];
     total.value = 0;
   } finally {
@@ -193,15 +149,26 @@ const fetchList = async () => {
   }
 };
 
+const handleSearch = () => {
+  queryParams.value.page = 1;
+  fetchList();
+};
+
+const setQuickStatus = (status?: FeedbackStatus) => {
+  queryParams.value.status = status;
+  handleSearch();
+};
+
 const handleView = (id: number) => {
   router.push(`/feedback/${id}`);
 };
 
-// 删除反馈
 const handleDelete = async (id: number) => {
   try {
-    await ElMessageBox.confirm('确定要删除此反馈吗？', '提示', {
+    await ElMessageBox.confirm('删除后前台用户将无法继续查看该工单，确定删除吗？', '删除反馈工单', {
       type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
     });
     await deleteFeedback(id);
     ElMessage.success('删除成功');
@@ -213,21 +180,18 @@ const handleDelete = async (id: number) => {
   }
 };
 
-const getReportTypeLabel = (reportType: string) => {
-  const labels: Record<string, string> = {
-    copyright: '版权侵权内容投诉',
-    inappropriate: '不当内容举报投诉',
-    summary: '文章摘要问题反馈',
-    suggestion: '功能建议优化反馈',
+const getReportTypeLabel = (reportType: ReportType) => {
+  const labels: Record<ReportType, string> = {
+    copyright: '版权反馈',
+    inappropriate: '不当内容',
+    summary: '内容勘误',
+    suggestion: '功能建议',
   };
   return labels[reportType] || reportType;
 };
 
-// Element Plus 标签类型
-type TagType = 'success' | 'warning' | 'danger' | 'info';
-
-const getReportTypeTagType = (reportType: string): TagType => {
-  const types: Record<string, TagType> = {
+const getReportTypeTagType = (reportType: ReportType): TagType => {
+  const types: Record<ReportType, TagType> = {
     copyright: 'warning',
     inappropriate: 'danger',
     summary: 'info',
@@ -238,67 +202,143 @@ const getReportTypeTagType = (reportType: string): TagType => {
 
 const getStatusLabel = (status: FeedbackStatus) => {
   const labels: Record<FeedbackStatus, string> = {
-    pending: '待处理',
-    resolved: '已解决',
-    closed: '已关闭',
+    PENDING: '待处理',
+    IN_PROGRESS: '处理中',
+    WAITING_USER: '待用户补充',
+    RESOLVED: '已解决',
+    CLOSED: '已关闭',
   };
   return labels[status] || status;
 };
 
 const getStatusTagType = (status: FeedbackStatus): TagType => {
   const types: Record<FeedbackStatus, TagType> = {
-    pending: 'warning',
-    resolved: 'success',
-    closed: 'info',
+    PENDING: 'warning',
+    IN_PROGRESS: 'primary',
+    WAITING_USER: 'warning',
+    RESOLVED: 'success',
+    CLOSED: 'info',
   };
   return types[status] || 'info';
 };
 
-const truncateUrl = (url: string) => {
-  if (!url) return '无地址';
-  if (url.length <= 60) return url;
-  return url.substring(0, 60) + '...';
-};
-
-onMounted(() => {
-  // 初始化快速筛选值（从 queryParams）
-  syncQuickFiltersFromQueryParams();
-  fetchList();
-});
+onMounted(fetchList);
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .feedback-list-page {
-  height: 100%;
+  padding: 20px;
+}
+
+.feedback-card {
+  border-radius: 12px;
+}
+
+.page-header {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-title {
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.page-subtitle {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.toolbar-keyword {
+  width: min(360px, 100%);
+}
+
+.toolbar-select {
+  width: 168px;
+}
+
+.status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.status-pill {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.status-pill.active {
+  border-color: #111827;
+  background: #111827;
+  color: #fff;
+}
+
+.feedback-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.ticket-cell {
+  display: grid;
+  gap: 6px;
+}
+
+.ticket-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.ticket-desc {
+  max-width: 680px;
   overflow: hidden;
+  color: #4b5563;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* 筛选面板滑入滑出动画 */
-.filter-slide-enter-active,
-.filter-slide-leave-active {
-  transition: all 0.1s linear;
+.ticket-url,
+.muted,
+.time-cell {
+  color: #94a3b8;
+  font-size: 12px;
 }
 
-.filter-slide-enter-from,
-.filter-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
+.ticket-url {
+  max-width: 680px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.filter-slide-enter-to,
-.filter-slide-leave-from {
-  opacity: 1;
-  transform: translateY(0);
+.time-cell {
+  display: grid;
+  gap: 4px;
 }
 
-.feedback-list-page > :deep(.filter-panel) {
-  flex-shrink: 0;
-}
-
-.feedback-list-page > :deep(.common-list) {
-  flex: 1;
-  min-height: 0;
+.pagination-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
 }
 </style>

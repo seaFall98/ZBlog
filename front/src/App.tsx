@@ -6,6 +6,7 @@ import { blogApi } from "./features/blog/blogApi";
 import { fetchAlbum } from "./features/gallery/galleryApi";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { SiteProfileProvider } from "./features/site/useSiteProfile";
+import { usePageViewCollector } from "./features/stats/usePageViewCollector";
 import About from "./pages/About";
 import Archive from "./pages/Archive";
 import BlogDetail from "./pages/BlogDetail";
@@ -15,11 +16,13 @@ import Cookies from "./pages/Cookies";
 import Copyright from "./pages/Copyright";
 import Gallery from "./pages/Gallery";
 import GalleryDetail from "./pages/GalleryDetail";
+import Feedback from "./pages/Feedback";
 import Guestbook from "./pages/Guestbook";
 import Index from "./pages/Index";
 import Links from "./pages/Links";
 import Login from "./pages/Login";
 import Moments from "./pages/Moments";
+import MyFeedback from "./pages/MyFeedback";
 import NotFound from "./pages/NotFound";
 import Notifications from "./pages/Notifications";
 import Privacy from "./pages/Privacy";
@@ -82,6 +85,11 @@ function ScrollToTop() {
   return null;
 }
 
+function PublicPageViewCollector() {
+  usePageViewCollector();
+  return null;
+}
+
 export default function App() {
   return (
     <SiteProfileProvider>
@@ -89,6 +97,7 @@ export default function App() {
         <BrowserRouter>
           <LinkPrefetch />
           <ScrollToTop />
+          <PublicPageViewCollector />
           <Toaster
             position="top-right"
             toastOptions={{
@@ -126,7 +135,10 @@ export default function App() {
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/cookies" element={<Cookies />} />
             <Route path="/copyright" element={<Copyright />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/feedback/mine" element={<MyFeedback />} />
             <Route path="/stats" element={<Stats />} />
+            <Route path="/statistics" element={<Navigate to="/stats" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Login />} />
             <Route path="/forgot-password" element={<Login />} />

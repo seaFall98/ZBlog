@@ -1,44 +1,62 @@
-// 举报类型
 export type ReportType = 'copyright' | 'inappropriate' | 'summary' | 'suggestion';
 
-// 反馈状态
-export type FeedbackStatus = 'pending' | 'resolved' | 'closed';
+export type FeedbackStatus = 'PENDING' | 'IN_PROGRESS' | 'WAITING_USER' | 'RESOLVED' | 'CLOSED';
 
-// 反馈内容结构
+export type FeedbackActorType = 'USER' | 'ADMIN' | 'SYSTEM';
+
+export type FeedbackMessageType = 'MESSAGE' | 'STATUS_CHANGE';
+
 export interface FeedbackContent {
-  description: string;
+  description?: string;
   reason?: string;
   attachmentFiles?: string[];
 }
 
-// 反馈对象
+export interface FeedbackMessage {
+  id: number;
+  feedback_id: number;
+  actor_type: FeedbackActorType;
+  actor_user_id?: number | null;
+  message_type: FeedbackMessageType;
+  content: string;
+  attachments?: string[];
+  from_status?: FeedbackStatus | null;
+  to_status?: FeedbackStatus | null;
+  created_at: string;
+}
+
 export interface Feedback {
   id: number;
   ticket_no: string;
+  access_token?: string;
+  user_id?: number | null;
   report_url: string;
   report_type: ReportType;
   form_content: FeedbackContent;
-  email: string;
+  email?: string;
   status: FeedbackStatus;
-  admin_reply: string;
-  reply_time?: string;
-  user_agent: string;
-  ip: string;
+  status_label?: string;
+  status_tone?: string;
+  allowed_next_statuses?: FeedbackStatus[];
+  admin_reply?: string;
+  reply_time?: string | null;
+  user_agent?: string;
+  ip?: string;
   feedback_time: string;
+  updated_at?: string;
+  messages?: FeedbackMessage[];
 }
 
-// 反馈列表查询参数
 export interface FeedbackListQuery {
   page: number;
   page_size: number;
-  keyword?: string; // 搜索关键词（工单号、投诉地址）
-  report_type?: ReportType; // 反馈类型筛选
-  status?: FeedbackStatus; // 状态筛选
-  start_time?: string; // 反馈开始时间
-  end_time?: string; // 反馈结束时间
+  keyword?: string;
+  report_type?: ReportType;
+  status?: FeedbackStatus;
+  start_time?: string;
+  end_time?: string;
 }
 
-// 反馈列表数据
 export interface FeedbackListData {
   list: Feedback[];
   total: number;
@@ -46,8 +64,17 @@ export interface FeedbackListData {
   page_size: number;
 }
 
-// 更新反馈请求
 export interface FeedbackUpdateRequest {
-  status: FeedbackStatus;
+  status?: FeedbackStatus;
   admin_reply?: string;
+}
+
+export interface FeedbackStatusRequest {
+  status: FeedbackStatus;
+  content?: string;
+}
+
+export interface FeedbackMessageRequest {
+  content: string;
+  attachmentFiles?: string[];
 }

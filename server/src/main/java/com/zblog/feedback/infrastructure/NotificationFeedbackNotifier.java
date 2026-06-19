@@ -17,4 +17,8 @@ public class NotificationFeedbackNotifier implements FeedbackNotifier {
   public void notifyNewFeedback(Map<String, Object> feedback) {
     notificationService.createFeedbackNotification(feedback);
   }
+
+  public void notifyFeedbackUserUpdate(long recipientUserId, Map<String, Object> feedback, String title, String content) {
+    notificationService.createFeedbackUserNotification(recipientUserId, feedback, title, content);
+  }
 }

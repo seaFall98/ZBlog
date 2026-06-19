@@ -7,10 +7,12 @@
   <insert id="insertArticle" parameterType="com.zblog.content.infrastructure.mybatis.ArticleCommandMapper$ArticleCommandInsertCommand" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
     insert into articles (
       title, slug, content_markdown, content_html, content_text, summary, cover_url,
-      category_id, location, is_top, is_essence, is_outdated, status
+      category_id, location, is_top, is_essence, is_outdated,
+      copyright_type, source_url, source_title, copyright_license, status
     ) values (
       #{title}, #{slug}, #{markdown}, #{html}, #{text}, #{summary}, #{cover},
-      #{categoryId}, #{location}, #{top}, #{essence}, #{outdated}, 'DRAFT'
+      #{categoryId}, #{location}, #{top}, #{essence}, #{outdated},
+      #{copyrightType}, #{sourceUrl}, #{sourceTitle}, #{copyrightLicense}, 'DRAFT'
     )
   </insert>
 
@@ -28,6 +30,10 @@
         is_top = #{top},
         is_essence = #{essence},
         is_outdated = #{outdated},
+        copyright_type = #{copyrightType},
+        source_url = #{sourceUrl},
+        source_title = #{sourceTitle},
+        copyright_license = #{copyrightLicense},
         updated_at = current_timestamp
     where id = #{id}
   </update>

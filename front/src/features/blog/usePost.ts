@@ -29,7 +29,7 @@ export async function loadRelatedPosts(
   }
 
   const responses = await Promise.allSettled(
-    tags.map((tag) => api.listPosts({ page: 1, pageSize: 6, tag })),
+    tags.map((tag) => api.listPosts({ page: 1, pageSize: 8, tag })),
   );
 
   const related: PostView[] = [];
@@ -49,7 +49,7 @@ export async function loadRelatedPosts(
       related.push(candidate);
       if (candidate.id) seenIds.add(candidate.id);
       if (candidate.slug) seenSlugs.add(candidate.slug);
-      if (related.length >= 3) {
+      if (related.length >= 5) {
         return related;
       }
     }

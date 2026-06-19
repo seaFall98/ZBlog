@@ -1,9 +1,9 @@
 package com.zblog.notification;
 
 import com.zblog.common.exception.BusinessException;
-import com.zblog.notification.application.port.NotificationRepository;
 import com.zblog.identity.application.port.UserRepository;
 import com.zblog.identity.domain.UserAccount;
+import com.zblog.notification.application.port.NotificationRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +69,32 @@ public class NotificationService {
             data,
             targetId,
             "system");
+    return notificationRepository.get(id);
+  }
+
+  public Map<String, Object> createFeedbackUserNotification(
+      long recipientUserId, Map<String, Object> feedback, String title, String content) {
+    long targetId = ((Number) feedback.get("id")).longValue();
+    String ticketNo = feedback.get("ticket_no").toString();
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("feedback_id", targetId);
+    data.put("ticket_no", ticketNo);
+    data.put("status", feedback.get("status"));
+    data.put("status_label", feedback.get("status_label"));
+    long id =
+        notificationRepository.createForRecipient(
+            recipientUserId,
+            "feedback_update",
+            title,
+            content,
+            "/feedback/mine?ticket=" + ticketNo,
+            data,
+            targetId,
+            "feedback",
+            ticketNo,
+            null,
+            "direct");
+    unreadCount.invalidate(recipientUserId);
     return notificationRepository.get(id);
   }
 
@@ -167,7 +193,6 @@ public class NotificationService {
   public Map<String, Object> markRead(long id) {
     notificationRepository.markRead(id);
     Map<String, Object> result = notificationRepository.get(id);
-    // Best-effort: invalidate the recipient's unread count cache if present.
     Object recipient = result.get("recipient_user_id");
     if (recipient instanceof Number number && number.longValue() > 0) {
       unreadCount.invalidate(number.longValue());
@@ -188,8 +213,6 @@ public class NotificationService {
   @Transactional
   public Map<String, Object> markAllRead() {
     int affected = notificationRepository.markAllRead();
-    // Best-effort: Redis unread counts for affected users will naturally expire within TTL.
-    // Individual per-user invalidation is not feasible here because markAllRead is admin-scoped.
     return Map.of("affected", affected, "unread_count", 0);
   }
 

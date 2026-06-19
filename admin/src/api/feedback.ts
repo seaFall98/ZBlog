@@ -3,6 +3,8 @@ import type {
   Feedback,
   FeedbackListData,
   FeedbackListQuery,
+  FeedbackMessageRequest,
+  FeedbackStatusRequest,
   FeedbackUpdateRequest,
 } from '@/types/feedback';
 
@@ -32,6 +34,14 @@ export function getFeedbackDetail(id: number): Promise<Feedback> {
  */
 export function updateFeedback(id: number, data: FeedbackUpdateRequest): Promise<void> {
   return request.put(`/admin/feedback/${id}`, data);
+}
+
+export function replyFeedback(id: number, data: FeedbackMessageRequest): Promise<Feedback> {
+  return request.post(`/admin/feedback/${id}/messages`, data);
+}
+
+export function updateFeedbackStatus(id: number, data: FeedbackStatusRequest): Promise<Feedback> {
+  return request.put(`/admin/feedback/${id}/status`, data);
 }
 
 /**
