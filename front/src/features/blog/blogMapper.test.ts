@@ -15,6 +15,7 @@ describe("mapArticleToPostView", () => {
         { id: 2, slug: "light", name: "光" },
       ],
       publish_time: "2024-10-24T12:30:00Z",
+      update_time: "2024-10-25T12:30:00Z",
       cover_url: "https://example.com/cover.jpg",
       is_top: true,
     });
@@ -31,10 +32,36 @@ describe("mapArticleToPostView", () => {
         { id: "light", slug: "light", name: "光" },
       ],
       publishedAt: "2024-10-24T12:30:00Z",
+      updatedAt: "2024-10-25T12:30:00Z",
       coverUrl: "https://example.com/cover.jpg",
+      isTop: true,
       featured: true,
       source: "api",
     });
+  });
+
+  it("keeps top and essence semantics separate for list badges", () => {
+    const essenceOnly = mapArticleToPostView({
+      id: 13,
+      slug: "essence-only",
+      title: "精华但不置顶",
+      content_html: "<p>正文</p>",
+      is_top: false,
+      is_essence: true,
+    });
+    const top = mapArticleToPostView({
+      id: 14,
+      slug: "top-post",
+      title: "置顶文章",
+      content_html: "<p>正文</p>",
+      is_top: true,
+      is_essence: false,
+    });
+
+    expect(essenceOnly.featured).toBe(true);
+    expect(essenceOnly.isTop).toBe(false);
+    expect(top.featured).toBe(true);
+    expect(top.isTop).toBe(true);
   });
 
   it("uses category url segment as slug when server category has no slug", () => {

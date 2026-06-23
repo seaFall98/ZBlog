@@ -19,9 +19,11 @@ export type PostView = {
   category: TaxonomyView | null;
   tags: TaxonomyView[];
   publishedAt: string;
+  updatedAt?: string;
   coverUrl: string;
   readTime: number;
   viewCount: number;
+  isTop?: boolean;
   copyrightType: "ORIGINAL" | "REPOST" | "TRANSLATION";
   sourceUrl: string;
   sourceTitle: string;

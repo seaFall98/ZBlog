@@ -2,7 +2,9 @@ package com.zblog.seo.application;
 
 import com.zblog.seo.application.port.SeoFeedRepository;
 import com.zblog.seo.application.port.SeoFeedRepository.FeedArticle;
+import com.zblog.site.application.SettingService;
 import java.time.Instant;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -10,22 +12,31 @@ import org.springframework.stereotype.Service;
 public class SeoFeedService {
 
   private final SeoFeedRepository seoFeedRepository;
+  private final SettingService settingService;
   private final String publicSiteUrl;
 
   public SeoFeedService(
       SeoFeedRepository seoFeedRepository,
+      SettingService settingService,
       @Value("${zblog.seo.public-site-url:}") String publicSiteUrl) {
     this.seoFeedRepository = seoFeedRepository;
+    this.settingService = settingService;
     this.publicSiteUrl = normalizeBaseUrl(publicSiteUrl);
   }
 
   public String rss() {
+    String title = siteTitle();
+    String description = feedDescription();
     StringBuilder xml = new StringBuilder();
     xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
     xml.append("<rss version=\"2.0\"><channel>");
-    xml.append("<title>ZBlog</title><link>")
+    xml.append("<title>")
+        .append(escape(title))
+        .append("</title><link>")
         .append(escape(absoluteUrl("/")))
-        .append("</link><description>ZBlog feed</description>");
+        .append("</link><description>")
+        .append(escape(description))
+        .append("</description>");
     for (FeedArticle article : articles()) {
       String articleUrl = absoluteUrl(path(article));
       xml.append("<item>");
@@ -41,10 +52,16 @@ public class SeoFeedService {
   }
 
   public String atom() {
+    String title = siteTitle();
+    String description = feedDescription();
     StringBuilder xml = new StringBuilder();
     xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
     xml.append("<feed xmlns=\"http://www.w3.org/2005/Atom\">");
-    xml.append("<title>ZBlog</title><id>")
+    xml.append("<title>")
+        .append(escape(title))
+        .append("</title><subtitle>")
+        .append(escape(description))
+        .append("</subtitle><id>")
         .append(escape(absoluteUrl("/")))
         .append("</id><updated>")
         .append(Instant.now())
@@ -106,6 +123,27 @@ public class SeoFeedService {
 
   private java.util.List<FeedArticle> articles() {
     return seoFeedRepository.publishedFeedArticles();
+  }
+
+  private String siteTitle() {
+    Map<String, String> identity = settingService.getGroup("v2_identity");
+    String title = firstNonBlank(identity.get("site_title"), identity.get("v2_identity.site_title"));
+    return title.isBlank() ? "寂静之书" : title;
+  }
+
+  private String feedDescription() {
+    Map<String, String> footer = settingService.getGroup("v2_footer");
+    String description = firstNonBlank(footer.get("description"), footer.get("v2_footer.description"));
+    return description.isBlank() ? siteTitle() + " feed" : description;
+  }
+
+  private String firstNonBlank(String... values) {
+    for (String value : values) {
+      if (value != null && !value.isBlank()) {
+        return value.trim();
+      }
+    }
+    return "";
   }
 
   private String url(String path) {

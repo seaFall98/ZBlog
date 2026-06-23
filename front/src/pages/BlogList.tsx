@@ -185,6 +185,15 @@ export default function BlogList() {
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
+                  {post.isTop && (
+                    <span
+                      data-role="top-badge"
+                      className="text-xs px-2 py-0.5 rounded-sm"
+                      style={{ background: "var(--ink)", color: "var(--warm-white)", fontFamily: "var(--fontSans)" }}
+                    >
+                      置顶
+                    </span>
+                  )}
                   {post.category && (
                     <span
                       className="text-xs px-2 py-0.5 rounded-sm"

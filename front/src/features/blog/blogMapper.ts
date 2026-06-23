@@ -94,8 +94,21 @@ export function mapArticleToPostView(article: RawRecord, source: DataSource = "a
       "date",
     ]),
   );
+  const updatedAt =
+    toStringValue(
+      firstValue(article, [
+        "update_time",
+        "updateTime",
+        "updated_at",
+        "updatedAt",
+        "modified_at",
+        "modifiedAt",
+      ]),
+    ) || publishedAt;
   const coverUrl = toStringValue(firstValue(article, ["cover", "cover_url", "coverUrl", "cover_image", "coverImage"]));
-  const featured = toBooleanValue(firstValue(article, ["featured", "is_top", "isTop", "is_essence", "isEssence"]));
+  const isTop = toBooleanValue(firstValue(article, ["is_top", "isTop"]));
+  const isEssence = toBooleanValue(firstValue(article, ["is_essence", "isEssence"]));
+  const featured = toBooleanValue(firstValue(article, ["featured"])) || isTop || isEssence;
   const readTimeValue = firstValue(article, ["readTime", "read_time", "reading_time", "readingTime"]);
   const readTime = Number(readTimeValue) || estimateReadTime(contentHtml || summary || title);
   const viewCount = Number(firstValue(article, ["view_count", "viewCount", "views"])) || 0;
@@ -114,9 +127,11 @@ export function mapArticleToPostView(article: RawRecord, source: DataSource = "a
     category: mapCategory(firstValue(article, ["category"]), article),
     tags: mapTags(firstValue(article, ["tags"])),
     publishedAt,
+    updatedAt,
     coverUrl,
     readTime,
     viewCount,
+    isTop,
     copyrightType,
     sourceUrl: toStringValue(firstValue(article, ["source_url", "sourceUrl"])),
     sourceTitle: toStringValue(firstValue(article, ["source_title", "sourceTitle"])),
