@@ -132,6 +132,17 @@ class SeoProductionPolishTest {
     assertThat(config.toString()).doesNotContain("Paico", "Modern Blog", "Build in public");
   }
 
+  @Test
+  void ownerApprovedDefaultUploadAssetsAreBundledForFreshDeployments() {
+    List.of(
+            "1782184837997_0f0990627d6a8491243fb20c34c097c2.png",
+            "1782184837996_ChatGPT_Image_May_19__2026__02_05_47_AM.png",
+            "1782184837997_ChatGPT_Image_2026_6_12__06_00_01__4_.png")
+        .forEach(
+            filename ->
+                assertThat(getClass().getClassLoader().getResource("db/default-uploads/" + filename)).isNotNull());
+  }
+
   private Number createArticle(String slug, String title, boolean publish, String cover, HttpHeaders headers) {
     Map<String, Object> body = new java.util.LinkedHashMap<>();
     body.put("title", title);
