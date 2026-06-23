@@ -56,11 +56,32 @@ export default defineConfig(({ mode }) => {
           target: backendBaseUrl,
           changeOrigin: true,
         },
+        "/rss.xml": {
+          target: backendBaseUrl,
+          changeOrigin: true,
+        },
+        "/atom.xml": {
+          target: backendBaseUrl,
+          changeOrigin: true,
+        },
+        "/sitemap.xml": {
+          target: backendBaseUrl,
+          changeOrigin: true,
+        },
+        "/robots.txt": {
+          target: backendBaseUrl,
+          changeOrigin: true,
+        },
         "/meting": {
           target: "http://localhost:3000",
           changeOrigin: true,
         },
       },
+    },
+    build: {
+      // Mermaid is loaded only for article code fences that actually contain diagrams.
+      // Its own lazy vendor chunks are above Vite's default 500KB warning threshold.
+      chunkSizeWarningLimit: 700,
     },
   };
 });

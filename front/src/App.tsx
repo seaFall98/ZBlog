@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigationType } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -7,30 +7,32 @@ import { fetchAlbum } from "./features/gallery/galleryApi";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { SiteProfileProvider } from "./features/site/useSiteProfile";
 import { usePageViewCollector } from "./features/stats/usePageViewCollector";
-import About from "./pages/About";
-import Archive from "./pages/Archive";
-import BlogDetail from "./pages/BlogDetail";
-import BlogList from "./pages/BlogList";
-import Categories from "./pages/Categories";
-import Cookies from "./pages/Cookies";
-import Copyright from "./pages/Copyright";
-import Gallery from "./pages/Gallery";
-import GalleryDetail from "./pages/GalleryDetail";
-import Feedback from "./pages/Feedback";
-import Guestbook from "./pages/Guestbook";
-import Index from "./pages/Index";
-import Links from "./pages/Links";
-import Login from "./pages/Login";
-import Moments from "./pages/Moments";
-import MyFeedback from "./pages/MyFeedback";
-import NotFound from "./pages/NotFound";
-import Notifications from "./pages/Notifications";
-import Privacy from "./pages/Privacy";
-import Profile from "./pages/Profile";
-import Search from "./pages/Search";
-import Stats from "./pages/Stats";
-import Tags from "./pages/Tags";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
+import { RouteSeoDefaults } from "./features/seo/SeoHead";
+
+const About = lazy(() => import("./pages/About"));
+const Archive = lazy(() => import("./pages/Archive"));
+const BlogDetail = lazy(() => import("./pages/BlogDetail"));
+const BlogList = lazy(() => import("./pages/BlogList"));
+const Categories = lazy(() => import("./pages/Categories"));
+const Cookies = lazy(() => import("./pages/Cookies"));
+const Copyright = lazy(() => import("./pages/Copyright"));
+const Gallery = lazy(() => import("./pages/Gallery"));
+const GalleryDetail = lazy(() => import("./pages/GalleryDetail"));
+const Feedback = lazy(() => import("./pages/Feedback"));
+const Guestbook = lazy(() => import("./pages/Guestbook"));
+const Index = lazy(() => import("./pages/Index"));
+const Links = lazy(() => import("./pages/Links"));
+const Login = lazy(() => import("./pages/Login"));
+const Moments = lazy(() => import("./pages/Moments"));
+const MyFeedback = lazy(() => import("./pages/MyFeedback"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Search = lazy(() => import("./pages/Search"));
+const Stats = lazy(() => import("./pages/Stats"));
+const Tags = lazy(() => import("./pages/Tags"));
 
 function LinkPrefetch() {
   const qc = useQueryClient();
@@ -98,6 +100,7 @@ export default function App() {
           <LinkPrefetch />
           <ScrollToTop />
           <PublicPageViewCollector />
+          <RouteSeoDefaults />
           <Toaster
             position="top-right"
             toastOptions={{
@@ -111,55 +114,57 @@ export default function App() {
             }}
           />
 
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/blog" element={<BlogList />} />
-            <Route path="/blog/detail" element={<NotFound />} />
-            <Route path="/posts/:slug" element={<BlogDetail />} />
-            <Route path="/blog/:slug" element={<BlogDetail />} />
-            <Route path="/category/:slug" element={<BlogList />} />
-            <Route path="/tag/:slug" element={<BlogList />} />
-            <Route path="/categories" element={<Categories />} />
-            <Route path="/tags" element={<Tags />} />
-            <Route path="/archive" element={<Archive />} />
-            <Route path="/archive/:year/:month" element={<Archive />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/gallery" element={<Gallery />} />
-            <Route path="/gallery/detail" element={<NotFound />} />
-            <Route path="/gallery/:slug" element={<GalleryDetail />} />
-            <Route path="/moments" element={<Moments />} />
-            <Route path="/guestbook" element={<Guestbook />} />
-            <Route path="/message" element={<Navigate to="/guestbook" replace />} />
-            <Route path="/links" element={<Links />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/cookies" element={<Cookies />} />
-            <Route path="/copyright" element={<Copyright />} />
-            <Route path="/feedback" element={<Feedback />} />
-            <Route path="/feedback/mine" element={<MyFeedback />} />
-            <Route path="/stats" element={<Stats />} />
-            <Route path="/statistics" element={<Navigate to="/stats" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Login />} />
-            <Route path="/forgot-password" element={<Login />} />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <ProtectedRoute>
-                  <Notifications />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/blog" element={<BlogList />} />
+              <Route path="/blog/detail" element={<NotFound />} />
+              <Route path="/posts/:slug" element={<BlogDetail />} />
+              <Route path="/blog/:slug" element={<BlogDetail />} />
+              <Route path="/category/:slug" element={<BlogList />} />
+              <Route path="/tag/:slug" element={<BlogList />} />
+              <Route path="/categories" element={<Categories />} />
+              <Route path="/tags" element={<Tags />} />
+              <Route path="/archive" element={<Archive />} />
+              <Route path="/archive/:year/:month" element={<Archive />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/gallery" element={<Gallery />} />
+              <Route path="/gallery/detail" element={<NotFound />} />
+              <Route path="/gallery/:slug" element={<GalleryDetail />} />
+              <Route path="/moments" element={<Moments />} />
+              <Route path="/guestbook" element={<Guestbook />} />
+              <Route path="/message" element={<Navigate to="/guestbook" replace />} />
+              <Route path="/links" element={<Links />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/copyright" element={<Copyright />} />
+              <Route path="/feedback" element={<Feedback />} />
+              <Route path="/feedback/mine" element={<MyFeedback />} />
+              <Route path="/stats" element={<Stats />} />
+              <Route path="/statistics" element={<Navigate to="/stats" replace />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Login />} />
+              <Route path="/forgot-password" element={<Login />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </SiteProfileProvider>

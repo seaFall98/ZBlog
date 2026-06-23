@@ -8,6 +8,7 @@ import type { PostView } from "../features/blog/types";
 import { usePost } from "../features/blog/usePost";
 import CommentSection from "../features/comments/CommentSection";
 import { usePageViewCollector } from "../features/stats/usePageViewCollector";
+import { ArticleSeoHead } from "../features/seo/SeoHead";
 import { toDateText } from "../lib/text";
 import { toast } from "sonner";
 
@@ -129,7 +130,9 @@ export default function BlogDetail() {
         )}
 
         {post && (
-          <div className="flex gap-16 flex-wrap md:flex-nowrap">
+          <>
+            <ArticleSeoHead post={post} />
+            <div className="flex gap-16 flex-wrap md:flex-nowrap">
             {/* Article */}
             <div className="flex-1 min-w-0">
               {/* Cover */}
@@ -266,7 +269,8 @@ export default function BlogDetail() {
                 查看所有文章
               </Link>
             </aside>
-          </div>
+            </div>
+          </>
         )}
       </article>
     </PageLayout>
