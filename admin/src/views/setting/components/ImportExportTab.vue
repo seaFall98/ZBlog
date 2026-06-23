@@ -1,19 +1,74 @@
 <template>
   <el-form label-width="100px" class="setting-form">
+    <el-form-item label="站点配置">
+      <div class="action-row">
+        <el-button type="primary" :loading="siteConfigExporting" @click="handleSiteConfigExport">
+          导出站点配置
+        </el-button>
+        <el-button type="primary" :disabled="readonly" @click="siteConfigImportVisible = true">
+          导入站点配置
+        </el-button>
+      </div>
+      <div class="form-tip">
+        仅包含 V2 站点身份、首页、关于、留言板、页脚、搜索和前台头尾导航；不包含文章、评论、用户、文件或密钥。
+      </div>
+    </el-form-item>
+
     <el-form-item label="文章数据">
-      <el-button type="primary" :disabled="readonly" @click="articleImportVisible = true"
-        >导入文章</el-button
-      >
+      <el-button type="primary" :disabled="readonly" @click="articleImportVisible = true">
+        导入文章
+      </el-button>
     </el-form-item>
 
     <el-form-item label="评论数据">
-      <el-button type="primary" :disabled="readonly" @click="commentImportVisible = true"
-        >导入评论</el-button
-      >
+      <el-button type="primary" :disabled="readonly" @click="commentImportVisible = true">
+        导入评论
+      </el-button>
     </el-form-item>
   </el-form>
 
-  <!-- 文章导入对话框 -->
+  <el-dialog
+    v-model="siteConfigImportVisible"
+    title="导入站点配置"
+    width="600px"
+    :close-on-click-modal="false"
+  >
+    <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 16px">
+      <div>
+        导入会替换 V2 站点配置和前台头尾导航。它不会导入文章、评论、用户、上传文件或密钥。
+      </div>
+    </el-alert>
+
+    <el-upload
+      :auto-upload="false"
+      :file-list="siteConfigFileList"
+      :on-change="handleSiteConfigFileChange"
+      :on-remove="handleSiteConfigFileRemove"
+      accept=".json,application/json"
+      :limit="1"
+      drag
+      :disabled="readonly"
+    >
+      <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+      <div class="el-upload__text">拖拽或点击选择站点配置 JSON</div>
+      <template #tip>
+        <div class="el-upload__tip">仅支持通过本页面导出的 zblog.site-config.v1 配置包。</div>
+      </template>
+    </el-upload>
+
+    <template #footer>
+      <el-button @click="siteConfigImportVisible = false">取消</el-button>
+      <el-button
+        type="primary"
+        :loading="siteConfigImporting"
+        :disabled="readonly || siteConfigFileList.length === 0"
+        @click="handleSiteConfigImport"
+      >
+        {{ siteConfigImporting ? '导入中...' : '开始导入' }}
+      </el-button>
+    </template>
+  </el-dialog>
+
   <el-dialog
     v-model="articleImportVisible"
     title="导入文章"
@@ -43,7 +98,7 @@
           <el-option label="Hexo 格式" value="hexo" />
           <el-option label="Markdown 格式" value="markdown" />
         </el-select>
-        <div class="form-tip">Hexo 格式需要包含 Front Matter，Markdown 格式 仅需 Markdown 内容</div>
+        <div class="form-tip">Hexo 格式需要包含 Front Matter，Markdown 格式仅需 Markdown 内容。</div>
       </el-form-item>
 
       <el-form-item label="上传文件">
@@ -61,7 +116,7 @@
           <el-icon class="el-icon--upload"><upload-filled /></el-icon>
           <div class="el-upload__text">拖拽或点击选择文件</div>
           <template #tip>
-            <div class="el-upload__tip">最多添加 100 个文件，如遇上传失败请减少数量后重试</div>
+            <div class="el-upload__tip">最多添加 100 个文件，如遇上传失败请减少数量后重试。</div>
           </template>
         </el-upload>
       </el-form-item>
@@ -104,7 +159,6 @@
     </template>
   </el-dialog>
 
-  <!-- 评论导入对话框 -->
   <el-dialog
     v-model="commentImportVisible"
     title="导入评论"
@@ -121,7 +175,7 @@
         >
           <el-option label="Artalk" value="artalk" />
         </el-select>
-        <div class="form-tip">选择评论数据的来源系统，目前支持 Artalk 评论系统</div>
+        <div class="form-tip">选择评论数据的来源系统，目前支持 Artalk 评论系统。</div>
       </el-form-item>
 
       <el-form-item label="上传文件">
@@ -138,7 +192,7 @@
           <el-icon class="el-icon--upload"><upload-filled /></el-icon>
           <div class="el-upload__text">拖拽或点击选择文件</div>
           <template #tip>
-            <div class="el-upload__tip">支持 JSON 或 Artrans 格式文件，单个文件最大 10MB</div>
+            <div class="el-upload__tip">支持 JSON 或 Artrans 格式文件，单个文件最大 10MB。</div>
           </template>
         </el-upload>
       </el-form-item>
@@ -155,8 +209,7 @@
       </div>
       <div style="margin-top: 8px">
         总计 {{ commentImportResult.total }} 条，成功 {{ commentImportResult.success }} 条，失败
-        {{ commentImportResult.failed }}
-        条
+        {{ commentImportResult.failed }} 条
       </div>
       <div
         v-if="commentImportResult.user_created > 0"
@@ -176,7 +229,7 @@
       >
         <div><strong>失败详情：</strong></div>
         <div v-for="(err, i) in commentImportResult.errors" :key="i" style="margin-top: 4px">
-          第 {{ err.index + 1 }} 条: {{ err.error }}
+          第 {{ err.index + 1 }} 条：{{ err.error }}
         </div>
       </div>
     </el-alert>
@@ -202,8 +255,16 @@ import { UploadFilled } from '@element-plus/icons-vue';
 import type { UploadUserFile, UploadFile } from 'element-plus';
 import { importArticles } from '@/api/article';
 import { importComments } from '@/api/comment';
+import request from '@/utils/request';
 import type { ImportArticlesResult } from '@/types/article';
 import type { ImportCommentsResult } from '@/types/comment';
+
+interface SiteConfigPackage {
+  version: string;
+  exported_at?: string;
+  settings?: Record<string, Record<string, string>>;
+  menus?: unknown;
+}
 
 const props = withDefaults(defineProps<{ readonly?: boolean }>(), {
   readonly: false,
@@ -213,13 +274,90 @@ const emit = defineEmits<{
   'import-success': [];
 }>();
 
-// 文章导入相关
+const siteConfigImportVisible = ref(false);
+const siteConfigFileList = ref<UploadUserFile[]>([]);
+const siteConfigExporting = ref(false);
+const siteConfigImporting = ref(false);
+
 const articleImportVisible = ref(false);
 const articleFileList = ref<UploadUserFile[]>([]);
 const articleUploading = ref(false);
 const articleImportResult = ref<ImportArticlesResult | undefined>();
 const articleSourceType = ref<string>('hexo');
 const articleUploadImages = ref(false);
+
+const commentImportVisible = ref(false);
+const commentFileList = ref<UploadUserFile[]>([]);
+const commentUploading = ref(false);
+const commentImportResult = ref<ImportCommentsResult | undefined>();
+const commentSourceType = ref<string>('artalk');
+
+const assertWritable = () => {
+  if (props.readonly) {
+    ElMessage.warning('仅超级管理员可执行导入操作');
+    return false;
+  }
+  return true;
+};
+
+const downloadJson = (filename: string, payload: unknown) => {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+};
+
+const handleSiteConfigExport = async () => {
+  try {
+    siteConfigExporting.value = true;
+    const siteConfigPackage = (await request.get(
+      '/admin/site-config/package'
+    )) as unknown as SiteConfigPackage;
+    const date = new Date().toISOString().slice(0, 10);
+    downloadJson(`zblog-site-config-${date}.json`, siteConfigPackage);
+    ElMessage.success('站点配置已导出');
+  } catch (error: unknown) {
+    ElMessage.error((error as Error)?.message || '导出失败');
+  } finally {
+    siteConfigExporting.value = false;
+  }
+};
+
+const handleSiteConfigFileChange = (file: UploadFile, files: UploadUserFile[]) => {
+  siteConfigFileList.value = files.slice(-1);
+};
+
+const handleSiteConfigFileRemove = (file: UploadFile, files: UploadUserFile[]) => {
+  siteConfigFileList.value = files;
+};
+
+const handleSiteConfigImport = async () => {
+  if (!assertWritable()) return;
+
+  const rawFile = siteConfigFileList.value[0]?.raw;
+  if (!rawFile) {
+    ElMessage.warning('请选择站点配置 JSON 文件');
+    return;
+  }
+
+  try {
+    siteConfigImporting.value = true;
+    const payload = JSON.parse(await rawFile.text()) as SiteConfigPackage;
+    await request.put('/admin/site-config/package', payload);
+    ElMessage.success('站点配置已导入');
+    emit('import-success');
+    siteConfigImportVisible.value = false;
+  } catch (error: unknown) {
+    ElMessage.error((error as Error)?.message || '导入失败');
+  } finally {
+    siteConfigImporting.value = false;
+  }
+};
 
 const handleArticleFileChange = (file: UploadFile, files: UploadUserFile[]) => {
   articleFileList.value = files;
@@ -230,11 +368,7 @@ const handleArticleFileRemove = (file: UploadFile, files: UploadUserFile[]) => {
 };
 
 const handleArticleImport = async () => {
-  if (props.readonly) {
-    ElMessage.warning('仅超级管理员可执行导入操作');
-    return;
-  }
-
+  if (!assertWritable()) return;
   if (articleFileList.value.length === 0) return;
 
   try {
@@ -267,24 +401,6 @@ const handleArticleImport = async () => {
   }
 };
 
-watch(articleImportVisible, val => {
-  if (!val) {
-    setTimeout(() => {
-      articleFileList.value = [];
-      articleImportResult.value = undefined;
-      articleSourceType.value = 'hexo';
-      articleUploadImages.value = false;
-    }, 300);
-  }
-});
-
-// 评论导入相关
-const commentImportVisible = ref(false);
-const commentFileList = ref<UploadUserFile[]>([]);
-const commentUploading = ref(false);
-const commentImportResult = ref<ImportCommentsResult | undefined>();
-const commentSourceType = ref<string>('artalk');
-
 const handleCommentFileChange = (file: UploadFile, files: UploadUserFile[]) => {
   commentFileList.value = files;
 };
@@ -294,10 +410,7 @@ const handleCommentFileRemove = (file: UploadFile, files: UploadUserFile[]) => {
 };
 
 const handleCommentImport = async () => {
-  if (props.readonly) {
-    ElMessage.warning('仅超级管理员可执行导入操作');
-    return;
-  }
+  if (!assertWritable()) return;
 
   if (commentFileList.value.length === 0) {
     ElMessage.warning('请选择要导入的文件');
@@ -341,8 +454,27 @@ const handleCommentImport = async () => {
   }
 };
 
-watch(commentImportVisible, val => {
-  if (!val) {
+watch(siteConfigImportVisible, visible => {
+  if (!visible) {
+    setTimeout(() => {
+      siteConfigFileList.value = [];
+    }, 300);
+  }
+});
+
+watch(articleImportVisible, visible => {
+  if (!visible) {
+    setTimeout(() => {
+      articleFileList.value = [];
+      articleImportResult.value = undefined;
+      articleSourceType.value = 'hexo';
+      articleUploadImages.value = false;
+    }, 300);
+  }
+});
+
+watch(commentImportVisible, visible => {
+  if (!visible) {
     setTimeout(() => {
       commentFileList.value = [];
       commentImportResult.value = undefined;
@@ -357,6 +489,12 @@ watch(commentImportVisible, val => {
   font-size: 40px;
   color: #409eff;
   margin-bottom: 12px;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .form-tip {

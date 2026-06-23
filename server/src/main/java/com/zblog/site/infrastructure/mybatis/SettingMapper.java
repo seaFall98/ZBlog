@@ -15,4 +15,8 @@ public interface SettingMapper {
 
   void insertValue(
       @Param("group") String group, @Param("key") String key, @Param("value") String value);
+
+  void deleteKey(@Param("group") String group, @Param("key") String key);
+
+  void deleteGroup(@Param("group") String group);
 }

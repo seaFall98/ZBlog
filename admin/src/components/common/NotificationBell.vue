@@ -1,6 +1,6 @@
 <template>
   <div class="notification-bell">
-    <el-popover placement="bottom" :width="450" trigger="click" v-model:visible="visible">
+    <el-popover v-model:visible="visible" placement="bottom" :width="450" trigger="click">
       <template #reference>
         <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="bell-badge">
           <el-button :icon="Bell" circle @click="handleBellClick" />
@@ -8,21 +8,24 @@
       </template>
 
       <div class="notification-popover">
-        <!-- 上：标题和全部已读 -->
         <div class="notification-header">
           <span class="title">通知消息</span>
-          <el-button
-            type="primary"
-            size="small"
-            text
-            @click="handleMarkAllRead"
-            v-if="unreadCount > 0"
-          >
-            全部已读
-          </el-button>
+          <div class="actions">
+            <el-button type="primary" size="small" text @click="openNotificationCenter">
+              查看全部
+            </el-button>
+            <el-button
+              v-if="unreadCount > 0"
+              type="primary"
+              size="small"
+              text
+              @click="handleMarkAllRead"
+            >
+              全部已读
+            </el-button>
+          </div>
         </div>
 
-        <!-- 中：通知列表 -->
         <div class="notification-list" v-loading="loading" @scroll="handleScroll">
           <div v-if="notifications.length === 0" class="empty">暂无通知</div>
           <div v-else class="notification-items">
@@ -32,19 +35,15 @@
               class="notification-item"
               @click="handleNotificationClick(item)"
             >
-              <!-- 左侧：图标 -->
               <div class="notification-icon">
                 <el-icon :size="24" :color="getNotificationIconColor(item.type)">
                   <component :is="getNotificationIcon(item.type)" />
                 </el-icon>
               </div>
 
-              <!-- 右侧：内容 -->
               <div class="notification-content-wrapper">
-                <!-- 上方：标题和时间 -->
                 <div class="notification-header-line">
                   <div class="notification-title-with-dot">
-                    <!-- 未读红点 -->
                     <span v-if="!item.is_read" class="unread-dot"></span>
                     <span class="notification-title">{{ item.title }}</span>
                   </div>
@@ -53,12 +52,10 @@
                   </div>
                 </div>
 
-                <!-- 下方：内容 -->
                 <div class="notification-content">{{ item.content }}</div>
               </div>
             </div>
 
-            <!-- 加载更多 -->
             <div v-if="hasMore" class="load-more">
               <el-button
                 type="primary"
@@ -71,7 +68,6 @@
               </el-button>
             </div>
 
-            <!-- 没有更多 -->
             <div v-else-if="notifications.length > 0" class="no-more">没有更多了</div>
           </div>
         </div>
@@ -104,7 +100,7 @@ const unreadCount = ref(0);
 const notifications = ref<Notification[]>([]);
 const currentPage = ref(1);
 const hasMore = ref(true);
-let timer: number;
+let timer: number | undefined;
 let previousUnreadCount = 0;
 
 const publicSiteBaseUrl = () => {
@@ -120,9 +116,7 @@ const publicSiteBaseUrl = () => {
 const isPublicSiteLink = (link: string) =>
   link.startsWith('/posts/') || link.startsWith('/moments') || link.startsWith('/guestbook');
 
-// 统一的加载方法
 const loadNotifications = async (reset = false) => {
-  // 防止重复加载
   if (loading.value || (!reset && !hasMore.value)) return;
 
   if (reset) {
@@ -138,46 +132,42 @@ const loadNotifications = async (reset = false) => {
       page_size: 20,
     });
 
-    // 追加或替换数据
     notifications.value = reset ? res.list : [...notifications.value, ...res.list];
 
     const newUnreadCount = res.unread_count || 0;
-
-    // 检测到新通知时，显示系统通知
     if (newUnreadCount > previousUnreadCount && previousUnreadCount > 0) {
       const newNotifications = res.list
-        .filter(n => !n.is_read)
+        .filter(notification => !notification.is_read)
         .slice(0, newUnreadCount - previousUnreadCount);
       showSystemNotifications(newNotifications);
     }
 
     previousUnreadCount = newUnreadCount;
     unreadCount.value = newUnreadCount;
-
-    // 判断是否还有更多
     hasMore.value = notifications.value.length < res.total;
 
-    // 加载成功后才增加页码
     if (!reset) currentPage.value++;
-  } catch (_error) {
-    console.error('加载通知失败:', _error);
+  } catch (error) {
+    console.error('加载通知失败:', error);
   } finally {
     loading.value = false;
   }
 };
 
-// 滚动到底部时自动加载
-const handleScroll = (e: Event) => {
-  const el = e.target as HTMLElement;
+const handleScroll = (event: Event) => {
+  const el = event.target as HTMLElement;
   if (el.scrollHeight - el.scrollTop - el.clientHeight < 50) {
     loadNotifications();
   }
 };
 
-// 点击铃铛刷新
 const handleBellClick = () => loadNotifications(true);
 
-// 全部标记已读
+const openNotificationCenter = () => {
+  visible.value = false;
+  router.push('/ops/notifications');
+};
+
 const handleMarkAllRead = async () => {
   try {
     await markAllAsRead();
@@ -188,38 +178,33 @@ const handleMarkAllRead = async () => {
   }
 };
 
-// 点击通知
 const handleNotificationClick = async (notification: Notification) => {
-  // 标记为已读并更新本地状态
   if (!notification.is_read) {
     markAsRead(notification.id)
       .then(() => {
         notification.is_read = true;
-        unreadCount.value--;
+        unreadCount.value = Math.max(0, unreadCount.value - 1);
       })
-      .catch(err => console.error('标记已读失败:', err));
+      .catch(error => console.error('标记已读失败:', error));
   }
 
-  // 跳转
-  if (notification.link) {
-    visible.value = false;
-    if (/^https?:\/\//i.test(notification.link)) {
-      window.open(notification.link, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    if (isPublicSiteLink(notification.link)) {
-      window.open(`${publicSiteBaseUrl()}${notification.link}`, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    router.push(notification.link);
+  if (!notification.link) return;
+
+  visible.value = false;
+  if (/^https?:\/\//i.test(notification.link)) {
+    window.open(notification.link, '_blank', 'noopener,noreferrer');
+    return;
   }
+  if (isPublicSiteLink(notification.link)) {
+    window.open(`${publicSiteBaseUrl()}${notification.link}`, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  router.push(notification.link);
 };
 
-// 显示系统通知
 const showSystemNotifications = (newNotifications: Notification[]) => {
   if (!notificationManager.isSupported()) return;
 
-  // 只显示最新的一条通知，避免过多打扰
   const latestNotification = newNotifications[0];
   if (!latestNotification) return;
 
@@ -234,7 +219,6 @@ const showSystemNotifications = (newNotifications: Notification[]) => {
   });
 };
 
-// 请求通知权限
 const requestNotificationPermission = async () => {
   if (!notificationManager.isSupported()) return;
 
@@ -244,11 +228,12 @@ const requestNotificationPermission = async () => {
   }
 };
 
-// 通知图标配置
 const notificationIconConfig: Record<NotificationType, { icon: Component; color: string }> = {
   comment_reply: { icon: ChatDotRound, color: '#409EFF' },
   comment_new: { icon: ChatDotRound, color: '#409EFF' },
   feedback_new: { icon: QuestionFilled, color: '#E6A23C' },
+  feedback_update: { icon: QuestionFilled, color: '#E6A23C' },
+  article_published: { icon: Bell, color: '#67C23A' },
   system_alert: { icon: Warning, color: '#F56C6C' },
   friend_apply: { icon: Link, color: '#67C23A' },
   friend_abnormal: { icon: WarningFilled, color: '#E6A23C' },
@@ -259,38 +244,36 @@ const getNotificationIconColor = (type: NotificationType) =>
   notificationIconConfig[type]?.color || '#909399';
 const formatTime = (time: string) => formatMomentTime(time);
 
-// 定时轮询
 onMounted(() => {
   loadNotifications(true);
-  // 请求通知权限
   requestNotificationPermission();
-  // 每30秒轮询一次未读数量（不刷新列表，避免打断用户）
+
   timer = window.setInterval(() => {
-    if (!visible.value) {
-      // 只在弹窗关闭时更新徽章数字
-      getNotifications({ page: 1, page_size: 1 }).then(res => {
-        const newUnreadCount = res.unread_count || 0;
+    if (visible.value) return;
 
-        // 检测到新通知时，显示系统通知
-        if (newUnreadCount > previousUnreadCount && previousUnreadCount > 0) {
-          // 获取最新的未读通知
-          getNotifications({
-            page: 1,
-            page_size: newUnreadCount - previousUnreadCount,
-          }).then(latestRes => {
-            const newNotifications = latestRes.list.filter(n => !n.is_read);
-            showSystemNotifications(newNotifications);
-          });
-        }
+    getNotifications({ page: 1, page_size: 1 }).then(res => {
+      const newUnreadCount = res.unread_count || 0;
+      if (newUnreadCount > previousUnreadCount && previousUnreadCount > 0) {
+        getNotifications({
+          page: 1,
+          page_size: newUnreadCount - previousUnreadCount,
+        }).then(latestRes => {
+          const newNotifications = latestRes.list.filter(notification => !notification.is_read);
+          showSystemNotifications(newNotifications);
+        });
+      }
 
-        previousUnreadCount = newUnreadCount;
-        unreadCount.value = newUnreadCount;
-      });
-    }
+      previousUnreadCount = newUnreadCount;
+      unreadCount.value = newUnreadCount;
+    });
   }, 30000);
 });
 
-onUnmounted(() => timer && clearInterval(timer));
+onUnmounted(() => {
+  if (timer) {
+    clearInterval(timer);
+  }
+});
 </script>
 
 <style scoped lang="scss">
@@ -305,11 +288,19 @@ onUnmounted(() => timer && clearInterval(timer));
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 10px 15px;
     border-bottom: 1px solid #eee;
 
     .title {
       font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
     }
   }
 

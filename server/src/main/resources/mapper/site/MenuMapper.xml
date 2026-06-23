@@ -41,4 +41,12 @@
   <delete id="deleteMenu">
     delete from menus where id = #{id}
   </delete>
+
+  <delete id="deleteByTypes">
+    delete from menus
+    where type in
+    <foreach collection="types" item="type" open="(" separator="," close=")">
+      #{type}
+    </foreach>
+  </delete>
 </mapper>

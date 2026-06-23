@@ -35,6 +35,19 @@ public class MyBatisNotificationRepository implements NotificationRepository {
     return notificationMapper.listRows(pageSize, offset).stream().map(this::mapRow).toList();
   }
 
+  public long countFiltered(String type, Boolean read, Boolean processed, String keyword) {
+    return notificationMapper.countFiltered(blankToNull(type), read, processed, blankToNull(keyword));
+  }
+
+  public List<Map<String, Object>> listFiltered(
+      String type, Boolean read, Boolean processed, String keyword, int pageSize, int offset) {
+    return notificationMapper
+        .listFilteredRows(blankToNull(type), read, processed, blankToNull(keyword), pageSize, offset)
+        .stream()
+        .map(this::mapRow)
+        .toList();
+  }
+
   public long countByRecipient(long recipientUserId, boolean unreadOnly) {
     return notificationMapper.countByRecipient(recipientUserId, unreadOnly);
   }
@@ -139,6 +152,10 @@ public class MyBatisNotificationRepository implements NotificationRepository {
     return notificationMapper.markAllReadByRecipient(recipientUserId);
   }
 
+  public void markProcessed(long id, boolean processed) {
+    notificationMapper.markProcessed(id, processed);
+  }
+
   public int deleteReadOlderThan(LocalDateTime threshold) {
     return notificationMapper.deleteReadOlderThan(threshold);
   }
@@ -160,6 +177,8 @@ public class MyBatisNotificationRepository implements NotificationRepository {
     row.put("target_comment_id", source.get("target_comment_id"));
     row.put("is_read", source.get("is_read"));
     row.put("read_at", source.get("read_at"));
+    row.put("is_processed", source.get("is_processed"));
+    row.put("processed_at", source.get("processed_at"));
     row.put("created_at", source.get("created_at"));
     row.put("sender", source.get("sender"));
     return row;
@@ -194,5 +213,12 @@ public class MyBatisNotificationRepository implements NotificationRepository {
 
   private String string(Object value) {
     return value == null ? "" : value.toString();
+  }
+
+  private String blankToNull(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return value.trim();
   }
 }

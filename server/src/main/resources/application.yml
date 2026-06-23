@@ -70,3 +70,7 @@ zblog:
     bootstrap-admin:
       username: ${ZBLOG_ADMIN_USERNAME:admin}
       password: ${ZBLOG_ADMIN_PASSWORD:admin123456}
+  media:
+    storage:
+      cos-secret-id: ${ZBLOG_COS_SECRET_ID:}
+      cos-secret-key: ${ZBLOG_COS_SECRET_KEY:}

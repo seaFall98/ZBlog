@@ -1,5 +1,5 @@
 import request from '@/utils/request';
-import type { NotificationListData, NotificationQueryParams } from '@/types/notification';
+import type { Notification, NotificationListData, NotificationQueryParams } from '@/types/notification';
 
 /**
  * 获取管理员通知列表
@@ -25,4 +25,12 @@ export function markAsRead(id: number): Promise<void> {
  */
 export function markAllAsRead(): Promise<void> {
   return request.put('/admin/notifications/read-all');
+}
+
+export function markAsProcessed(id: number): Promise<Notification> {
+  return request.put(`/admin/notifications/${id}/processed`);
+}
+
+export function markAsUnprocessed(id: number): Promise<Notification> {
+  return request.put(`/admin/notifications/${id}/unprocessed`);
 }

@@ -21,4 +21,6 @@ public interface MenuMapper {
   void detachChildren(@Param("id") long id);
 
   void deleteMenu(@Param("id") long id);
+
+  void deleteByTypes(@Param("types") List<String> types);
 }

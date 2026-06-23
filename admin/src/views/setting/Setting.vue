@@ -71,6 +71,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { getSettingGroup, updateSettingGroup } from '@/api/sysconfig';
+import request from '@/utils/request';
 import { isSuperAdmin } from '@/utils/auth';
 import BasicSettingsTab from './components/BasicSettingsTab.vue';
 import BlogSettingsTab from './components/BlogSettingsTab.vue';
@@ -122,13 +123,13 @@ const uploadForm = ref<UploadForm>({
   storage_type: 'local',
   max_file_size: 10,
   path_pattern: '{timestamp}_{random}{ext}',
-  access_key: '',
-  secret_key: '',
   region: '',
   bucket: '',
   endpoint: '',
   domain: '',
+  prefix: '',
   use_ssl: true,
+  credential_configured: false,
 });
 
 const aiForm = ref({
@@ -223,14 +224,17 @@ const loadUploadConfigs = async () => {
       storage_type: configs.storage_type || 'local',
       max_file_size: Number(configs.max_file_size || 10),
       path_pattern: configs.path_pattern || '{timestamp}_{random}{ext}',
-      access_key: configs.access_key || '',
-      secret_key: configs.secret_key || '',
       region: configs.region || '',
       bucket: configs.bucket || '',
       endpoint: configs.endpoint || '',
       domain: configs.domain || '',
+      prefix: configs.prefix || '',
       use_ssl: (configs.use_ssl || 'true') === 'true',
     });
+    const status = (await request.get('/admin/media/storage/status')) as unknown as {
+      credential_configured: boolean;
+    };
+    uploadForm.value.credential_configured = status.credential_configured;
   } catch {
     ElMessage.error('获取上传配置失败');
   }
@@ -358,12 +362,11 @@ const handleSave = async () => {
       'upload.storage_type': uploadForm.value.storage_type,
       'upload.max_file_size': String(uploadForm.value.max_file_size),
       'upload.path_pattern': uploadForm.value.path_pattern,
-      'upload.access_key': uploadForm.value.access_key,
-      'upload.secret_key': uploadForm.value.secret_key,
       'upload.region': uploadForm.value.region,
       'upload.bucket': uploadForm.value.bucket,
       'upload.endpoint': uploadForm.value.endpoint,
       'upload.domain': uploadForm.value.domain,
+      'upload.prefix': uploadForm.value.prefix,
       'upload.use_ssl': uploadForm.value.use_ssl ? 'true' : 'false',
     };
 

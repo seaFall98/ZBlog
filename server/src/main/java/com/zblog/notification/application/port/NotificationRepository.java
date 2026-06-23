@@ -12,6 +12,11 @@ public interface NotificationRepository {
 
   List<Map<String, Object>> list(int pageSize, int offset);
 
+  long countFiltered(String type, Boolean read, Boolean processed, String keyword);
+
+  List<Map<String, Object>> listFiltered(
+      String type, Boolean read, Boolean processed, String keyword, int pageSize, int offset);
+
   long countByRecipient(long recipientUserId, boolean unreadOnly);
 
   long countUnreadByRecipient(long recipientUserId);
@@ -55,6 +60,8 @@ public interface NotificationRepository {
   Map<String, Object> getForRecipient(long id, long recipientUserId);
 
   int markAllReadByRecipient(long recipientUserId);
+
+  void markProcessed(long id, boolean processed);
 
   int deleteReadOlderThan(LocalDateTime threshold);
 }

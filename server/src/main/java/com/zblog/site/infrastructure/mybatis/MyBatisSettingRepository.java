@@ -32,4 +32,12 @@ public class MyBatisSettingRepository implements SettingRepository {
       settingMapper.insertValue(group, key, value);
     }
   }
+
+  public void deleteKey(String group, String key) {
+    settingMapper.deleteKey(group, key);
+  }
+
+  public void deleteGroup(String group) {
+    settingMapper.deleteGroup(group);
+  }
 }

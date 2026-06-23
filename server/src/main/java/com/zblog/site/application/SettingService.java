@@ -14,6 +14,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SettingService {
 
+  private static final List<String> UPLOAD_SECRET_KEYS =
+      List.of(
+          "secret_id",
+          "secret_key",
+          "access_key",
+          "access_secret",
+          "client_secret",
+          "upload.secret_id",
+          "upload.secret_key",
+          "upload.access_key",
+          "upload.access_secret",
+          "upload.client_secret");
+
   private final SettingRepository settingRepository;
   private final ObjectMapper objectMapper;
   private final SecureRandom secureRandom = new SecureRandom();
@@ -99,8 +112,26 @@ public class SettingService {
 
   @Transactional
   public Map<String, String> updateGroup(String group, Map<String, String> values) {
-    values.forEach((key, value) -> settingRepository.upsert(group, key, value == null ? "" : value));
+    Map<String, String> sanitized = sanitizeGroupValues(group, values);
+    if ("upload".equals(group)) {
+      UPLOAD_SECRET_KEYS.forEach(key -> settingRepository.deleteKey(group, key));
+    }
+    sanitized.forEach((key, value) -> settingRepository.upsert(group, key, value == null ? "" : value));
     return getGroup(group);
+  }
+
+  private Map<String, String> sanitizeGroupValues(String group, Map<String, String> values) {
+    if (!"upload".equals(group)) {
+      return values;
+    }
+    Map<String, String> sanitized = new LinkedHashMap<>();
+    values.forEach(
+        (key, value) -> {
+          if (!UPLOAD_SECRET_KEYS.contains(key)) {
+            sanitized.put(key, value);
+          }
+        });
+    return sanitized;
   }
 
   public Map<String, String> resetMcpSecret() {

@@ -15,6 +15,20 @@ public interface NotificationMapper {
 
   List<Map<String, Object>> listRows(@Param("limit") int limit, @Param("offset") int offset);
 
+  long countFiltered(
+      @Param("type") String type,
+      @Param("read") Boolean read,
+      @Param("processed") Boolean processed,
+      @Param("keyword") String keyword);
+
+  List<Map<String, Object>> listFilteredRows(
+      @Param("type") String type,
+      @Param("read") Boolean read,
+      @Param("processed") Boolean processed,
+      @Param("keyword") String keyword,
+      @Param("limit") int limit,
+      @Param("offset") int offset);
+
   long countByRecipient(@Param("recipientUserId") long recipientUserId, @Param("unreadOnly") boolean unreadOnly);
 
   long countUnreadByRecipient(@Param("recipientUserId") long recipientUserId);
@@ -42,6 +56,8 @@ public interface NotificationMapper {
   List<Map<String, Object>> rowsByIdForRecipient(@Param("id") long id, @Param("recipientUserId") long recipientUserId);
 
   int markAllReadByRecipient(@Param("recipientUserId") long recipientUserId);
+
+  void markProcessed(@Param("id") long id, @Param("processed") boolean processed);
 
   int deleteReadOlderThan(@Param("threshold") LocalDateTime threshold);
 }

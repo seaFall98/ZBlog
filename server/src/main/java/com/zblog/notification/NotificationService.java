@@ -33,6 +33,16 @@ public class NotificationService {
     return Map.of("list", list, "total", total, "page", page, "page_size", pageSize, "unread_count", unread);
   }
 
+  public Map<String, Object> listAdmin(
+      int page, int pageSize, String type, Boolean read, Boolean processed, String keyword) {
+    int offset = Math.max(0, page - 1) * pageSize;
+    long total = notificationRepository.countFiltered(type, read, processed, keyword);
+    long unread = notificationRepository.countUnread();
+    List<Map<String, Object>> list =
+        notificationRepository.listFiltered(type, read, processed, keyword, pageSize, offset);
+    return Map.of("list", list, "total", total, "page", page, "page_size", pageSize, "unread_count", unread);
+  }
+
   public Map<String, Object> listForUser(String email, int page, int pageSize, boolean unreadOnly) {
     UserAccount user = userRepository.findByEmail(email);
     int offset = Math.max(0, page - 1) * pageSize;
@@ -214,6 +224,11 @@ public class NotificationService {
   public Map<String, Object> markAllRead() {
     int affected = notificationRepository.markAllRead();
     return Map.of("affected", affected, "unread_count", 0);
+  }
+
+  public Map<String, Object> markProcessed(long id, boolean processed) {
+    notificationRepository.markProcessed(id, processed);
+    return notificationRepository.get(id);
   }
 
   @Transactional
