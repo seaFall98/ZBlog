@@ -129,6 +129,74 @@ class Batch7FollowupOpsMediaTest {
   }
 
   @Test
+  void siteConfigPackageImportRejectsIncompletePackageWithoutDeletingCurrentConfiguration() {
+    HttpHeaders headers = authenticatedHeaders();
+    Map<?, ?> originalPackage = exportSiteConfigPackage(headers);
+    try {
+      restTemplate.exchange(
+          "/api/v1/admin/settings/v2_identity",
+          HttpMethod.PUT,
+          new HttpEntity<>(Map.of("site_title", "Batch7 Existing Site"), headers),
+          Map.class);
+
+      ResponseEntity<Map> importResponse =
+          restTemplate.exchange(
+              "/api/v1/admin/site-config/package",
+              HttpMethod.PUT,
+              new HttpEntity<>(Map.of("version", "zblog.site-config.v1"), headers),
+              Map.class);
+
+      assertThat(importResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+      Map<?, ?> frontConfig = (Map<?, ?>) data(restTemplate.getForEntity("/api/v1/front/config", Map.class));
+      Map<?, ?> identity = (Map<?, ?>) frontConfig.get("identity");
+      assertThat(identity.get("siteTitle")).isEqualTo("Batch7 Existing Site");
+    } finally {
+      importSiteConfigPackage(headers, originalPackage);
+    }
+  }
+
+  @Test
+  void siteConfigPackageImportRejectsMissingMenusWithoutDeletingCurrentConfiguration() {
+    HttpHeaders headers = authenticatedHeaders();
+    Map<?, ?> originalPackage = exportSiteConfigPackage(headers);
+    try {
+      restTemplate.exchange(
+          "/api/v1/admin/settings/v2_identity",
+          HttpMethod.PUT,
+          new HttpEntity<>(Map.of("site_title", "Batch7 Existing Site Before Bad Menus"), headers),
+          Map.class);
+
+      ResponseEntity<Map> importResponse =
+          restTemplate.exchange(
+              "/api/v1/admin/site-config/package",
+              HttpMethod.PUT,
+              new HttpEntity<>(
+                  Map.of(
+                      "version",
+                      "zblog.site-config.v1",
+                      "settings",
+                      Map.of(
+                          "v2_identity", Map.of("site_title", "Should Not Persist"),
+                          "v2_home", Map.of(),
+                          "v2_about", Map.of(),
+                          "v2_guestbook", Map.of(),
+                          "v2_footer", Map.of(),
+                          "v2_search", Map.of())),
+                  headers),
+              Map.class);
+
+      assertThat(importResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+      Map<?, ?> frontConfig = (Map<?, ?>) data(restTemplate.getForEntity("/api/v1/front/config", Map.class));
+      Map<?, ?> identity = (Map<?, ?>) frontConfig.get("identity");
+      assertThat(identity.get("siteTitle")).isEqualTo("Batch7 Existing Site Before Bad Menus");
+    } finally {
+      importSiteConfigPackage(headers, originalPackage);
+    }
+  }
+
+  @Test
   void adminNotificationCenterFiltersAndProcessesOperationalNotifications() {
     ResponseEntity<Map> feedbackResponse =
         restTemplate.postForEntity(

@@ -64,7 +64,11 @@ public class MediaStorageSettings {
       boolean credentialConfigured) {
 
     public boolean cosReady() {
-      return "cos".equals(storageType) && !region.isBlank() && !bucket.isBlank() && credentialConfigured;
+      return "cos".equals(storageType) && cosConfigured();
+    }
+
+    public boolean cosConfigured() {
+      return !region.isBlank() && !bucket.isBlank() && credentialConfigured;
     }
   }
 }

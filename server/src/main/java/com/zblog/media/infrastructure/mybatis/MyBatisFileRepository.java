@@ -2,6 +2,7 @@ package com.zblog.media.infrastructure.mybatis;
 
 import com.zblog.common.api.PageResponse;
 import com.zblog.media.application.port.FileRepository;
+import com.zblog.media.application.port.FileStorageReference;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,6 +66,13 @@ public class MyBatisFileRepository implements FileRepository {
     return fileMapper.activeFilenames(id);
   }
 
+  @Override
+  public List<FileStorageReference> findActiveStorageReferences(long id) {
+    return fileMapper.activeStorageReferences(id).stream()
+        .map(row -> new FileStorageReference(string(row.get("filename")), string(row.get("file_url"))))
+        .toList();
+  }
+
   public void markDeleted(long id) {
     fileMapper.markDeleted(id);
   }
@@ -79,5 +87,9 @@ public class MyBatisFileRepository implements FileRepository {
 
   private String blankToNull(String value) {
     return value == null || value.isBlank() ? null : value;
+  }
+
+  private String string(Object value) {
+    return value == null ? "" : value.toString();
   }
 }

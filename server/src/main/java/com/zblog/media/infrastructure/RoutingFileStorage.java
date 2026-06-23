@@ -40,11 +40,35 @@ public class RoutingFileStorage implements FileStorage {
   }
 
   public void delete(String filename) throws IOException {
+    delete(filename, "");
+  }
+
+  @Override
+  public void delete(String filename, String fileUrl) throws IOException {
     StorageSettings settings = storageSettings.current();
+    if (isRemoteUrl(fileUrl)) {
+      if (!settings.cosConfigured()) {
+        throw new BusinessException(40001, "Tencent COS storage is not fully configured", HttpStatus.BAD_REQUEST);
+      }
+      tencentCosFileStorage.delete(filename, fileUrl);
+      return;
+    }
+    if (isLocalUrl(fileUrl)) {
+      localFileStorage.delete(filename);
+      return;
+    }
     if ("cos".equals(settings.storageType()) && settings.cosReady()) {
       tencentCosFileStorage.delete(filename);
       return;
     }
     localFileStorage.delete(filename);
+  }
+
+  private boolean isRemoteUrl(String fileUrl) {
+    return fileUrl != null && (fileUrl.startsWith("http://") || fileUrl.startsWith("https://"));
+  }
+
+  private boolean isLocalUrl(String fileUrl) {
+    return fileUrl != null && fileUrl.startsWith("/uploads/");
   }
 }

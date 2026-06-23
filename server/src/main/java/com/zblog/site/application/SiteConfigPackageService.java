@@ -49,7 +49,8 @@ public class SiteConfigPackageService {
       throw new BusinessException(400, "Unsupported site config package version", HttpStatus.BAD_REQUEST);
     }
 
-    Map<String, Map<String, String>> settings = request.settings() == null ? Map.of() : request.settings();
+    Map<String, Map<String, String>> settings = validateSettings(request.settings());
+    SiteConfigPackageMenus menus = validateMenus(request.menus());
     for (String group : PORTABLE_SETTING_GROUPS) {
       settingRepository.deleteGroup(group);
       Map<String, String> values = settings.getOrDefault(group, Map.of());
@@ -57,11 +58,33 @@ public class SiteConfigPackageService {
     }
 
     menuRepository.deleteByTypes(List.of("header_navigation", "footer_navigation"));
-    SiteConfigPackageMenus menus = request.menus() == null ? new SiteConfigPackageMenus(List.of(), List.of()) : request.menus();
     createMenuTree("header_navigation", null, menus.header());
     createMenuTree("footer_navigation", null, menus.footer());
 
     return exportPackage();
+  }
+
+  private Map<String, Map<String, String>> validateSettings(Map<String, Map<String, String>> settings) {
+    if (settings == null) {
+      throw invalidPackage("settings is required");
+    }
+    for (String group : PORTABLE_SETTING_GROUPS) {
+      if (!settings.containsKey(group) || settings.get(group) == null) {
+        throw invalidPackage("settings." + group + " is required");
+      }
+    }
+    return settings;
+  }
+
+  private SiteConfigPackageMenus validateMenus(SiteConfigPackageMenus menus) {
+    if (menus == null || menus.header() == null || menus.footer() == null) {
+      throw invalidPackage("menus.header and menus.footer are required");
+    }
+    return menus;
+  }
+
+  private BusinessException invalidPackage(String message) {
+    return new BusinessException(400, "Invalid site config package: " + message, HttpStatus.BAD_REQUEST);
   }
 
   private void createMenuTree(String type, Long parentId, List<SiteConfigPackageMenuItem> items) {

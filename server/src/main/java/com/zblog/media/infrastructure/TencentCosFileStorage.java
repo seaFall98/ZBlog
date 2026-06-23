@@ -14,18 +14,24 @@ import com.zblog.media.MediaStorageProperties;
 import com.zblog.media.application.MediaStorageSettings;
 import com.zblog.media.application.MediaStorageSettings.StorageSettings;
 import com.zblog.media.application.port.FileStorage;
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriUtils;
 
 @Component
 public class TencentCosFileStorage implements FileStorage {
 
   private final MediaStorageSettings storageSettings;
   private final MediaStorageProperties properties;
+  private final ConcurrentMap<String, COSClient> clients = new ConcurrentHashMap<>();
 
   public TencentCosFileStorage(MediaStorageSettings storageSettings, MediaStorageProperties properties) {
     this.storageSettings = storageSettings;
@@ -38,7 +44,7 @@ public class TencentCosFileStorage implements FileStorage {
     String key = objectKey(settings, filename);
     ObjectMetadata metadata = new ObjectMetadata();
     metadata.setContentLength(bytes.length);
-    COSClient client = withClient(settings);
+    COSClient client = clientFor(settings);
 
     try {
       client.putObject(new PutObjectRequest(settings.bucket(), key, new java.io.ByteArrayInputStream(bytes), metadata));
@@ -48,15 +54,18 @@ public class TencentCosFileStorage implements FileStorage {
           50201,
           "Failed to upload file to Tencent COS: " + exception.getMessage(),
           HttpStatus.BAD_GATEWAY);
-    } finally {
-      client.shutdown();
     }
   }
 
   public void delete(String filename) throws IOException {
+    delete(filename, "");
+  }
+
+  @Override
+  public void delete(String filename, String fileUrl) throws IOException {
     StorageSettings settings = storageSettings.current();
-    String key = objectKey(settings, filename);
-    COSClient client = withClient(settings);
+    String key = objectKey(settings, filename, fileUrl);
+    COSClient client = clientFor(settings);
     try {
       client.deleteObject(settings.bucket(), key);
     } catch (CosClientException exception) {
@@ -64,16 +73,49 @@ public class TencentCosFileStorage implements FileStorage {
           50201,
           "Failed to delete file from Tencent COS: " + exception.getMessage(),
           HttpStatus.BAD_GATEWAY);
-    } finally {
-      client.shutdown();
     }
   }
 
-  private COSClient withClient(StorageSettings settings) {
+  String objectKey(StorageSettings settings, String filename, String fileUrl) {
+    if (fileUrl != null && (fileUrl.startsWith("http://") || fileUrl.startsWith("https://"))) {
+      if (!settings.domain().isBlank() && fileUrl.startsWith(settings.domain() + "/")) {
+        return decodePath(fileUrl.substring(settings.domain().length() + 1));
+      }
+      try {
+        String path = URI.create(fileUrl).getRawPath();
+        if (path != null && !path.isBlank()) {
+          return decodePath(path.replaceAll("^/+", ""));
+        }
+      } catch (IllegalArgumentException ignored) {
+        // Fall back to the configured prefix + filename for malformed historical URLs.
+      }
+    }
+    return objectKey(settings, filename);
+  }
+
+  private String decodePath(String path) {
+    return UriUtils.decode(path.replace('\\', '/').replaceAll("^/+", ""), StandardCharsets.UTF_8);
+  }
+
+  private COSClient clientFor(StorageSettings settings) {
+    return clients.computeIfAbsent(clientKey(settings), ignored -> createClient(settings));
+  }
+
+  private COSClient createClient(StorageSettings settings) {
     COSCredentials credentials = new BasicCOSCredentials(properties.getCosSecretId(), properties.getCosSecretKey());
     ClientConfig clientConfig = new ClientConfig(new Region(settings.region()));
     clientConfig.setHttpProtocol(HttpProtocol.https);
     return new COSClient(credentials, clientConfig);
+  }
+
+  private String clientKey(StorageSettings settings) {
+    return settings.region() + "|" + properties.getCosSecretId();
+  }
+
+  @PreDestroy
+  public void shutdownClients() {
+    clients.values().forEach(COSClient::shutdown);
+    clients.clear();
   }
 
   private String publicUrl(StorageSettings settings, String key) {

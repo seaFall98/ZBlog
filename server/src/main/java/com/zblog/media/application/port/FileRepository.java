@@ -2,6 +2,7 @@ package com.zblog.media.application.port;
 
 import com.zblog.common.api.PageResponse;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 public interface FileRepository {
@@ -26,7 +27,11 @@ public interface FileRepository {
       LocalDateTime start,
       LocalDateTime end);
 
-  java.util.List<String> findActiveFilenames(long id);
+  List<FileStorageReference> findActiveStorageReferences(long id);
+
+  default List<String> findActiveFilenames(long id) {
+    return findActiveStorageReferences(id).stream().map(FileStorageReference::filename).toList();
+  }
 
   void markDeleted(long id);
 }
