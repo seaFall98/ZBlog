@@ -1,5 +1,14 @@
 package com.zblog.media.infrastructure;
 
+import com.qcloud.cos.COSClient;
+import com.qcloud.cos.ClientConfig;
+import com.qcloud.cos.auth.BasicCOSCredentials;
+import com.qcloud.cos.auth.COSCredentials;
+import com.qcloud.cos.exception.CosClientException;
+import com.qcloud.cos.http.HttpProtocol;
+import com.qcloud.cos.model.ObjectMetadata;
+import com.qcloud.cos.model.PutObjectRequest;
+import com.qcloud.cos.region.Region;
 import com.zblog.common.exception.BusinessException;
 import com.zblog.media.MediaStorageProperties;
 import com.zblog.media.application.MediaStorageSettings;
@@ -7,32 +16,16 @@ import com.zblog.media.application.MediaStorageSettings.StorageSettings;
 import com.zblog.media.application.port.FileStorage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.HexFormat;
-import java.util.Locale;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
 public class TencentCosFileStorage implements FileStorage {
 
-  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
-
   private final MediaStorageSettings storageSettings;
   private final MediaStorageProperties properties;
-  private final HttpClient httpClient = HttpClient.newHttpClient();
 
   public TencentCosFileStorage(MediaStorageSettings storageSettings, MediaStorageProperties properties) {
     this.storageSettings = storageSettings;
@@ -43,46 +36,44 @@ public class TencentCosFileStorage implements FileStorage {
     byte[] bytes = content.readAllBytes();
     StorageSettings settings = storageSettings.current();
     String key = objectKey(settings, filename);
-    URI uri = objectUri(settings, key);
-    HttpRequest request =
-        HttpRequest.newBuilder(uri)
-            .timeout(REQUEST_TIMEOUT)
-            .header("Authorization", authorization(settings, "put", key))
-            .PUT(HttpRequest.BodyPublishers.ofByteArray(bytes))
-            .build();
-    send(request, "upload file to Tencent COS");
-    return publicUrl(settings, key);
+    ObjectMetadata metadata = new ObjectMetadata();
+    metadata.setContentLength(bytes.length);
+    COSClient client = withClient(settings);
+
+    try {
+      client.putObject(new PutObjectRequest(settings.bucket(), key, new java.io.ByteArrayInputStream(bytes), metadata));
+      return publicUrl(settings, key);
+    } catch (CosClientException exception) {
+      throw new BusinessException(
+          50201,
+          "Failed to upload file to Tencent COS: " + exception.getMessage(),
+          HttpStatus.BAD_GATEWAY);
+    } finally {
+      client.shutdown();
+    }
   }
 
   public void delete(String filename) throws IOException {
     StorageSettings settings = storageSettings.current();
     String key = objectKey(settings, filename);
-    HttpRequest request =
-        HttpRequest.newBuilder(objectUri(settings, key))
-            .timeout(REQUEST_TIMEOUT)
-            .header("Authorization", authorization(settings, "delete", key))
-            .DELETE()
-            .build();
-    send(request, "delete file from Tencent COS");
-  }
-
-  private void send(HttpRequest request, String operation) throws IOException {
+    COSClient client = withClient(settings);
     try {
-      HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-      if (response.statusCode() < 200 || response.statusCode() >= 300) {
-        throw new BusinessException(
-            50201,
-            "Failed to " + operation + ": Tencent COS returned HTTP " + response.statusCode(),
-            HttpStatus.BAD_GATEWAY);
-      }
-    } catch (InterruptedException exception) {
-      Thread.currentThread().interrupt();
-      throw new IOException("Tencent COS request interrupted", exception);
+      client.deleteObject(settings.bucket(), key);
+    } catch (CosClientException exception) {
+      throw new BusinessException(
+          50201,
+          "Failed to delete file from Tencent COS: " + exception.getMessage(),
+          HttpStatus.BAD_GATEWAY);
+    } finally {
+      client.shutdown();
     }
   }
 
-  private URI objectUri(StorageSettings settings, String key) {
-    return URI.create("https://" + cosHost(settings) + "/" + encodePath(key));
+  private COSClient withClient(StorageSettings settings) {
+    COSCredentials credentials = new BasicCOSCredentials(properties.getCosSecretId(), properties.getCosSecretKey());
+    ClientConfig clientConfig = new ClientConfig(new Region(settings.region()));
+    clientConfig.setHttpProtocol(HttpProtocol.https);
+    return new COSClient(credentials, clientConfig);
   }
 
   private String publicUrl(StorageSettings settings, String key) {
@@ -104,25 +95,6 @@ public class TencentCosFileStorage implements FileStorage {
     return settings.prefix() + "/" + safeFilename;
   }
 
-  private String authorization(StorageSettings settings, String method, String key) {
-    Instant now = Instant.now();
-    long start = now.getEpochSecond() - 60;
-    long end = now.plus(Duration.ofMinutes(10)).getEpochSecond();
-    String keyTime = start + ";" + end;
-    String httpString = method + "\n/" + encodePath(key) + "\n\nhost=" + cosHost(settings) + "\n";
-    String stringToSign = "sha1\n" + keyTime + "\n" + sha1Hex(httpString) + "\n";
-    String signKey = hmacSha1Hex(properties.getCosSecretKey(), keyTime);
-    String signature = hmacSha1Hex(signKey, stringToSign);
-    return "q-sign-algorithm=sha1&q-ak="
-        + properties.getCosSecretId()
-        + "&q-sign-time="
-        + keyTime
-        + "&q-key-time="
-        + keyTime
-        + "&q-header-list=host&q-url-param-list=&q-signature="
-        + signature;
-  }
-
   private String encodePath(String value) {
     String[] parts = value.split("/");
     StringBuilder encoded = new StringBuilder();
@@ -133,24 +105,5 @@ public class TencentCosFileStorage implements FileStorage {
       encoded.append(URLEncoder.encode(parts[i], StandardCharsets.UTF_8).replace("+", "%20"));
     }
     return encoded.toString();
-  }
-
-  private String sha1Hex(String value) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-1");
-      return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8))).toLowerCase(Locale.ROOT);
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException(exception);
-    }
-  }
-
-  private String hmacSha1Hex(String key, String value) {
-    try {
-      Mac mac = Mac.getInstance("HmacSHA1");
-      mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA1"));
-      return HexFormat.of().formatHex(mac.doFinal(value.getBytes(StandardCharsets.UTF_8))).toLowerCase(Locale.ROOT);
-    } catch (NoSuchAlgorithmException | InvalidKeyException exception) {
-      throw new IllegalStateException(exception);
-    }
   }
 }
