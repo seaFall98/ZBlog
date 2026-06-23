@@ -28,7 +28,7 @@ public class MyBatisNotificationRepository implements NotificationRepository {
   }
 
   public long countUnread() {
-    return notificationMapper.countUnread();
+    return notificationMapper.countOperationalUnread();
   }
 
   public List<Map<String, Object>> list(int pageSize, int offset) {
@@ -36,13 +36,13 @@ public class MyBatisNotificationRepository implements NotificationRepository {
   }
 
   public long countFiltered(String type, Boolean read, Boolean processed, String keyword) {
-    return notificationMapper.countFiltered(blankToNull(type), read, processed, blankToNull(keyword));
+    return notificationMapper.countOperationalFiltered(blankToNull(type), read, processed, blankToNull(keyword));
   }
 
   public List<Map<String, Object>> listFiltered(
       String type, Boolean read, Boolean processed, String keyword, int pageSize, int offset) {
     return notificationMapper
-        .listFilteredRows(blankToNull(type), read, processed, blankToNull(keyword), pageSize, offset)
+        .listOperationalFilteredRows(blankToNull(type), read, processed, blankToNull(keyword), pageSize, offset)
         .stream()
         .map(this::mapRow)
         .toList();
@@ -101,6 +101,33 @@ public class MyBatisNotificationRepository implements NotificationRepository {
     return ((Number) params.get("id")).longValue();
   }
 
+  public long createOperational(
+      String type,
+      String title,
+      String content,
+      String link,
+      Map<String, Object> data,
+      Long targetId,
+      String targetType,
+      String targetKey,
+      Long targetCommentId,
+      String sender) {
+    Map<String, Object> params = new LinkedHashMap<>();
+    params.put("type", type);
+    params.put("title", title);
+    params.put("content", content);
+    params.put("link", link);
+    params.put("data", writeJson(data));
+    params.put("targetId", targetId);
+    params.put("sender", sender);
+    params.put("recipientUserId", null);
+    params.put("targetType", targetType);
+    params.put("targetKey", targetKey);
+    params.put("targetCommentId", targetCommentId);
+    notificationMapper.insertNotification(params);
+    return ((Number) params.get("id")).longValue();
+  }
+
   public long createForRecipient(
       long recipientUserId,
       String type,
@@ -129,12 +156,12 @@ public class MyBatisNotificationRepository implements NotificationRepository {
     return ((Number) params.get("id")).longValue();
   }
 
-  public void markRead(long id) {
-    notificationMapper.markRead(id);
+  public int markRead(long id) {
+    return notificationMapper.markOperationalRead(id);
   }
 
   public int markAllRead() {
-    return notificationMapper.markAllRead();
+    return notificationMapper.markOperationalAllRead();
   }
 
   public int markReadByRecipient(long id, long recipientUserId) {
@@ -152,8 +179,8 @@ public class MyBatisNotificationRepository implements NotificationRepository {
     return notificationMapper.markAllReadByRecipient(recipientUserId);
   }
 
-  public void markProcessed(long id, boolean processed) {
-    notificationMapper.markProcessed(id, processed);
+  public int markProcessed(long id, boolean processed) {
+    return notificationMapper.markOperationalProcessed(id, processed);
   }
 
   public int deleteReadOlderThan(LocalDateTime threshold) {

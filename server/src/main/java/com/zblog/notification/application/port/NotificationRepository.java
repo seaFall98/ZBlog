@@ -38,6 +38,18 @@ public interface NotificationRepository {
       Long targetId,
       String sender);
 
+  long createOperational(
+      String type,
+      String title,
+      String content,
+      String link,
+      Map<String, Object> data,
+      Long targetId,
+      String targetType,
+      String targetKey,
+      Long targetCommentId,
+      String sender);
+
   long createForRecipient(
       long recipientUserId,
       String type,
@@ -51,7 +63,7 @@ public interface NotificationRepository {
       Long targetCommentId,
       String sender);
 
-  void markRead(long id);
+  int markRead(long id);
 
   int markAllRead();
 
@@ -61,7 +73,7 @@ public interface NotificationRepository {
 
   int markAllReadByRecipient(long recipientUserId);
 
-  void markProcessed(long id, boolean processed);
+  int markProcessed(long id, boolean processed);
 
   int deleteReadOlderThan(LocalDateTime threshold);
 }
