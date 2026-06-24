@@ -11,7 +11,9 @@ public interface CommentRepository {
 
   long countAllPublicRows(String targetType, String targetKey);
 
-  List<Map<String, Object>> listRootRows(String targetType, String targetKey, int limit, int offset);
+  long countPublicRowsByUser(long userId);
+
+  List<Map<String, Object>> listRootRows(String targetType, String targetKey, int limit, int offset, String sort);
 
   List<Map<String, Object>> listInitialReplyRows(List<Long> rootIds, int limitPerRoot);
 
@@ -61,6 +63,20 @@ public interface CommentRepository {
       String os);
 
   void toggleStatus(long id);
+
+  Map<Long, Boolean> likedByUser(long userId, List<Long> commentIds);
+
+  boolean addLike(long commentId, long userId);
+
+  boolean removeLike(long commentId, long userId);
+
+  void incrementLikeCount(long commentId);
+
+  void decrementLikeCount(long commentId);
+
+  void pin(long id, long operatorUserId);
+
+  void unpin(long id);
 
   int delete(long id);
 

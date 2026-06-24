@@ -39,21 +39,21 @@ class Batch9RedisOutboxRabbitMqTest {
     Map<?, ?> firstData = data(first);
     assertThat(firstData.get("article_view_counted")).isEqualTo(true);
     assertThat(number(firstData, "article_view_count")).isEqualTo(beforeViews + 1);
-    assertThat(viewCount(articleId)).isEqualTo(beforeViews + 1);
+    assertThat(viewCount(articleId)).isEqualTo(beforeViews);
 
     ResponseEntity<Map> duplicate = collect(articleId, "/posts/batch9-hot-article", "batch9-screen");
     assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.OK);
     Map<?, ?> duplicateData = data(duplicate);
     assertThat(duplicateData.get("article_view_counted")).isEqualTo(false);
     assertThat(number(duplicateData, "article_view_count")).isEqualTo(beforeViews + 1);
-    assertThat(viewCount(articleId)).isEqualTo(beforeViews + 1);
+    assertThat(viewCount(articleId)).isEqualTo(beforeViews);
 
     Thread.sleep(1500);
     ResponseEntity<Map> afterDedupWindow = collect(articleId, "/posts/batch9-hot-article", "batch9-screen");
     assertThat(afterDedupWindow.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(data(afterDedupWindow).get("article_view_counted")).isEqualTo(true);
     assertThat(number(data(afterDedupWindow), "article_view_count")).isEqualTo(beforeViews + 2);
-    assertThat(viewCount(articleId)).isEqualTo(beforeViews + 2);
+    assertThat(viewCount(articleId)).isEqualTo(beforeViews);
 
     Map<?, ?> hotPage = data(restTemplate.getForEntity("/api/v1/articles/hot?limit=5", Map.class));
     List<?> hotArticles = (List<?>) hotPage.get("list");

@@ -25,16 +25,27 @@ public class CommentController {
       @RequestParam(name = "target_key") String targetKey,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(name = "page_size", defaultValue = "10") int pageSize,
-      @RequestParam(name = "reply_page_size", defaultValue = "10") int replyPageSize) {
-    return ApiResponse.ok(commentService.listPublic(targetType, targetKey, page, pageSize, replyPageSize));
+      @RequestParam(name = "reply_page_size", defaultValue = "3") int replyPageSize,
+      @RequestParam(name = "sort", defaultValue = "hot") String sort,
+      Principal principal) {
+    return ApiResponse.ok(
+        commentService.listPublic(
+            targetType,
+            targetKey,
+            page,
+            pageSize,
+            replyPageSize,
+            sort,
+            principal == null ? null : principal.getName()));
   }
 
   @GetMapping("/comments/{rootId}/replies")
   public ApiResponse<PageResponse<Map<String, Object>>> listReplies(
       @PathVariable long rootId,
       @RequestParam(defaultValue = "1") int page,
-      @RequestParam(name = "page_size", defaultValue = "10") int pageSize) {
-    return ApiResponse.ok(commentService.listReplies(rootId, page, pageSize));
+      @RequestParam(name = "page_size", defaultValue = "10") int pageSize,
+      Principal principal) {
+    return ApiResponse.ok(commentService.listReplies(rootId, page, pageSize, principal == null ? null : principal.getName()));
   }
 
   @GetMapping("/comments/locate")
@@ -50,6 +61,11 @@ public class CommentController {
   @PostMapping("/comments")
   public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, Object> request, Principal principal) {
     return ApiResponse.ok(commentService.create(request, principal.getName()));
+  }
+
+  @PostMapping("/comments/{id}/like")
+  public ApiResponse<Map<String, Object>> toggleLike(@PathVariable long id, Principal principal) {
+    return ApiResponse.ok(commentService.toggleLike(id, principal.getName()));
   }
 
   @PostMapping("/admin/comments")
@@ -79,6 +95,12 @@ public class CommentController {
   @PutMapping("/admin/comments/{id}/toggle-status")
   public ApiResponse<Map<String, Object>> toggleStatus(@PathVariable long id) {
     return ApiResponse.ok(commentService.toggleStatus(id));
+  }
+
+  @PutMapping("/admin/comments/{id}/pin")
+  public ApiResponse<Map<String, Object>> pin(
+      @PathVariable long id, @RequestBody Map<String, Object> request, Principal principal) {
+    return ApiResponse.ok(commentService.pin(id, principal.getName(), Boolean.TRUE.equals(request.get("pinned"))));
   }
 
   @PostMapping(value = "/admin/comments/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

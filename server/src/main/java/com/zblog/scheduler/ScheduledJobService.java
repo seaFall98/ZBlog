@@ -123,7 +123,7 @@ public class ScheduledJobService implements ApplicationRunner {
       finishLog(logId, "failed", source + ": " + exception.getMessage(), started);
       throw exception;
     }
-    return viewLog(mapper.listLogs(id, 1, 0).getFirst());
+    return viewLog(mapper.logRowsById(logId).getFirst());
   }
 
   private void validate(String handlerName, String cronExpression, String parameters) {

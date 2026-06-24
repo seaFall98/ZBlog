@@ -25,8 +25,13 @@ public class MyBatisCommentRepository implements CommentRepository {
     return commentMapper.countAllPublicRows(targetType, targetKey);
   }
 
-  public List<Map<String, Object>> listRootRows(String targetType, String targetKey, int limit, int offset) {
-    return commentMapper.listRootRows(targetType, targetKey, limit, offset);
+  public long countPublicRowsByUser(long userId) {
+    return commentMapper.countPublicRowsByUser(userId);
+  }
+
+  public List<Map<String, Object>> listRootRows(
+      String targetType, String targetKey, int limit, int offset, String sort) {
+    return commentMapper.listRootRows(targetType, targetKey, limit, offset, sort);
   }
 
   public List<Map<String, Object>> listInitialReplyRows(List<Long> rootIds, int limitPerRoot) {
@@ -129,6 +134,47 @@ public class MyBatisCommentRepository implements CommentRepository {
 
   public void toggleStatus(long id) {
     commentMapper.toggleStatus(id);
+  }
+
+  public Map<Long, Boolean> likedByUser(long userId, List<Long> commentIds) {
+    Map<Long, Boolean> result = new LinkedHashMap<>();
+    for (Long commentId : commentIds) {
+      result.put(commentId, false);
+    }
+    if (commentIds.isEmpty()) {
+      return result;
+    }
+    for (Map<String, Object> row : commentMapper.likedByUser(userId, commentIds)) {
+      Object commentId = row.get("comment_id");
+      if (commentId instanceof Number number) {
+        result.put(number.longValue(), true);
+      }
+    }
+    return result;
+  }
+
+  public boolean addLike(long commentId, long userId) {
+    return commentMapper.insertLike(commentId, userId) > 0;
+  }
+
+  public boolean removeLike(long commentId, long userId) {
+    return commentMapper.deleteLike(commentId, userId) > 0;
+  }
+
+  public void incrementLikeCount(long commentId) {
+    commentMapper.incrementLikeCount(commentId);
+  }
+
+  public void decrementLikeCount(long commentId) {
+    commentMapper.decrementLikeCount(commentId);
+  }
+
+  public void pin(long id, long operatorUserId) {
+    commentMapper.pin(id, operatorUserId);
+  }
+
+  public void unpin(long id) {
+    commentMapper.unpin(id);
   }
 
   public int delete(long id) {

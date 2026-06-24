@@ -9,6 +9,7 @@ import com.zblog.content.application.port.ArticleAdminQueryRepository;
 import com.zblog.content.application.port.ArticleCommandRepository;
 import com.zblog.content.application.port.ArticleSearchProjectionRepository;
 import com.zblog.content.domain.ArticleCopyrightType;
+import com.zblog.seo.application.SeoFeedService;
 import java.util.List;
 import java.util.Map;
 import org.springframework.dao.DuplicateKeyException;
@@ -28,6 +29,7 @@ public class ArticleService {
   private final ArticleHotRankingService articleHotRankingService;
   private final ArticleImportService articleImportService;
   private final ArticleExportService articleExportService;
+  private final SeoFeedService seoFeedService;
 
   public ArticleService(
       ArticleCommandRepository articleRepository,
@@ -38,7 +40,8 @@ public class ArticleService {
       ArticleQueryService articleQueryService,
       ArticleHotRankingService articleHotRankingService,
       ArticleImportService articleImportService,
-      ArticleExportService articleExportService) {
+      ArticleExportService articleExportService,
+      SeoFeedService seoFeedService) {
     this.articleRepository = articleRepository;
     this.adminQueryRepository = adminQueryRepository;
     this.searchProjectionRepository = searchProjectionRepository;
@@ -48,6 +51,7 @@ public class ArticleService {
     this.articleHotRankingService = articleHotRankingService;
     this.articleImportService = articleImportService;
     this.articleExportService = articleExportService;
+    this.seoFeedService = seoFeedService;
   }
 
   public PageResponse<Map<String, Object>> listPublic(
@@ -140,11 +144,12 @@ public class ArticleService {
               copyrightType(request, "ORIGINAL"),
               textOrDefault(request, "source_url", ""),
               textOrDefault(request, "source_title", ""),
-              textOrDefault(request, "copyright_license", ""));
+              textOrDefault(request, "copyright_license", ""),
+              nullableText(request, "publish_time"));
     } catch (DuplicateKeyException exception) {
       throw new BusinessException(40901, "Article slug already exists: " + slug, HttpStatus.CONFLICT);
     }
-    if (bool(request, "is_publish")) {
+    if (bool(request, "is_publish") && !futurePublishTime(created)) {
       return publish(((Number) created.get("id")).longValue());
     }
     return created;
@@ -179,12 +184,13 @@ public class ArticleService {
               copyrightType(request, value(existing, "copyright_type")),
               textOrExisting(request, "source_url", value(existing, "source_url")),
               textOrExisting(request, "source_title", value(existing, "source_title")),
-              textOrExisting(request, "copyright_license", value(existing, "copyright_license")));
+              textOrExisting(request, "copyright_license", value(existing, "copyright_license")),
+              nullableTextOrDefault(request, "publish_time", value(existing, "publish_time")));
     } catch (DuplicateKeyException exception) {
       throw new BusinessException(40901, "Article slug already exists: " + slug, HttpStatus.CONFLICT);
     }
     if (request.containsKey("is_publish")) {
-      return bool(request, "is_publish") ? publish(id) : unpublish(id);
+      return bool(request, "is_publish") && !futurePublishTime(updated) ? publish(id) : unpublish(id);
     }
     if (wasPublished) {
       emitArticleSearchUpsert(id);
@@ -200,6 +206,7 @@ public class ArticleService {
     if (!alreadyPublished) {
       articleEventPublisher.articlePublished(published);
       emitArticleSearchUpsert(id);
+      seoFeedService.invalidateCache();
     }
     return published;
   }
@@ -211,6 +218,7 @@ public class ArticleService {
     Map<String, Object> unpublished = articleRepository.unpublish(id);
     if (wasPublished) {
       articleEventPublisher.articleSearchDelete(id);
+      seoFeedService.invalidateCache();
     }
     return unpublished;
   }
@@ -222,11 +230,22 @@ public class ArticleService {
     articleRepository.delete(id);
     if (wasPublished) {
       articleEventPublisher.articleSearchDelete(id);
+      seoFeedService.invalidateCache();
     }
   }
 
   private void emitArticleSearchUpsert(long id) {
     searchProjectionRepository.publishedSearchProjection(id).ifPresent(articleEventPublisher::articleSearchUpsert);
+  }
+
+  @Transactional
+  public int publishDueScheduledArticles() {
+    int published = 0;
+    for (Long id : articleRepository.dueScheduledArticleIds()) {
+      publish(id);
+      published++;
+    }
+    return published;
   }
 
   public Map<String, Object> importArticles(String sourceType, List<ImportedArticleFile> files) {
@@ -244,6 +263,27 @@ public class ArticleService {
   private String text(Map<String, Object> request, String key) {
     Object value = request.get(key);
     return value == null ? "" : value.toString().trim();
+  }
+
+  private boolean futurePublishTime(Map<String, Object> article) {
+    Object value = article.get("publish_time");
+    if (value == null) {
+      value = article.get("published_at");
+    }
+    if (value instanceof java.time.LocalDateTime dateTime) {
+      return dateTime.isAfter(java.time.LocalDateTime.now());
+    }
+    if (value instanceof java.sql.Timestamp timestamp) {
+      return timestamp.toLocalDateTime().isAfter(java.time.LocalDateTime.now());
+    }
+    if (value instanceof String text && !text.isBlank()) {
+      try {
+        return java.time.LocalDateTime.parse(text.replace(' ', 'T')).isAfter(java.time.LocalDateTime.now());
+      } catch (RuntimeException ignored) {
+        return false;
+      }
+    }
+    return false;
   }
 
   private String textOrDefault(Map<String, Object> request, String key, String defaultValue) {

@@ -9,7 +9,11 @@ public interface BlogCache {
 
   boolean setIfAbsent(String key, String value, Duration ttl);
 
-  long incrementWithTtl(String key, Duration ttl);
+  default long incrementWithTtl(String key, Duration ttl) {
+    return incrementByWithTtl(key, 1, ttl);
+  }
+
+  long incrementByWithTtl(String key, long delta, Duration ttl);
 
   void incrementHotArticle(long articleId, double score);
 
@@ -22,4 +26,8 @@ public interface BlogCache {
   void set(String key, String value, Duration ttl);
 
   void delete(String key);
+
+  default Map<String, String> scanByPrefix(String prefix) {
+    return Map.of();
+  }
 }

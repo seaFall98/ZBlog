@@ -16,7 +16,7 @@
 
   <update id="incrementPublishedArticleViewCount">
     update articles
-    set view_count = view_count + 1,
+    set view_count = view_count + #{delta},
         updated_at = updated_at
     where id = #{articleId} and status = 'PUBLISHED'
   </update>

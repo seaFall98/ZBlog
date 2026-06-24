@@ -38,6 +38,10 @@ export function toggleCommentStatus(id: number): Promise<void> {
   return request.put(`/admin/comments/${id}/toggle-status`);
 }
 
+export function setCommentPinned(id: number, pinned: boolean): Promise<Comment> {
+  return request.put(`/admin/comments/${id}/pin`, { pinned });
+}
+
 /**
  * 删除评论
  * @param id 评论ID

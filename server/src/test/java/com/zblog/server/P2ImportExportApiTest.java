@@ -143,6 +143,49 @@ class P2ImportExportApiTest {
                 assertThat(((Map<?, ?>) comment).get("content")).isEqualTo("Imported P2 comment"));
   }
 
+  @Test
+  void commentImportRejectsMarkdownImagesInsteadOfCreatingPublicExternalImage() {
+    HttpHeaders headers = authenticatedHeaders();
+    headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    body.add("source_type", "artalk");
+    body.add(
+        "file",
+        resource(
+            "comments-with-image.json",
+            """
+            {
+              "comments": [
+                {
+                  "target_type": "article",
+                  "target_key": "p2-comment-image-target",
+                  "content": "Imported image ![bad](https://tracker.example.com/a.png)",
+                  "nick": "Importer",
+                  "email": "importer@example.com"
+                }
+              ]
+            }
+            """));
+
+    ResponseEntity<Map> importResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/comments/import", HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
+
+    assertThat(importResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<?, ?> result = (Map<?, ?>) data(importResponse);
+    assertThat(result.get("total")).isEqualTo(1);
+    assertThat(result.get("success")).isEqualTo(0);
+    assertThat(result.get("failed")).isEqualTo(1);
+    assertThat(result.get("errors").toString()).contains("Markdown images");
+
+    ResponseEntity<Map> publicList =
+        restTemplate.getForEntity(
+            "/api/v1/comments?target_type=article&target_key=p2-comment-image-target", Map.class);
+    List<?> comments = (List<?>) ((Map<?, ?>) data(publicList)).get("list");
+    assertThat(comments).isEmpty();
+  }
+
   private ByteArrayResource resource(String filename, String content) {
     return new ByteArrayResource(content.getBytes(StandardCharsets.UTF_8)) {
       @Override

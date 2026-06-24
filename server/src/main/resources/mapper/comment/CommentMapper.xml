@@ -43,13 +43,42 @@
       and c.status = 1
   </select>
 
+  <select id="countPublicRowsByUser" resultType="long">
+    select count(*)
+    from comments c
+    where c.user_id = #{userId}
+      and c.status = 1
+      and c.is_deleted = false
+  </select>
+
   <select id="listRootRows" resultType="map">
     <include refid="publicCommentSelect"/>
     where c.target_type = #{targetType}
       and c.target_key = #{targetKey}
       and c.status = 1
       and c.parent_id is null
-    order by c.created_at desc, c.id desc
+    <choose>
+      <when test="sort == 'latest'">
+        order by c.created_at desc, c.id desc
+      </when>
+      <otherwise>
+        order by c.pinned desc,
+          c.pinned_at desc,
+          (
+            coalesce(c.like_count, 0) * 10
+            + (
+              select count(*) * 3
+              from comments rc
+              where rc.status = 1
+                and rc.parent_id is not null
+                and (rc.root_id = c.id or rc.parent_id = c.id)
+            )
+            + case when c.created_at &gt;= current_timestamp - interval '7' day then 5 else 0 end
+          ) desc,
+          c.created_at desc,
+          c.id desc
+      </otherwise>
+    </choose>
     limit #{limit} offset #{offset}
   </select>
 
@@ -178,6 +207,52 @@
   <update id="toggleStatus">
     update comments
     set status = case when status = 1 then 0 else 1 end
+    where id = #{id}
+  </update>
+
+  <select id="likedByUser" resultType="map">
+    select comment_id
+    from comment_likes
+    where user_id = #{userId}
+      and comment_id in
+      <foreach collection="commentIds" item="commentId" open="(" separator="," close=")">
+        #{commentId}
+      </foreach>
+  </select>
+
+  <insert id="insertLike">
+    insert into comment_likes (comment_id, user_id)
+    values (#{commentId}, #{userId})
+  </insert>
+
+  <delete id="deleteLike">
+    delete from comment_likes
+    where comment_id = #{commentId}
+      and user_id = #{userId}
+  </delete>
+
+  <update id="incrementLikeCount">
+    update comments
+    set like_count = like_count + 1
+    where id = #{commentId}
+  </update>
+
+  <update id="decrementLikeCount">
+    update comments
+    set like_count = case when like_count &gt; 0 then like_count - 1 else 0 end
+    where id = #{commentId}
+  </update>
+
+  <update id="pin">
+    update comments
+    set pinned = true, pinned_at = current_timestamp, pinned_by = #{operatorUserId}
+    where id = #{id}
+      and parent_id is null
+  </update>
+
+  <update id="unpin">
+    update comments
+    set pinned = false, pinned_at = null, pinned_by = null
     where id = #{id}
   </update>
 

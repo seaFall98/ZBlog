@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zblog.stats.infrastructure.mybatis.DailyStatsArchiveMapper">
+
+  <delete id="deleteSiteDaily">
+    delete from stats_daily where stat_date = #{statDate}
+  </delete>
+
+  <delete id="deleteArticleDaily">
+    delete from stats_article_daily where stat_date = #{statDate}
+  </delete>
+
+  <insert id="insertSiteDaily">
+    insert into stats_daily (
+      stat_date, pv, uv, article_view_count, event_count, updated_at
+    )
+    select
+      #{statDate},
+      count(case when event_type = 'pageview' then 1 end),
+      count(distinct case when event_type = 'pageview' then visitor_id end),
+      count(case when event_type = 'pageview' and article_id is not null then 1 end),
+      count(*),
+      current_timestamp
+    from visit_events
+    where cast(created_at as date) = #{statDate}
+  </insert>
+
+  <insert id="insertArticleDaily">
+    insert into stats_article_daily (
+      stat_date, article_id, pv, uv, view_count_delta, updated_at
+    )
+    select
+      #{statDate},
+      article_id,
+      count(*),
+      count(distinct visitor_id),
+      count(*),
+      current_timestamp
+    from visit_events
+    where cast(created_at as date) = #{statDate}
+      and event_type = 'pageview'
+      and article_id is not null
+    group by article_id
+  </insert>
+
+  <select id="countArticleDaily" resultType="long">
+    select count(*) from stats_article_daily where stat_date = #{statDate}
+  </select>
+</mapper>

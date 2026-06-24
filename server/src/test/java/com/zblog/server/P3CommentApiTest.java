@@ -1,7 +1,6 @@
 package com.zblog.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +14,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.ResourceAccessException;
 
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -26,13 +24,12 @@ class P3CommentApiTest {
   @Test
   void commentsRequireLoginAndUseCurrentUserProfile() {
     String targetKey = "p3-comments-" + System.nanoTime();
-    assertThatThrownBy(
-            () ->
-                restTemplate.postForEntity(
-                    "/api/v1/comments",
-                    Map.of("target_type", "article", "target_key", targetKey, "content", "hello"),
-                    Map.class))
-        .isInstanceOf(ResourceAccessException.class);
+    ResponseEntity<Map> anonymous =
+        restTemplate.postForEntity(
+            "/api/v1/comments",
+            Map.of("target_type", "article", "target_key", targetKey, "content", "hello"),
+            Map.class);
+    assertThat(anonymous.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
     HttpHeaders headers = registerAndAuth("p3-comment-" + System.nanoTime() + "@example.com", "Comment Reader");
     ResponseEntity<Map> created =
@@ -265,6 +262,130 @@ class P3CommentApiTest {
     assertThat(((Number) ((Map<?, ?>) reply.get("user")).get("id")).longValue()).isGreaterThan(0);
   }
 
+  @Test
+  void commentLikesSortingPinAndReplyPreviewFollowBatch8Contract() {
+    String targetKey = "p3-comment-batch8-interaction-" + System.nanoTime();
+    HttpHeaders ownerHeaders = registerAndAuth("p3-b8-owner-" + System.nanoTime() + "@example.com", "Batch8 Owner");
+    HttpHeaders actorHeaders = registerAndAuth("p3-b8-actor-" + System.nanoTime() + "@example.com", "Batch8 Actor");
+    HttpHeaders adminHeaders = adminHeaders();
+
+    long olderRoot = createComment(targetKey, "older root", ownerHeaders);
+    long newerRoot = createComment(targetKey, "newer root", ownerHeaders);
+    for (int i = 1; i <= 4; i++) {
+      createReply(targetKey, olderRoot, "reply-" + i, actorHeaders);
+    }
+
+    ResponseEntity<Map> anonymousLike =
+        restTemplate.exchange("/api/v1/comments/" + olderRoot + "/like", HttpMethod.POST, HttpEntity.EMPTY, Map.class);
+    assertThat(anonymousLike.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+    Map<?, ?> liked =
+        data(
+            restTemplate.exchange(
+                "/api/v1/comments/" + olderRoot + "/like",
+                HttpMethod.POST,
+                new HttpEntity<>(actorHeaders),
+                Map.class));
+    assertThat(liked.get("liked_by_me")).isEqualTo(true);
+    assertThat(((Number) liked.get("like_count")).longValue()).isEqualTo(1);
+
+    Map<?, ?> hotPage =
+        data(
+            restTemplate.exchange(
+                "/api/v1/comments?target_type=article&target_key=" + targetKey + "&sort=hot&page=1&page_size=10",
+                HttpMethod.GET,
+                new HttpEntity<>(actorHeaders),
+                Map.class));
+    Map<?, ?> firstHot = ((List<Map<?, ?>>) hotPage.get("list")).getFirst();
+    assertThat(((Number) firstHot.get("id")).longValue()).isEqualTo(olderRoot);
+    assertThat(firstHot.get("liked_by_me")).isEqualTo(true);
+    assertThat((List<?>) firstHot.get("replies")).hasSize(3);
+    assertThat(((Number) firstHot.get("reply_total")).longValue()).isEqualTo(4);
+
+    Map<?, ?> latestPage =
+        data(
+            restTemplate.getForEntity(
+                "/api/v1/comments?target_type=article&target_key=" + targetKey + "&sort=latest&page=1&page_size=10",
+                Map.class));
+    Map<?, ?> firstLatest = ((List<Map<?, ?>>) latestPage.get("list")).getFirst();
+    assertThat(((Number) firstLatest.get("id")).longValue()).isEqualTo(newerRoot);
+
+    Map<?, ?> pinned =
+        data(
+            restTemplate.exchange(
+                "/api/v1/admin/comments/" + newerRoot + "/pin",
+                HttpMethod.PUT,
+                new HttpEntity<>(Map.of("pinned", true), adminHeaders),
+                Map.class));
+    assertThat(pinned.get("pinned")).isEqualTo(true);
+
+    Map<?, ?> hotAfterPin =
+        data(
+            restTemplate.getForEntity(
+                "/api/v1/comments?target_type=article&target_key=" + targetKey + "&sort=hot&page=1&page_size=10",
+                Map.class));
+    Map<?, ?> firstPinned = ((List<Map<?, ?>>) hotAfterPin.get("list")).getFirst();
+    assertThat(((Number) firstPinned.get("id")).longValue()).isEqualTo(newerRoot);
+    assertThat(firstPinned.get("pinned")).isEqualTo(true);
+
+    Map<?, ?> unliked =
+        data(
+            restTemplate.exchange(
+                "/api/v1/comments/" + olderRoot + "/like",
+                HttpMethod.POST,
+                new HttpEntity<>(actorHeaders),
+                Map.class));
+    assertThat(unliked.get("liked_by_me")).isEqualTo(false);
+    assertThat(((Number) unliked.get("like_count")).longValue()).isEqualTo(0);
+  }
+
+  @Test
+  void uploadedCommentImageMustBeOwnedRecentAndIsBoundOnCommentCreate() {
+    String targetKey = "p3-comment-batch8-image-" + System.nanoTime();
+    HttpHeaders adminHeaders = adminHeaders();
+
+    Map<?, ?> upload = data(uploadCommentImage(adminHeaders));
+    String fileUrl = upload.get("file_url").toString();
+    long fileId = ((Number) upload.get("id")).longValue();
+
+    ResponseEntity<Map> created =
+        restTemplate.exchange(
+            "/api/v1/comments",
+            HttpMethod.POST,
+            new HttpEntity<>(
+                Map.of("target_type", "article", "target_key", targetKey, "content", "image ![图片](" + fileUrl + ")"),
+                adminHeaders),
+            Map.class);
+    assertThat(created.getStatusCode()).isEqualTo(HttpStatus.OK);
+    long commentId = ((Number) data(created).get("id")).longValue();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "select bound_comment_id from files where id = ?", Long.class, fileId))
+        .isEqualTo(commentId);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "select storage_provider from files where id = ?", String.class, fileId))
+        .isEqualTo("local");
+
+    Map<?, ?> secondUpload = data(uploadCommentImage(adminHeaders));
+    String secondUrl = secondUpload.get("file_url").toString();
+    ResponseEntity<Map> invalid =
+        restTemplate.exchange(
+            "/api/v1/comments",
+            HttpMethod.POST,
+            new HttpEntity<>(
+                Map.of(
+                    "target_type",
+                    "article",
+                    "target_key",
+                    targetKey,
+                    "content",
+                    "two ![图片](" + fileUrl + ") ![图片](" + secondUrl + ")"),
+                adminHeaders),
+            Map.class);
+    assertThat(invalid.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
   private HttpHeaders registerAndAuth(String email, String nickname) {
     ResponseEntity<Map> response =
         restTemplate.postForEntity(
@@ -285,6 +406,73 @@ class P3CommentApiTest {
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(data(response).get("access_token").toString());
     return headers;
+  }
+
+  private long createComment(String targetKey, String content, HttpHeaders headers) {
+    return ((Number)
+            data(
+                    restTemplate.exchange(
+                        "/api/v1/comments",
+                        HttpMethod.POST,
+                        new HttpEntity<>(Map.of("target_type", "article", "target_key", targetKey, "content", content), headers),
+                        Map.class))
+                .get("id"))
+        .longValue();
+  }
+
+  private long createReply(String targetKey, long parentId, String content, HttpHeaders headers) {
+    return ((Number)
+            data(
+                    restTemplate.exchange(
+                        "/api/v1/comments",
+                        HttpMethod.POST,
+                        new HttpEntity<>(
+                            Map.of(
+                                "target_type",
+                                "article",
+                                "target_key",
+                                targetKey,
+                                "parent_id",
+                                parentId,
+                                "content",
+                                content),
+                            headers),
+                        Map.class))
+                .get("id"))
+        .longValue();
+  }
+
+  private ResponseEntity<Map> uploadCommentImage(HttpHeaders headers) {
+    HttpHeaders uploadHeaders = new HttpHeaders();
+    uploadHeaders.putAll(headers);
+    uploadHeaders.setContentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA);
+    org.springframework.util.MultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
+    body.add("file", resource("comment.png", pngBytes(), org.springframework.http.MediaType.IMAGE_PNG));
+    body.add("type", "评论贴图");
+    return restTemplate.exchange("/api/v1/upload", HttpMethod.POST, new HttpEntity<>(body, uploadHeaders), Map.class);
+  }
+
+  private HttpEntity<org.springframework.core.io.ByteArrayResource> resource(
+      String filename, byte[] bytes, org.springframework.http.MediaType mediaType) {
+    org.springframework.core.io.ByteArrayResource body =
+        new org.springframework.core.io.ByteArrayResource(bytes) {
+          @Override
+          public String getFilename() {
+            return filename;
+          }
+
+          @Override
+          public long contentLength() {
+            return bytes.length;
+          }
+        };
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(mediaType);
+    return new HttpEntity<>(body, headers);
+  }
+
+  private byte[] pngBytes() {
+    return new byte[] {(byte) 0x89, 'P', 'N', 'G', 0, 1, 2, 3};
   }
 
   @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;

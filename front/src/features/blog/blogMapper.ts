@@ -78,9 +78,9 @@ export function mapArticleToPostView(article: RawRecord, source: DataSource = "a
   const contentMarkdown = toStringValue(firstValue(article, ["content_markdown", "contentMarkdown"]));
   const text = toStringValue(firstValue(article, ["content_text", "contentText"])) || contentMarkdown;
   const contentHtml = html || textToParagraphHtml(text);
+  const persistedSummary = toStringValue(firstValue(article, ["summary"]));
   const summary =
-    toStringValue(firstValue(article, ["summary", "excerpt", "description"])) ||
-    stripHtml(contentHtml).slice(0, 120);
+    persistedSummary || toStringValue(firstValue(article, ["excerpt", "description"])) || stripHtml(contentHtml).slice(0, 120);
   const publishedAt = toStringValue(
     firstValue(article, [
       "publish_time",
@@ -121,6 +121,7 @@ export function mapArticleToPostView(article: RawRecord, source: DataSource = "a
     slug,
     title,
     summary,
+    aiSummary: persistedSummary,
     contentHtml,
     contentMarkdown,
     toc: extractMarkdownToc(contentMarkdown),

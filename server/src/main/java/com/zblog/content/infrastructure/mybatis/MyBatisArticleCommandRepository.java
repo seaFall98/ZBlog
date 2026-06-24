@@ -37,7 +37,8 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
 	      String copyrightType,
 	      String sourceUrl,
 	      String sourceTitle,
-	      String copyrightLicense) {
+	      String copyrightLicense,
+	      String publishTime) {
 	    ArticleCommandInsertCommand command =
 	        new ArticleCommandInsertCommand(
             title,
@@ -55,7 +56,8 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
 	            copyrightType,
 	            sourceUrl,
 	            sourceTitle,
-	            copyrightLicense);
+	            copyrightLicense,
+	            publishTime);
     articleCommandMapper.insertArticle(command);
     long id = generatedId(command);
     replaceTags(id, tagIds);
@@ -80,7 +82,8 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
 	      String copyrightType,
 	      String sourceUrl,
 	      String sourceTitle,
-	      String copyrightLicense) {
+	      String copyrightLicense,
+	      String publishTime) {
 	    articleCommandMapper.updateArticle(
 	        new ArticleCommandUpdateCommand(
             id,
@@ -99,7 +102,8 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
 	            copyrightType,
 	            sourceUrl,
 	            sourceTitle,
-	            copyrightLicense));
+	            copyrightLicense,
+	            publishTime));
     replaceTags(id, tagIds);
     return adminQueryRepository.getAdmin(id);
   }
@@ -107,6 +111,10 @@ public class MyBatisArticleCommandRepository implements ArticleCommandRepository
   public Map<String, Object> publish(long id) {
     articleCommandMapper.publishArticle(id);
     return adminQueryRepository.getAdmin(id);
+  }
+
+  public List<Long> dueScheduledArticleIds() {
+    return articleCommandMapper.dueScheduledArticleIds();
   }
 
   public Map<String, Object> unpublish(long id) {

@@ -104,7 +104,8 @@ public class ArticleImportService {
 	          "ORIGINAL",
 	          "",
 	          "",
-	          "");
+	          "",
+	          null);
     } catch (DuplicateKeyException exception) {
       throw new BusinessException(40901, "Article slug already exists: " + slug, HttpStatus.CONFLICT);
     }

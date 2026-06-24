@@ -4,6 +4,9 @@ export interface Comment {
   content: string;
   status: number; // 0: 隐藏, 1: 显示
   parent_id?: number; // 父评论ID，用于回复
+  like_count?: number;
+  pinned?: boolean;
+  pinned_at?: string;
   created_at: string;
   deleted_at?: string;
   target: {

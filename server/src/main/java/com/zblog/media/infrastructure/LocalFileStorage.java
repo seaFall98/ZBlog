@@ -1,6 +1,7 @@
 package com.zblog.media.infrastructure;
 
 import com.zblog.media.application.port.FileStorage;
+import com.zblog.media.application.port.FileStorageMetadata;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -24,5 +25,10 @@ public class LocalFileStorage implements FileStorage {
     if (target.startsWith(uploadRoot)) {
       Files.deleteIfExists(target);
     }
+  }
+
+  @Override
+  public FileStorageMetadata metadata(String filename, String fileUrl) {
+    return new FileStorageMetadata("local", "", "", filename, "", "/uploads");
   }
 }

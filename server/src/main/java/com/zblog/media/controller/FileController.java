@@ -6,10 +6,11 @@ import com.zblog.common.exception.BusinessException;
 import com.zblog.media.application.FileService;
 import com.zblog.media.application.MediaStorageStatusService;
 import java.io.IOException;
-import java.util.Map;
 import java.security.Principal;
-import org.springframework.http.HttpStatus;
+import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -43,12 +44,23 @@ public class FileController {
   public ApiResponse<Map<String, Object>> uploadPublic(
       @RequestPart("file") MultipartFile file,
       @RequestParam(name = "type", defaultValue = "评论贴图") String type,
-      Principal principal)
+      Principal principal,
+      HttpServletRequest request)
       throws IOException {
-    if ("用户头像".equals(type) && principal == null) {
-      throw new BusinessException(401, "Unauthorized", HttpStatus.UNAUTHORIZED);
+    return ApiResponse.ok(
+        fileService.uploadPublic(
+            file,
+            publicUploadType(type),
+            principal == null ? null : principal.getName(),
+            clientIp(request)));
+  }
+
+  private String clientIp(HttpServletRequest request) {
+    String forwarded = request.getHeader("X-Forwarded-For");
+    if (forwarded != null && !forwarded.isBlank()) {
+      return forwarded.split(",")[0].trim();
     }
-    return ApiResponse.ok(fileService.upload(file, publicUploadType(type)));
+    return request.getRemoteAddr();
   }
 
   private String publicUploadType(String type) {

@@ -137,7 +137,7 @@ class Batch2ContentAssetBatchTest {
   }
 
   @Test
-  void publicUploadReturnsFrontendContractWithoutAuthentication() {
+  void publicCommentImageUploadRequiresAuthentication() {
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
@@ -148,22 +148,8 @@ class Batch2ContentAssetBatchTest {
     ResponseEntity<Map> uploadResponse =
         restTemplate.exchange("/api/v1/upload", HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
 
-    assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    Map<?, ?> upload = (Map<?, ?>) data(uploadResponse);
-    assertThat(upload.get("original_name")).isEqualTo("comment-image.png");
-    assertThat(upload.get("file_url")).asString().startsWith("/uploads/");
-
-    ResponseEntity<Map> listResponse =
-        restTemplate.exchange(
-            "/api/v1/admin/files", HttpMethod.GET, new HttpEntity<>(authenticatedHeaders()), Map.class);
-    List<?> files = (List<?>) ((Map<?, ?>) data(listResponse)).get("list");
-    assertThat(files)
-        .anySatisfy(
-            file -> {
-              Map<?, ?> item = (Map<?, ?>) file;
-              assertThat(item.get("id")).isEqualTo(upload.get("id"));
-              assertThat(item.get("upload_type")).isEqualTo("评论贴图");
-            });
+    assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(uploadResponse.getBody()).containsEntry("code", 401);
   }
 
   @Test

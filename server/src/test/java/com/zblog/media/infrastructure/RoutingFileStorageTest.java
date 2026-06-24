@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.zblog.media.MediaStorageProperties;
 import com.zblog.media.application.MediaStorageSettings;
 import com.zblog.media.application.port.FileStorage;
+import com.zblog.media.application.port.FileStorageReference;
 import com.zblog.site.application.port.SettingRepository;
 import java.io.InputStream;
 import java.util.List;
@@ -40,6 +41,30 @@ class RoutingFileStorageTest {
     assertThat(localStorage.deletedFilenames).isEmpty();
   }
 
+  @Test
+  void deleteWithPersistedCosMetadataUsesCosEvenWhenCurrentStorageModeIsLocal() throws Exception {
+    RecordingFileStorage localStorage = new RecordingFileStorage();
+    MediaStorageSettings settings = mediaStorageSettings("local");
+    RecordingTencentCosFileStorage cosStorage = new RecordingTencentCosFileStorage(settings);
+    RoutingFileStorage routingFileStorage = new RoutingFileStorage(localStorage, cosStorage, settings);
+
+    routingFileStorage.delete(
+        new FileStorageReference(
+            "remote.png",
+            "https://new-cdn.example.com/remote.png",
+            "cos",
+            "old-bucket",
+            "ap-shanghai",
+            "old-prefix/remote.png",
+            "https://old-cdn.example.com",
+            "old-prefix"));
+
+    assertThat(cosStorage.deletedReferences).hasSize(1);
+    assertThat(cosStorage.deletedReferences.getFirst().storageBucket()).isEqualTo("old-bucket");
+    assertThat(cosStorage.deletedReferences.getFirst().storageObjectKey()).isEqualTo("old-prefix/remote.png");
+    assertThat(localStorage.deletedFilenames).isEmpty();
+  }
+
   private MediaStorageSettings mediaStorageSettings(String storageType) {
     MediaStorageProperties properties = new MediaStorageProperties();
     properties.setCosSecretId("secret-id");
@@ -66,6 +91,7 @@ class RoutingFileStorageTest {
 
     private final java.util.ArrayList<String> deletedFilenames = new java.util.ArrayList<>();
     private final java.util.ArrayList<String> deletedFileUrls = new java.util.ArrayList<>();
+    private final java.util.ArrayList<FileStorageReference> deletedReferences = new java.util.ArrayList<>();
 
     private RecordingTencentCosFileStorage(MediaStorageSettings settings) {
       super(settings, new MediaStorageProperties());
@@ -80,6 +106,11 @@ class RoutingFileStorageTest {
     public void delete(String filename, String fileUrl) {
       deletedFilenames.add(filename);
       deletedFileUrls.add(fileUrl);
+    }
+
+    @Override
+    public void delete(FileStorageReference reference) {
+      deletedReferences.add(reference);
     }
   }
 

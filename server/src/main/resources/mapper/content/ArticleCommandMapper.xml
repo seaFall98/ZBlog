@@ -8,11 +8,11 @@
     insert into articles (
       title, slug, content_markdown, content_html, content_text, summary, cover_url,
       category_id, location, is_top, is_essence, is_outdated,
-      copyright_type, source_url, source_title, copyright_license, status
+      copyright_type, source_url, source_title, copyright_license, published_at, status
     ) values (
       #{title}, #{slug}, #{markdown}, #{html}, #{text}, #{summary}, #{cover},
       #{categoryId}, #{location}, #{top}, #{essence}, #{outdated},
-      #{copyrightType}, #{sourceUrl}, #{sourceTitle}, #{copyrightLicense}, 'DRAFT'
+      #{copyrightType}, #{sourceUrl}, #{sourceTitle}, #{copyrightLicense}, #{publishTime}, 'DRAFT'
     )
   </insert>
 
@@ -34,6 +34,7 @@
         source_url = #{sourceUrl},
         source_title = #{sourceTitle},
         copyright_license = #{copyrightLicense},
+        published_at = #{publishTime},
         updated_at = current_timestamp
     where id = #{id}
   </update>
@@ -45,6 +46,16 @@
         updated_at = current_timestamp
     where id = #{id}
   </update>
+
+  <select id="dueScheduledArticleIds" resultType="long">
+    select id
+    from articles
+    where status = 'DRAFT'
+      and published_at is not null
+      and published_at &gt; updated_at
+      and published_at &lt;= current_timestamp
+    order by published_at asc, id asc
+  </select>
 
   <update id="unpublishArticle">
     update articles

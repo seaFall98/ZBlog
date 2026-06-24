@@ -58,6 +58,38 @@ function CopyrightNotice({ post }: { post: PostView }) {
   );
 }
 
+function ArticleAiSummary({ text }: { text: string }) {
+  const [visible, setVisible] = useState("");
+
+  useEffect(() => {
+    setVisible("");
+    if (!text.trim()) return;
+    let index = 0;
+    const timer = window.setInterval(() => {
+      index += 1;
+      setVisible(text.slice(0, index));
+      if (index >= text.length) {
+        window.clearInterval(timer);
+      }
+    }, 18);
+    return () => window.clearInterval(timer);
+  }, [text]);
+
+  if (!text.trim()) return null;
+
+  return (
+    <section className="mb-10 border px-5 py-4" style={{ borderColor: "var(--warm-border)", background: "var(--section-bg)" }}>
+      <div className="mb-2 text-xs tracking-widest uppercase" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
+        AI Summary
+      </div>
+      <p className="text-sm leading-7" style={{ color: "var(--ink)", fontFamily: "var(--fontBody)" }}>
+        {visible}
+        {visible.length < text.length && <span aria-hidden="true">|</span>}
+      </p>
+    </section>
+  );
+}
+
 export default function BlogDetail() {
   const navigate = useNavigate();
   const { slug } = useParams();
@@ -175,6 +207,8 @@ export default function BlogDetail() {
               >
                 {post.title}
               </h1>
+
+              <ArticleAiSummary text={post.aiSummary ?? ""} />
 
               {/* Content */}
               <ArticleContent post={post} />

@@ -17,8 +17,8 @@ public class MyBatisVisitRepository implements VisitRepository {
     visitMapper.insertVisit(input);
   }
 
-  public void incrementPublishedArticleViewCount(long articleId) {
-    visitMapper.incrementPublishedArticleViewCount(articleId);
+  public void incrementPublishedArticleViewCount(long articleId, long delta) {
+    visitMapper.incrementPublishedArticleViewCount(articleId, delta);
   }
 
   public Long articleViewCount(long articleId) {
