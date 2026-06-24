@@ -176,9 +176,6 @@ export default function Login() {
               寂静之书
             </Link>
             <div className="mt-10 h-px w-24" style={{ background: "var(--warm-border)" }} />
-            <p className="mt-8 max-w-sm text-sm leading-7" style={{ color: "var(--muted-ink)" }}>
-              账号用于评论、回复通知和个人资料管理。
-            </p>
           </section>
 
           <section

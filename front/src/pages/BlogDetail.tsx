@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CalendarIcon, ClockIcon, EyeIcon, TagIcon, ArrowLeftIcon, Share2Icon, BookmarkIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, EyeIcon, TagIcon, ArrowLeftIcon, Share2Icon, BookmarkIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import ArticleContent from "../features/blog/ArticleContent";
 import ArticleToc from "../features/blog/ArticleToc";
@@ -60,32 +60,60 @@ function CopyrightNotice({ post }: { post: PostView }) {
 
 function ArticleAiSummary({ text }: { text: string }) {
   const [visible, setVisible] = useState("");
+  const [preparing, setPreparing] = useState(true);
 
   useEffect(() => {
     setVisible("");
     if (!text.trim()) return;
+    setPreparing(true);
     let index = 0;
-    const timer = window.setInterval(() => {
-      index += 1;
-      setVisible(text.slice(0, index));
-      if (index >= text.length) {
-        window.clearInterval(timer);
-      }
-    }, 18);
-    return () => window.clearInterval(timer);
+    let timer = 0;
+    const delay = window.setTimeout(() => {
+      setPreparing(false);
+      timer = window.setInterval(() => {
+        index += 1;
+        setVisible(text.slice(0, index));
+        if (index >= text.length) {
+          window.clearInterval(timer);
+        }
+      }, 18);
+    }, 520);
+    return () => {
+      window.clearTimeout(delay);
+      window.clearInterval(timer);
+    };
   }, [text]);
 
   if (!text.trim()) return null;
 
   return (
-    <section className="mb-10 border px-5 py-4" style={{ borderColor: "var(--warm-border)", background: "var(--section-bg)" }}>
-      <div className="mb-2 text-xs tracking-widest uppercase" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
-        AI Summary
+    <section className="mb-10 overflow-hidden border" style={{ borderColor: "var(--warm-border)", background: "var(--section-bg)" }}>
+      <div className="flex items-center gap-3 border-b px-5 py-4" style={{ borderColor: "var(--warm-border)" }}>
+        <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "var(--warm-white)", color: "var(--ink)" }}>
+          {preparing ? <Loader2Icon className="animate-spin" size={18} /> : <SparklesIcon size={18} />}
+        </div>
+        <div>
+          <div className="text-sm" style={{ color: "var(--ink)", fontFamily: "var(--fontDisplay)", letterSpacing: "0" }}>
+            AI摘要
+          </div>
+          <div className="mt-1 text-xs" style={{ color: "var(--muted-ink)", fontFamily: "var(--fontSans)" }}>
+            {preparing ? "正在整理文章要点..." : "已根据正文生成"}
+          </div>
+        </div>
       </div>
-      <p className="text-sm leading-7" style={{ color: "var(--ink)", fontFamily: "var(--fontBody)" }}>
-        {visible}
-        {visible.length < text.length && <span aria-hidden="true">|</span>}
-      </p>
+      <div className="px-5 py-4">
+        {preparing ? (
+          <div className="flex flex-col gap-2">
+            <span className="h-3 w-11/12 animate-pulse rounded-full" style={{ background: "rgba(143, 130, 115, 0.22)" }} />
+            <span className="h-3 w-4/5 animate-pulse rounded-full" style={{ background: "rgba(143, 130, 115, 0.18)" }} />
+          </div>
+        ) : (
+          <p className="text-sm leading-7" style={{ color: "var(--ink)", fontFamily: "var(--fontBody)" }}>
+            {visible}
+            {visible.length < text.length && <span aria-hidden="true" className="ml-0.5 animate-pulse">|</span>}
+          </p>
+        )}
+      </div>
     </section>
   );
 }

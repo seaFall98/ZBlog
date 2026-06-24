@@ -11,6 +11,7 @@ import com.zblog.media.application.port.FileRepository;
 import com.zblog.media.application.port.FileStorage;
 import com.zblog.media.application.port.FileStorageMetadata;
 import com.zblog.media.application.port.FileStorageReference;
+import com.zblog.site.application.port.SettingRepository;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.security.MessageDigest;
@@ -55,18 +56,21 @@ public class FileService {
   private final UserRepository userRepository;
   private final BlogCache blogCache;
   private final CommentRepository commentRepository;
+  private final SettingRepository settingRepository;
 
   public FileService(
       FileRepository fileRepository,
       FileStorage fileStorage,
       UserRepository userRepository,
       BlogCache blogCache,
-      CommentRepository commentRepository) {
+      CommentRepository commentRepository,
+      SettingRepository settingRepository) {
     this.fileRepository = fileRepository;
     this.fileStorage = fileStorage;
     this.userRepository = userRepository;
     this.blogCache = blogCache;
     this.commentRepository = commentRepository;
+    this.settingRepository = settingRepository;
   }
 
   public Map<String, Object> upload(MultipartFile file, String type) throws IOException {
@@ -266,6 +270,7 @@ public class FileService {
       try {
         FileStorageReference reference = references.getFirst();
         fileStorage.delete(reference);
+        settingRepository.clearValuesEqualTo(reference.fileUrl());
       } catch (IOException exception) {
         throw new UncheckedIOException(exception);
       }

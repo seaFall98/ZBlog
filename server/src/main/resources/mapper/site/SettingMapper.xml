@@ -25,6 +25,12 @@
     delete from settings where group_name = #{group} and key_name = #{key}
   </delete>
 
+  <update id="clearValuesEqualTo">
+    update settings
+    set value_text = '', updated_at = current_timestamp
+    where value_text = #{value}
+  </update>
+
   <delete id="deleteGroup">
     delete from settings where group_name = #{group}
   </delete>

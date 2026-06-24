@@ -12,7 +12,7 @@
     ) values (
       #{title}, #{slug}, #{markdown}, #{html}, #{text}, #{summary}, #{cover},
       #{categoryId}, #{location}, #{top}, #{essence}, #{outdated},
-      #{copyrightType}, #{sourceUrl}, #{sourceTitle}, #{copyrightLicense}, #{publishTime}, 'DRAFT'
+      #{copyrightType}, #{sourceUrl}, #{sourceTitle}, #{copyrightLicense}, cast(nullif(#{publishTime}, '') as timestamp), 'DRAFT'
     )
   </insert>
 
@@ -34,7 +34,7 @@
         source_url = #{sourceUrl},
         source_title = #{sourceTitle},
         copyright_license = #{copyrightLicense},
-        published_at = #{publishTime},
+        published_at = cast(nullif(#{publishTime}, '') as timestamp),
         updated_at = current_timestamp
     where id = #{id}
   </update>

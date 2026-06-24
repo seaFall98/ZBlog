@@ -10,6 +10,7 @@ import com.zblog.identity.application.port.UserRepository;
 import com.zblog.media.application.port.FileRepository;
 import com.zblog.media.application.port.FileStorage;
 import com.zblog.media.application.port.FileStorageReference;
+import com.zblog.site.application.port.SettingRepository;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
@@ -30,7 +31,8 @@ class FileServiceDeleteTest {
             storage,
             mock(UserRepository.class),
             mock(BlogCache.class),
-            mock(CommentRepository.class))
+            mock(CommentRepository.class),
+            mock(SettingRepository.class))
         .delete(10L);
 
     assertThat(storage.deletedReference.filename()).isEqualTo("remote.png");
@@ -60,7 +62,8 @@ class FileServiceDeleteTest {
             storage,
             mock(UserRepository.class),
             mock(BlogCache.class),
-            mock(CommentRepository.class))
+            mock(CommentRepository.class),
+            mock(SettingRepository.class))
         .delete(10L);
 
     assertThat(storage.deletedReference.storageProvider()).isEqualTo("cos");
@@ -68,6 +71,25 @@ class FileServiceDeleteTest {
     assertThat(storage.deletedReference.storageRegion()).isEqualTo("ap-shanghai");
     assertThat(storage.deletedReference.storageObjectKey()).isEqualTo("old-prefix/remote.png");
     assertThat(repository.markedAfterStorageDelete).isTrue();
+  }
+
+  @Test
+  void deleteClearsSettingsThatPointAtDeletedFileUrl() {
+    FakeFileRepository repository =
+        new FakeFileRepository(List.of(new FileStorageReference("wall.png", "https://cdn.example.com/wall.png")));
+    RecordingFileStorage storage = new RecordingFileStorage(repository);
+    FakeSettingRepository settings = new FakeSettingRepository();
+
+    new FileService(
+            repository,
+            storage,
+            mock(UserRepository.class),
+            mock(BlogCache.class),
+            mock(CommentRepository.class),
+            settings)
+        .delete(10L);
+
+    assertThat(settings.clearedValue).isEqualTo("https://cdn.example.com/wall.png");
   }
 
   private static final class RecordingFileStorage implements FileStorage {
@@ -148,5 +170,30 @@ class FileServiceDeleteTest {
       markedDeleted = true;
       markedAfterStorageDelete = storageDeleted;
     }
+  }
+
+  private static final class FakeSettingRepository implements SettingRepository {
+
+    private String clearedValue;
+
+    @Override
+    public Map<String, String> getGroup(String group) {
+      return Map.of();
+    }
+
+    @Override
+    public void upsert(String group, String key, String value) {}
+
+    @Override
+    public void deleteKey(String group, String key) {}
+
+    @Override
+    public int clearValuesEqualTo(String value) {
+      clearedValue = value;
+      return 1;
+    }
+
+    @Override
+    public void deleteGroup(String group) {}
   }
 }

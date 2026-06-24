@@ -503,7 +503,17 @@ export default function CommentSection({ targetType, targetKey, compact = false 
 
   const replaceComment = (items: CommentView[], updated: CommentView): CommentView[] =>
     items.map((item) => {
-      if (item.id === updated.id) return { ...item, ...updated, replies: item.replies };
+      if (item.id === updated.id) {
+        return {
+          ...item,
+          ...updated,
+          replies: item.replies,
+          replyTotal: item.replyTotal,
+          replyPage: item.replyPage,
+          replyPageSize: item.replyPageSize,
+          replyTotalPages: item.replyTotalPages,
+        };
+      }
       if (item.replies.some((reply) => reply.id === updated.id)) {
         return {
           ...item,
@@ -571,7 +581,7 @@ export default function CommentSection({ targetType, targetKey, compact = false 
 
   return (
     <section className={compact ? "mt-5 border-t pt-5" : "mt-16 border-t pt-10"} style={{ borderColor: "var(--warm-border)" }}>
-        <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <MessageCircleIcon size={18} style={{ color: "var(--ink)" }} />
