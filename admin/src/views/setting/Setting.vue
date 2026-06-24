@@ -443,7 +443,9 @@ watch(
   { immediate: true }
 );
 
-const handleImportSuccess = () => {};
+const handleImportSuccess = async () => {
+  await loadAllConfigs();
+};
 
 onMounted(() => {
   loadAllConfigs();

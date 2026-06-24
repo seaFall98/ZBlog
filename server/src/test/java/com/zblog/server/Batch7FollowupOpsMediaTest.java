@@ -129,6 +129,27 @@ class Batch7FollowupOpsMediaTest {
   }
 
   @Test
+  void siteConfigPackageImportRequiresSuperAdmin() {
+    HttpHeaders superAdminHeaders = authenticatedHeaders();
+    Map<?, ?> siteConfigPackage = exportSiteConfigPackage(superAdminHeaders);
+    HttpHeaders adminHeaders = adminRoleHeaders();
+
+    ResponseEntity<Map> pingResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/ping", HttpMethod.GET, new HttpEntity<>(adminHeaders), Map.class);
+    assertThat(pingResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    ResponseEntity<Map> importResponse =
+        restTemplate.exchange(
+            "/api/v1/admin/site-config/package",
+            HttpMethod.PUT,
+            new HttpEntity<>(siteConfigPackage, adminHeaders),
+            Map.class);
+
+    assertThat(importResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
   void siteConfigPackageImportRejectsIncompletePackageWithoutDeletingCurrentConfiguration() {
     HttpHeaders headers = authenticatedHeaders();
     Map<?, ?> originalPackage = exportSiteConfigPackage(headers);
@@ -318,6 +339,34 @@ class Batch7FollowupOpsMediaTest {
         restTemplate.postForEntity(
             "/api/v1/auth/login", Map.of("username", "admin", "password", "admin123456"), Map.class);
     String token = ((Map<?, ?>) data(response)).get("access_token").toString();
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(token);
+    return headers;
+  }
+
+  private HttpHeaders adminRoleHeaders() {
+    String email = "batch7-admin-" + System.nanoTime() + "@example.com";
+    String password = "batch7Admin123";
+    restTemplate.exchange(
+        "/api/v1/admin/users",
+        HttpMethod.POST,
+        new HttpEntity<>(
+            Map.of(
+                "email",
+                email,
+                "nickname",
+                "Batch7 Admin",
+                "password",
+                password,
+                "role",
+                "admin"),
+            authenticatedHeaders()),
+        Map.class);
+
+    ResponseEntity<Map> loginResponse =
+        restTemplate.postForEntity(
+            "/api/v1/auth/login", Map.of("username", email, "password", password), Map.class);
+    String token = ((Map<?, ?>) data(loginResponse)).get("access_token").toString();
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(token);
     return headers;

@@ -47,7 +47,15 @@ public class SecurityConfig {
                       objectMapper.writeValue(
                           response.getOutputStream(),
                           ApiResponse.failure(401, "Unauthorized"));
-                    }))
+                    })
+                    .accessDeniedHandler(
+                        (request, response, accessDeniedException) -> {
+                          response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                          response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                          objectMapper.writeValue(
+                              response.getOutputStream(),
+                              ApiResponse.failure(403, "Forbidden"));
+                        }))
         .authorizeHttpRequests(
             requests ->
                 requests
@@ -95,6 +103,12 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/comments/**")
                     .permitAll()
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/admin/site-config/package")
+                    .hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/admin/settings/**")
+                    .hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.PATCH, "/api/v1/admin/settings/**")
+                    .hasRole("SUPER_ADMIN")
                     .requestMatchers("/api/v1/admin/**")
                     .hasAnyRole("ADMIN", "SUPER_ADMIN")
                     .anyRequest()
