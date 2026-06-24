@@ -58,6 +58,10 @@
     select filename from files where id = #{id} and deleted_at is null
   </select>
 
+  <select id="activeStorageReferences" resultType="map">
+    select filename, file_url from files where id = #{id} and deleted_at is null
+  </select>
+
   <update id="markDeleted">
     update files set deleted_at = current_timestamp where id = #{id}
   </update>

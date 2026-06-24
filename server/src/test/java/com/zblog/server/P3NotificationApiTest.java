@@ -152,6 +152,82 @@ class P3NotificationApiTest {
   }
 
   @Test
+  void articleCommentsCreateAdminOperationalNotifications() {
+    String targetKey = "p3-admin-comment-notice-" + System.nanoTime();
+    HttpHeaders userHeaders = registerAndAuth("p3-admin-comment-" + System.nanoTime() + "@example.com", "Admin Comment");
+    HttpHeaders adminHeaders = adminHeaders();
+
+    long rootId =
+        number(
+            data(
+                restTemplate.exchange(
+                    "/api/v1/comments",
+                    HttpMethod.POST,
+                    new HttpEntity<>(
+                        Map.of("target_type", "article", "target_key", targetKey, "content", "root ops comment"),
+                        userHeaders),
+                    Map.class)),
+            "id");
+    long replyId =
+        number(
+            data(
+                restTemplate.exchange(
+                    "/api/v1/comments",
+                    HttpMethod.POST,
+                    new HttpEntity<>(
+                        Map.of(
+                            "target_type",
+                            "article",
+                            "target_key",
+                            targetKey,
+                            "parent_id",
+                            rootId,
+                            "content",
+                            "self reply ops comment"),
+                        userHeaders),
+                    Map.class)),
+            "id");
+
+    Map<?, ?> rootPage =
+        data(
+            restTemplate.exchange(
+                "/api/v1/admin/notifications?page=1&page_size=20&type=comment_new&keyword=" + targetKey,
+                HttpMethod.GET,
+                new HttpEntity<>(adminHeaders),
+                Map.class));
+    assertThat((List<?>) rootPage.get("list"))
+        .anySatisfy(
+            row -> {
+              Map<?, ?> notification = (Map<?, ?>) row;
+              assertThat(notification.get("type")).isEqualTo("comment_new");
+              assertThat(notification.get("link")).isEqualTo("/posts/" + targetKey + "?commentId=" + rootId);
+              assertThat(notification.get("target_type")).isEqualTo("article");
+              assertThat(notification.get("target_key")).isEqualTo(targetKey);
+              assertThat(number(notification, "target_id")).isEqualTo(rootId);
+              assertThat(number(notification, "target_comment_id")).isEqualTo(rootId);
+            });
+
+    Map<?, ?> replyPage =
+        data(
+            restTemplate.exchange(
+                "/api/v1/admin/notifications?page=1&page_size=20&type=comment_reply&keyword=" + targetKey,
+                HttpMethod.GET,
+                new HttpEntity<>(adminHeaders),
+                Map.class));
+    assertThat((List<?>) replyPage.get("list"))
+        .anySatisfy(
+            row -> {
+              Map<?, ?> notification = (Map<?, ?>) row;
+              assertThat(notification.get("type")).isEqualTo("comment_reply");
+              assertThat(notification.get("link")).isEqualTo("/posts/" + targetKey + "?commentId=" + replyId);
+              assertThat(notification.get("target_type")).isEqualTo("article");
+              assertThat(notification.get("target_key")).isEqualTo(targetKey);
+              assertThat(number(notification, "target_id")).isEqualTo(replyId);
+              assertThat(number(notification, "target_comment_id")).isEqualTo(replyId);
+            });
+  }
+
+  @Test
   void rapidRepliesCreateOneNotificationPerReply() {
     String targetKey = "p3-notification-burst-" + System.nanoTime();
     HttpHeaders ownerHeaders = registerAndAuth("p3-notify-burst-owner-" + System.nanoTime() + "@example.com", "Notify Owner");
@@ -231,11 +307,14 @@ class P3NotificationApiTest {
                 Map.class));
     List<?> list = (List<?>) adminPage.get("list");
     assertThat(list).isNotEmpty();
-    Map<?, ?> notification = (Map<?, ?>) list.getFirst();
-    assertThat(notification.get("type")).isEqualTo("comment_new");
-    assertThat(notification.get("title")).isEqualTo("新的留言");
-    assertThat(notification.get("link")).isEqualTo("/guestbook?commentId=" + commentId);
-    assertThat(number(notification, "target_id")).isEqualTo(commentId);
+    assertThat(list)
+        .anySatisfy(
+            row -> {
+              Map<?, ?> notification = (Map<?, ?>) row;
+              assertThat(notification.get("type")).isEqualTo("comment_new");
+              assertThat(notification.get("link")).isEqualTo("/guestbook?commentId=" + commentId);
+              assertThat(number(notification, "target_id")).isEqualTo(commentId);
+            });
   }
 
   private HttpHeaders registerAndAuth(String email, String nickname) {

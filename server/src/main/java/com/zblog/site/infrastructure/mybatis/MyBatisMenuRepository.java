@@ -50,6 +50,13 @@ public class MyBatisMenuRepository implements MenuRepository {
     menuMapper.deleteMenu(id);
   }
 
+  public void deleteByTypes(List<String> types) {
+    if (types.isEmpty()) {
+      return;
+    }
+    menuMapper.deleteByTypes(types);
+  }
+
   private Map<String, Object> menuParams(
       long id, String type, Long parentId, String title, String url, String icon, int sort) {
     Map<String, Object> params = new LinkedHashMap<>();

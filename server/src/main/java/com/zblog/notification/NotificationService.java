@@ -33,6 +33,16 @@ public class NotificationService {
     return Map.of("list", list, "total", total, "page", page, "page_size", pageSize, "unread_count", unread);
   }
 
+  public Map<String, Object> listAdmin(
+      int page, int pageSize, String type, Boolean read, Boolean processed, String keyword) {
+    int offset = Math.max(0, page - 1) * pageSize;
+    long total = notificationRepository.countFiltered(type, read, processed, keyword);
+    long unread = notificationRepository.countUnread();
+    List<Map<String, Object>> list =
+        notificationRepository.listFiltered(type, read, processed, keyword, pageSize, offset);
+    return Map.of("list", list, "total", total, "page", page, "page_size", pageSize, "unread_count", unread);
+  }
+
   public Map<String, Object> listForUser(String email, int page, int pageSize, boolean unreadOnly) {
     UserAccount user = userRepository.findByEmail(email);
     int offset = Math.max(0, page - 1) * pageSize;
@@ -129,21 +139,34 @@ public class NotificationService {
     return notificationRepository.get(notificationId);
   }
 
-  public Map<String, Object> createGuestbookRootCommentNotification(
-      long commentId, long actorUserId, String actorNickname, String content) {
+  public Map<String, Object> createCommentOperationalNotification(
+      long commentId,
+      long actorUserId,
+      String actorNickname,
+      String targetType,
+      String targetKey,
+      Long parentId,
+      String content) {
+    boolean reply = parentId != null;
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("actor_user_id", actorUserId);
     data.put("actor_nickname", actorNickname);
-    data.put("target_type", "page");
-    data.put("target_key", "guestbook");
+    data.put("target_type", targetType);
+    data.put("target_key", targetKey);
     data.put("comment_id", commentId);
+    if (parentId != null) {
+      data.put("parent_id", parentId);
+    }
     long id =
-        notificationRepository.create(
-            "comment_new",
-            "新的留言",
-            actorNickname + " 在留言板发布了新留言",
-            "/guestbook?commentId=" + commentId,
+        notificationRepository.createOperational(
+            reply ? "comment_reply" : "comment_new",
+            commentTitle(reply, targetType, targetKey),
+            commentContent(actorNickname, reply, content),
+            commentLink(targetType, targetKey, commentId),
             data,
+            commentId,
+            targetType,
+            targetKey,
             commentId,
             "direct");
     return notificationRepository.get(id);
@@ -158,14 +181,6 @@ public class NotificationService {
       long commentId,
       long parentId,
       String content) {
-    String link =
-        switch (targetType) {
-          case "moment" -> "/moments?momentId=" + targetKey + "&commentId=" + commentId;
-          case "page" -> "guestbook".equals(targetKey)
-              ? "/guestbook?commentId=" + commentId
-              : "/" + targetKey + "?commentId=" + commentId;
-          default -> "/posts/" + targetKey + "?commentId=" + commentId;
-        };
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("actor_user_id", actorUserId);
     data.put("actor_nickname", actorNickname);
@@ -179,7 +194,7 @@ public class NotificationService {
             "comment_reply",
             actorNickname + " 回复了你的评论",
             content.length() > 120 ? content.substring(0, 120) + "..." : content,
-            link,
+            commentLink(targetType, targetKey, commentId),
             data,
             commentId,
             targetType,
@@ -190,8 +205,33 @@ public class NotificationService {
     return notificationRepository.get(id);
   }
 
+  private String commentLink(String targetType, String targetKey, long commentId) {
+    return switch (targetType) {
+      case "moment" -> "/moments?momentId=" + targetKey + "&commentId=" + commentId;
+      case "page" -> "guestbook".equals(targetKey)
+          ? "/guestbook?commentId=" + commentId
+          : "/" + targetKey + "?commentId=" + commentId;
+      default -> "/posts/" + targetKey + "?commentId=" + commentId;
+    };
+  }
+
+  private String commentTitle(boolean reply, String targetType, String targetKey) {
+    if ("page".equals(targetType) && "guestbook".equals(targetKey)) {
+      return reply ? "新的留言回复" : "新的留言";
+    }
+    return reply ? "新的评论回复" : "新的评论";
+  }
+
+  private String commentContent(String actorNickname, boolean reply, String content) {
+    String summary = content.length() > 120 ? content.substring(0, 120) + "..." : content;
+    return actorNickname + (reply ? " 回复了一条评论：" : " 发布了新评论：") + summary;
+  }
+
   public Map<String, Object> markRead(long id) {
-    notificationRepository.markRead(id);
+    int affected = notificationRepository.markRead(id);
+    if (affected == 0) {
+      throw new BusinessException(404, "Notification not found", HttpStatus.NOT_FOUND);
+    }
     Map<String, Object> result = notificationRepository.get(id);
     Object recipient = result.get("recipient_user_id");
     if (recipient instanceof Number number && number.longValue() > 0) {
@@ -214,6 +254,14 @@ public class NotificationService {
   public Map<String, Object> markAllRead() {
     int affected = notificationRepository.markAllRead();
     return Map.of("affected", affected, "unread_count", 0);
+  }
+
+  public Map<String, Object> markProcessed(long id, boolean processed) {
+    int affected = notificationRepository.markProcessed(id, processed);
+    if (affected == 0) {
+      throw new BusinessException(404, "Notification not found", HttpStatus.NOT_FOUND);
+    }
+    return notificationRepository.get(id);
   }
 
   @Transactional

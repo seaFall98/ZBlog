@@ -184,6 +184,8 @@ public class CommentService {
             user.avatar(),
             user.id(),
             rootId);
+    notificationService.createCommentOperationalNotification(
+        id, user.id(), user.nickname(), targetType, targetKey, parentId, content);
     if (recipientUserId != null) {
       Map<String, Object> eventPayload = new LinkedHashMap<>();
       eventPayload.put("recipient_user_id", recipientUserId);
@@ -196,8 +198,6 @@ public class CommentService {
       eventPayload.put("content", content);
       eventOutboxService.createCommentReplyEvent(
           eventPayload);
-    } else if (parentId == null && isGuestbookTarget(targetType, targetKey)) {
-      notificationService.createGuestbookRootCommentNotification(id, user.id(), user.nickname(), content);
     }
     return publicView(commentRepository.find(id));
   }
@@ -249,10 +249,6 @@ public class CommentService {
       eventOutboxService.createCommentReplyEvent(eventPayload);
     }
     return adminView(commentRepository.find(id));
-  }
-
-  private boolean isGuestbookTarget(String targetType, String targetKey) {
-    return "page".equals(targetType) && "guestbook".equals(targetKey);
   }
 
   public Map<String, Object> toggleStatus(long id) {

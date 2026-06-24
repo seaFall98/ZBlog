@@ -73,6 +73,10 @@
           <i class="ri-search-eye-line ri-lg"></i>
           <template #title>搜索维护</template>
         </el-menu-item>
+        <el-menu-item index="/ops/notifications">
+          <i class="ri-notification-3-line ri-lg"></i>
+          <template #title>运营通知</template>
+        </el-menu-item>
         <el-menu-item index="/ops/outbox">
           <i class="ri-exchange-box-line ri-lg"></i>
           <template #title>事件 Outbox</template>
@@ -142,6 +146,7 @@ const routeToParent: Record<string, string> = {
   '/rssfeed': 'interaction',
   '/feedback': 'interaction',
   '/ops/search': 'ops',
+  '/ops/notifications': 'ops',
   '/ops/outbox': 'ops',
   '/ops/mail-outbox': 'ops',
   '/ops/scheduled-jobs': 'ops',

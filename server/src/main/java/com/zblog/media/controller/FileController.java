@@ -4,10 +4,12 @@ import com.zblog.common.api.ApiResponse;
 import com.zblog.common.api.PageResponse;
 import com.zblog.common.exception.BusinessException;
 import com.zblog.media.application.FileService;
+import com.zblog.media.application.MediaStorageStatusService;
 import java.io.IOException;
 import java.util.Map;
 import java.security.Principal;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,9 +18,17 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileController {
 
   private final FileService fileService;
+  private final MediaStorageStatusService mediaStorageStatusService;
+
+  @Autowired
+  public FileController(FileService fileService, MediaStorageStatusService mediaStorageStatusService) {
+    this.fileService = fileService;
+    this.mediaStorageStatusService = mediaStorageStatusService;
+  }
 
   public FileController(FileService fileService) {
     this.fileService = fileService;
+    this.mediaStorageStatusService = null;
   }
 
   @PostMapping("/admin/files")
@@ -69,5 +79,10 @@ public class FileController {
   public ApiResponse<Void> delete(@PathVariable long id) {
     fileService.delete(id);
     return ApiResponse.ok(null);
+  }
+
+  @GetMapping("/admin/media/storage/status")
+  public ApiResponse<Map<String, Object>> storageStatus() {
+    return ApiResponse.ok(mediaStorageStatusService.status());
   }
 }

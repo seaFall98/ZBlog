@@ -14,4 +14,6 @@ public interface MenuRepository {
   Menu update(long id, String type, Long parentId, String title, String url, String icon, int sort);
 
   void delete(long id, boolean deleteChildren);
+
+  void deleteByTypes(List<String> types);
 }

@@ -7,7 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("localFileStorage")
 public class LocalFileStorage implements FileStorage {
 
   private final Path uploadRoot = Path.of("uploads").toAbsolutePath().normalize();

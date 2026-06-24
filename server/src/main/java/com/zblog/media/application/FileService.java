@@ -5,6 +5,7 @@ import com.zblog.common.exception.BusinessException;
 import com.zblog.common.util.AdminDateRange;
 import com.zblog.media.application.port.FileRepository;
 import com.zblog.media.application.port.FileStorage;
+import com.zblog.media.application.port.FileStorageReference;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
@@ -149,15 +150,16 @@ public class FileService {
   }
 
   public void delete(long id) {
-    List<String> filenames = fileRepository.findActiveFilenames(id);
-    fileRepository.markDeleted(id);
-    if (!filenames.isEmpty()) {
+    List<FileStorageReference> references = fileRepository.findActiveStorageReferences(id);
+    if (!references.isEmpty()) {
       try {
-        fileStorage.delete(filenames.getFirst());
+        FileStorageReference reference = references.getFirst();
+        fileStorage.delete(reference.filename(), reference.fileUrl());
       } catch (IOException exception) {
         throw new UncheckedIOException(exception);
       }
     }
+    fileRepository.markDeleted(id);
   }
 
 }

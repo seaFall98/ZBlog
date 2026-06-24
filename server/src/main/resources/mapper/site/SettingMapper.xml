@@ -20,4 +20,12 @@
     insert into settings (group_name, key_name, value_text)
     values (#{group}, #{key}, #{value})
   </insert>
+
+  <delete id="deleteKey">
+    delete from settings where group_name = #{group} and key_name = #{key}
+  </delete>
+
+  <delete id="deleteGroup">
+    delete from settings where group_name = #{group}
+  </delete>
 </mapper>

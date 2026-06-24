@@ -3,6 +3,9 @@ package com.zblog.site.controller;
 import com.zblog.common.api.ApiResponse;
 import com.zblog.site.application.SettingService;
 import com.zblog.site.application.SettingService.FrontConfigView;
+import com.zblog.site.application.SiteConfigPackageService;
+import com.zblog.site.application.SiteConfigPackageService.SiteConfigPackageImportRequest;
+import com.zblog.site.application.SiteConfigPackageService.SiteConfigPackageView;
 import java.util.Map;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,9 +14,11 @@ import org.springframework.web.bind.annotation.*;
 public class SettingController {
 
   private final SettingService settingService;
+  private final SiteConfigPackageService siteConfigPackageService;
 
-  public SettingController(SettingService settingService) {
+  public SettingController(SettingService settingService, SiteConfigPackageService siteConfigPackageService) {
     this.settingService = settingService;
+    this.siteConfigPackageService = siteConfigPackageService;
   }
 
   @GetMapping({"/settings/{group}", "/admin/settings/{group}"})
@@ -29,6 +34,17 @@ public class SettingController {
   @GetMapping("/front/config")
   public ApiResponse<FrontConfigView> frontConfig() {
     return ApiResponse.ok(settingService.frontConfig());
+  }
+
+  @GetMapping("/admin/site-config/package")
+  public ApiResponse<SiteConfigPackageView> exportSiteConfigPackage() {
+    return ApiResponse.ok(siteConfigPackageService.exportPackage());
+  }
+
+  @PutMapping("/admin/site-config/package")
+  public ApiResponse<SiteConfigPackageView> importSiteConfigPackage(
+      @RequestBody SiteConfigPackageImportRequest request) {
+    return ApiResponse.ok(siteConfigPackageService.importPackage(request));
   }
 
   @RequestMapping(

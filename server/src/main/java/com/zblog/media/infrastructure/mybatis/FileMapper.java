@@ -35,5 +35,7 @@ public interface FileMapper {
 
   List<String> activeFilenames(@Param("id") long id);
 
+  List<Map<String, Object>> activeStorageReferences(@Param("id") long id);
+
   void markDeleted(@Param("id") long id);
 }

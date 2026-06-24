@@ -3,6 +3,28 @@
   PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
   "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.zblog.notification.infrastructure.mybatis.NotificationMapper">
+  <sql id="adminNotificationFilters">
+    <where>
+      recipient_user_id is null
+      <if test="type != null and type != ''">
+        and type = #{type}
+      </if>
+      <if test="read != null">
+        and is_read = #{read}
+      </if>
+      <if test="processed != null">
+        and is_processed = #{processed}
+      </if>
+      <if test="keyword != null and keyword != ''">
+        and (
+          lower(title) like concat('%', lower(#{keyword}), '%')
+          or lower(content) like concat('%', lower(#{keyword}), '%')
+          or lower(link) like concat('%', lower(#{keyword}), '%')
+        )
+      </if>
+    </where>
+  </sql>
+
   <select id="countAll" resultType="long">
     select count(*) from notifications
   </select>
@@ -11,9 +33,41 @@
     select count(*) from notifications where is_read = false
   </select>
 
+  <select id="countOperationalUnread" resultType="long">
+    select count(*) from notifications where is_read = false and recipient_user_id is null
+  </select>
+
   <select id="listRows" resultType="map">
     select *
     from notifications
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="countFiltered" resultType="long">
+    select count(*)
+    from notifications
+    <include refid="adminNotificationFilters"/>
+  </select>
+
+  <select id="countOperationalFiltered" resultType="long">
+    select count(*)
+    from notifications
+    <include refid="adminNotificationFilters"/>
+  </select>
+
+  <select id="listFilteredRows" resultType="map">
+    select *
+    from notifications
+    <include refid="adminNotificationFilters"/>
+    order by created_at desc, id desc
+    limit #{limit} offset #{offset}
+  </select>
+
+  <select id="listOperationalFilteredRows" resultType="map">
+    select *
+    from notifications
+    <include refid="adminNotificationFilters"/>
     order by created_at desc, id desc
     limit #{limit} offset #{offset}
   </select>
@@ -75,10 +129,24 @@
     where id = #{id}
   </update>
 
+  <update id="markOperationalRead">
+    update notifications
+    set is_read = true, read_at = current_timestamp
+    where id = #{id}
+      and recipient_user_id is null
+  </update>
+
   <update id="markAllRead">
     update notifications
     set is_read = true, read_at = current_timestamp
     where is_read = false
+  </update>
+
+  <update id="markOperationalAllRead">
+    update notifications
+    set is_read = true, read_at = current_timestamp
+    where is_read = false
+      and recipient_user_id is null
   </update>
 
   <update id="markReadByRecipient">
@@ -97,6 +165,21 @@
     set is_read = true, read_at = current_timestamp
     where recipient_user_id = #{recipientUserId}
       and is_read = false
+  </update>
+
+  <update id="markProcessed">
+    update notifications
+    set is_processed = #{processed},
+        processed_at = case when #{processed} then current_timestamp else null end
+    where id = #{id}
+  </update>
+
+  <update id="markOperationalProcessed">
+    update notifications
+    set is_processed = #{processed},
+        processed_at = case when #{processed} then current_timestamp else null end
+    where id = #{id}
+      and recipient_user_id is null
   </update>
 
   <delete id="deleteReadOlderThan">

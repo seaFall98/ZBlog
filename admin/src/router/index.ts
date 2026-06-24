@@ -117,6 +117,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '搜索维护', requiresAuth: true },
       },
       {
+        path: 'ops/notifications',
+        name: 'NotificationCenter',
+        component: () => import('@/views/ops/NotificationCenter.vue'),
+        meta: { title: '运营通知', requiresAuth: true },
+      },
+      {
         path: 'ops/outbox',
         name: 'OutboxMonitor',
         component: () => import('@/views/ops/OutboxMonitor.vue'),
