@@ -12,7 +12,9 @@
       </template>
 
       <el-table v-loading="loading" :data="jobs" border stripe>
-        <el-table-column prop="name" label="任务名称" min-width="180" show-overflow-tooltip />
+        <el-table-column label="任务名称" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ jobTitle(row) }}</template>
+        </el-table-column>
         <el-table-column label="执行时间" min-width="180">
           <template #default="{ row }">{{ scheduleText(row.cron_expression) }}</template>
         </el-table-column>
@@ -27,7 +29,9 @@
         <el-table-column prop="last_run_at" label="最近执行" min-width="170" show-overflow-tooltip>
           <template #default="{ row }">{{ row.last_run_at || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="description" label="说明" min-width="220" show-overflow-tooltip />
+        <el-table-column label="说明" min-width="220" show-overflow-tooltip>
+          <template #default="{ row }">{{ jobDescription(row) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" :loading="runningId === row.id" @click="handleRun(row)">
@@ -55,7 +59,10 @@
     <el-dialog v-model="editVisible" title="编辑定时任务" width="640px">
       <el-form label-width="96px">
         <el-form-item label="任务名称">
-          <el-input v-model="editForm.name" disabled />
+          <el-input :model-value="jobTitle(editForm)" disabled />
+        </el-form-item>
+        <el-form-item label="说明">
+          <el-input :model-value="jobDescription(editForm)" type="textarea" :rows="2" disabled />
         </el-form-item>
         <el-form-item label="执行频率">
           <el-segmented v-model="normalForm.frequency" :options="frequencyOptions" />
@@ -188,6 +195,33 @@ const weekdays = [
   { label: '周日', value: 'SUN' },
 ];
 
+const jobCopy: Record<string, { title: string; description: string }> = {
+  'daily-visit-archive': {
+    title: '每日访问统计归档',
+    description: '按天归档站点和文章访问统计，便于后续查看历史趋势。',
+  },
+  'article-view-flush': {
+    title: '阅读量批量落库',
+    description: '把 Redis 中暂存的文章阅读量增量批量写入数据库。',
+  },
+  'seo-feed-refresh': {
+    title: 'Sitemap/RSS 刷新',
+    description: '刷新 Sitemap、RSS 和 Atom 缓存，让搜索引擎与订阅源拿到最新内容。',
+  },
+  'article-scheduled-publish': {
+    title: '定时发布文章',
+    description: '发布已到预约时间的草稿文章，并执行正常发布后的联动逻辑。',
+  },
+  'feedback-cleanup': {
+    title: '反馈工单清理',
+    description: '清理超过保留周期的已解决或已关闭反馈工单。',
+  },
+  'notification-cleanup': {
+    title: '通知清理',
+    description: '清理超过保留周期的已读通知，避免通知表持续膨胀。',
+  },
+};
+
 const logVisible = ref(false);
 const logLoading = ref(false);
 const currentLogJobId = ref<number | null>(null);
@@ -238,6 +272,9 @@ const scheduleText = (cron: string) => {
 
 const retentionDays = (parameters: Record<string, unknown>) => Number(parameters?.retention_days ?? 90);
 const retentionText = (parameters: Record<string, unknown>) => `保留 ${retentionDays(parameters)} 天`;
+const jobKey = (row: ScheduledJob) => row.handler_name || row.name;
+const jobTitle = (row: ScheduledJob) => jobCopy[jobKey(row)]?.title || row.name;
+const jobDescription = (row: ScheduledJob) => jobCopy[jobKey(row)]?.description || row.description || '-';
 
 const handleEnabledChange = async (row: ScheduledJob) => {
   switchingId.value = row.id;

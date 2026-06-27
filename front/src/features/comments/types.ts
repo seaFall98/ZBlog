@@ -22,6 +22,8 @@ export type CommentView = {
   isDeleted: boolean;
   likeCount: number;
   likedByMe: boolean;
+  pinned: boolean;
+  pinnedAt: string;
   replyTotal: number;
   replyPage: number;
   replyPageSize: number;
@@ -56,4 +58,14 @@ export type CommentSubmitPayload = {
   email?: string;
   website?: string;
   parent_id?: number;
+};
+
+export type CommentSort = "hot" | "latest";
+
+export type CommentImageUploadResponse = {
+  id: number;
+  file_url: string;
+  file_name: string;
+  original_name: string;
+  file_size: number;
 };

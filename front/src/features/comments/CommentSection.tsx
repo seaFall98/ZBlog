@@ -1,11 +1,29 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { ChevronDownIcon, ChevronUpIcon, MessageCircleIcon, SendIcon, ThumbsUpIcon, Trash2Icon, XIcon } from "lucide-react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ImageIcon,
+  MessageCircleIcon,
+  PinIcon,
+  SendIcon,
+  ThumbsUpIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth/AuthProvider";
-import { deleteComment, fetchCommentPage, fetchReplies, locateComment, submitComment } from "./commentApi";
+import {
+  deleteComment,
+  fetchCommentPage,
+  fetchReplies,
+  locateComment,
+  submitComment,
+  toggleCommentLike,
+  uploadCommentImage,
+} from "./commentApi";
 import { CommentMarkdown } from "./markdown";
-import type { CommentPage, CommentView } from "./types";
+import type { CommentPage, CommentSort, CommentView } from "./types";
 
 type CommentSectionProps = {
   targetType: string;
@@ -21,8 +39,10 @@ type ReplyPageState = {
 };
 
 const ROOT_PAGE_SIZE = 10;
-const REPLY_PAGE_SIZE = 10;
+const REPLY_PAGE_SIZE = 3;
 const PAGE_WINDOW = 5;
+const COMMENT_IMAGE_MAX_SIZE = 2 * 1024 * 1024;
+const COMMENT_IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 
 function countComments(comments: CommentView[]): number {
   return comments.reduce((sum, comment) => sum + 1 + comment.replyTotal, 0);
@@ -76,6 +96,8 @@ function Composer({
   onCancel,
   placeholder,
   submitting,
+  uploading,
+  onImageUpload,
   compact,
 }: {
   value: string;
@@ -84,8 +106,16 @@ function Composer({
   onCancel?: () => void;
   placeholder: string;
   submitting: boolean;
+  uploading?: boolean;
+  onImageUpload?: (file: File) => void;
   compact?: boolean;
 }) {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) onImageUpload?.(file);
+  };
+
   return (
     <form onSubmit={onSubmit} className="border bg-card p-4 shadow-sm" style={{ borderColor: "var(--warm-border)" }}>
       <textarea
@@ -98,9 +128,24 @@ function Composer({
         style={{ borderColor: "var(--warm-border)", color: "var(--ink)", fontFamily: "var(--fontBody)" }}
       />
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-xs" style={{ color: "var(--muted-ink)" }}>
-          {value.length}/2000
-        </span>
+        <div className="flex items-center gap-3">
+          {onImageUpload && (
+            <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: "var(--muted-ink)" }}>
+              <ImageIcon size={15} />
+              {uploading ? "上传中" : "图片"}
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                className="sr-only"
+                disabled={uploading || submitting}
+                onChange={handleFileChange}
+              />
+            </label>
+          )}
+          <span className="text-xs" style={{ color: "var(--muted-ink)" }}>
+            {value.length}/2000
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           {onCancel && (
             <button type="button" onClick={onCancel} className="inline-flex h-10 items-center justify-center gap-2 border px-4 text-sm transition-opacity hover:opacity-80" style={{ borderColor: "var(--warm-border)", color: "var(--muted-ink)" }}>
@@ -128,6 +173,7 @@ function CommentItem({
   currentUserId,
   onReply,
   onDelete,
+  onLike,
   replyComposer,
   compact,
   isReply = false,
@@ -136,6 +182,7 @@ function CommentItem({
   currentUserId: number;
   onReply: (comment: CommentView) => void;
   onDelete: (comment: CommentView) => void;
+  onLike: (comment: CommentView) => void;
   replyComposer?: ReactNode;
   compact?: boolean;
   isReply?: boolean;
@@ -154,6 +201,12 @@ function CommentItem({
             <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
               {comment.nickname}
             </span>
+            {comment.pinned && !isReply && !comment.isDeleted && (
+              <span className="inline-flex items-center gap-1 border px-2 py-0.5 text-[11px]" style={{ borderColor: "#ff7a90", color: "#ff5f7e" }}>
+                <PinIcon size={11} />
+                置顶
+              </span>
+            )}
             {comment.badge && !comment.isDeleted && (
               <span className="rounded-full border px-2 py-0.5 text-[11px]" style={{ borderColor: "var(--warm-border)", color: "var(--muted-ink)" }}>
                 {comment.badge}
@@ -180,7 +233,12 @@ function CommentItem({
                   {expanded ? "收起全文" : "展开全文"}
                 </button>
               )}
-              <button type="button" className="inline-flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: "var(--muted-ink)" }} aria-disabled="true">
+              <button
+                type="button"
+                onClick={() => onLike(comment)}
+                className="inline-flex items-center gap-1 text-xs transition-opacity hover:opacity-70"
+                style={{ color: comment.likedByMe ? "#ff5f7e" : "var(--muted-ink)" }}
+              >
                 <ThumbsUpIcon size={13} />
                 {comment.likeCount > 0 ? comment.likeCount : "赞"}
               </button>
@@ -240,10 +298,12 @@ function ReplyPager({
 
 export default function CommentSection({ targetType, targetKey, compact = false }: CommentSectionProps) {
   const { authenticated, user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [comments, setComments] = useState<CommentView[]>([]);
   const [rootPage, setRootPage] = useState(1);
   const [rootTotal, setRootTotal] = useState(0);
+  const [sort, setSort] = useState<CommentSort>("hot");
   const [rootContent, setRootContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
   const [replyTo, setReplyTo] = useState<CommentView | null>(null);
@@ -251,6 +311,7 @@ export default function CommentSection({ targetType, targetKey, compact = false 
   const [replyPages, setReplyPages] = useState<Record<string, ReplyPageState>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [pendingScrollId, setPendingScrollId] = useState<string | null>(null);
   const total = useMemo(() => countComments(comments), [comments]);
   const rootTotalPages = totalPages(rootTotal, ROOT_PAGE_SIZE);
@@ -258,7 +319,7 @@ export default function CommentSection({ targetType, targetKey, compact = false 
   const loadRoots = async (page = rootPage): Promise<CommentPage> => {
     setLoading(true);
     try {
-      const result = await fetchCommentPage(targetType, targetKey, page, ROOT_PAGE_SIZE, REPLY_PAGE_SIZE);
+      const result = await fetchCommentPage(targetType, targetKey, page, ROOT_PAGE_SIZE, REPLY_PAGE_SIZE, sort);
       setComments(result.list);
       setRootTotal(result.total);
       setRootPage(result.page);
@@ -295,7 +356,7 @@ export default function CommentSection({ targetType, targetKey, compact = false 
 
   useEffect(() => {
     void loadRoots(1);
-  }, [targetKey, targetType]);
+  }, [sort, targetKey, targetType]);
 
   useEffect(() => {
     const commentId = searchParams.get("commentId");
@@ -328,10 +389,47 @@ export default function CommentSection({ targetType, targetKey, compact = false 
     }, 80);
   }, [comments, pendingScrollId, replyPages]);
 
+  const goLogin = () => {
+    navigate("/login", { state: { from: window.location.pathname + window.location.search + window.location.hash } });
+  };
+
+  const validateImageFile = (file: File) => {
+    if (!COMMENT_IMAGE_TYPES.has(file.type)) {
+      toast.error("评论图片仅支持 jpg、png、webp");
+      return false;
+    }
+    if (file.size > COMMENT_IMAGE_MAX_SIZE) {
+      toast.error("评论图片不能超过 2MB");
+      return false;
+    }
+    return true;
+  };
+
+  const appendImageTo = async (file: File, setter: (value: string | ((current: string) => string)) => void) => {
+    if (!authenticated) {
+      goLogin();
+      return;
+    }
+    if (!validateImageFile(file)) return;
+    setUploading(true);
+    try {
+      const uploaded = await uploadCommentImage(file);
+      setter((current) => {
+        const prefix = current.trimEnd();
+        return `${prefix}${prefix ? "\n\n" : ""}![图片](${uploaded.file_url})`;
+      });
+      toast.success("图片已上传");
+    } catch {
+      toast.error("图片上传失败");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const submitRoot = async (event: FormEvent) => {
     event.preventDefault();
     if (!authenticated) {
-      toast.error("请先登录后评论");
+      goLogin();
       return;
     }
     const text = rootContent.trim();
@@ -343,7 +441,7 @@ export default function CommentSection({ targetType, targetKey, compact = false 
     try {
       await submitComment({ target_type: targetType, target_key: targetKey, content: text });
       setRootContent("");
-      await loadRoots(1);
+      await loadRoots(sort === "latest" ? 1 : rootPage);
       toast.success("评论已发布");
     } catch {
       toast.error("评论发布失败");
@@ -356,7 +454,7 @@ export default function CommentSection({ targetType, targetKey, compact = false 
     event.preventDefault();
     if (!replyTo) return;
     if (!authenticated) {
-      toast.error("请先登录后评论");
+      goLogin();
       return;
     }
     const text = replyContent.trim();
@@ -403,6 +501,51 @@ export default function CommentSection({ targetType, targetKey, compact = false 
     }
   };
 
+  const replaceComment = (items: CommentView[], updated: CommentView): CommentView[] =>
+    items.map((item) => {
+      if (item.id === updated.id) {
+        return {
+          ...item,
+          ...updated,
+          replies: item.replies,
+          replyTotal: item.replyTotal,
+          replyPage: item.replyPage,
+          replyPageSize: item.replyPageSize,
+          replyTotalPages: item.replyTotalPages,
+        };
+      }
+      if (item.replies.some((reply) => reply.id === updated.id)) {
+        return {
+          ...item,
+          replies: item.replies.map((reply) => (reply.id === updated.id ? { ...reply, ...updated } : reply)),
+        };
+      }
+      return item;
+    });
+
+  const handleLike = async (comment: CommentView) => {
+    if (!authenticated) {
+      goLogin();
+      return;
+    }
+    try {
+      const updated = await toggleCommentLike(comment.id);
+      setComments((current) => replaceComment(current, updated));
+      setReplyPages((current) => {
+        const next: Record<string, ReplyPageState> = {};
+        Object.entries(current).forEach(([rootId, state]) => {
+          next[rootId] = {
+            ...state,
+            list: state.list.map((reply) => (reply.id === updated.id ? { ...reply, ...updated } : reply)),
+          };
+        });
+        return next;
+      });
+    } catch {
+      toast.error("点赞失败");
+    }
+  };
+
   const toggleRoot = async (root: CommentView) => {
     if (expandedRoots[root.id]) {
       setExpandedRoots((current) => ({ ...current, [root.id]: false }));
@@ -430,6 +573,8 @@ export default function CommentSection({ targetType, targetKey, compact = false 
         }}
         placeholder={`回复 ${comment.nickname}`}
         submitting={submitting}
+        uploading={uploading}
+        onImageUpload={(file) => void appendImageTo(file, setReplyContent)}
         compact
       />
     ) : null;
@@ -448,10 +593,38 @@ export default function CommentSection({ targetType, targetKey, compact = false 
             {loading ? "正在加载评论..." : total > 0 ? `${total} 条讨论` : "还没有评论"}
           </p>
         </div>
+        <div className="flex items-center gap-3 text-sm">
+          <button
+            type="button"
+            onClick={() => setSort("hot")}
+            className="transition-opacity hover:opacity-70"
+            style={{ color: sort === "hot" ? "var(--ink)" : "var(--muted-ink)", fontWeight: sort === "hot" ? 600 : 400 }}
+          >
+            最热
+          </button>
+          <span style={{ color: "var(--warm-border)" }}>|</span>
+          <button
+            type="button"
+            onClick={() => setSort("latest")}
+            className="transition-opacity hover:opacity-70"
+            style={{ color: sort === "latest" ? "var(--ink)" : "var(--muted-ink)", fontWeight: sort === "latest" ? 600 : 400 }}
+          >
+            最新
+          </button>
+        </div>
       </div>
 
       {authenticated ? (
-        <Composer value={rootContent} onChange={setRootContent} onSubmit={submitRoot} placeholder="写下你的评论" submitting={submitting} compact={compact} />
+        <Composer
+          value={rootContent}
+          onChange={setRootContent}
+          onSubmit={submitRoot}
+          placeholder="写下你的评论"
+          submitting={submitting}
+          uploading={uploading}
+          onImageUpload={(file) => void appendImageTo(file, setRootContent)}
+          compact={compact}
+        />
       ) : (
         <div className="border bg-card p-4 shadow-sm" style={{ borderColor: "var(--warm-border)" }}>
           <p className="text-sm" style={{ color: "var(--muted-ink)" }}>登录后参与评论</p>
@@ -477,16 +650,36 @@ export default function CommentSection({ targetType, targetKey, compact = false 
                 currentUserId={user?.id ?? 0}
                 onReply={(comment) => setReplyTo(comment)}
                 onDelete={remove}
+                onLike={(comment) => void handleLike(comment)}
                 replyComposer={replyComposer(root)}
                 compact={compact}
               />
               {root.replyTotal > 0 && (
                 <div className="ml-14 border-l pb-4 pl-4" style={{ borderColor: "var(--warm-border)" }}>
                   {!expandedRoots[root.id] ? (
-                    <button type="button" onClick={() => void toggleRoot(root)} className="inline-flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: "var(--muted-ink)" }}>
-                      <ChevronDownIcon size={14} />
-                      共{root.replyTotal}条回复，点击查看
-                    </button>
+                    <>
+                      <div className="divide-y" style={{ borderColor: "var(--warm-border)" }}>
+                        {state.list.map((reply) => (
+                          <CommentItem
+                            key={reply.id}
+                            comment={reply}
+                            currentUserId={user?.id ?? 0}
+                            onReply={(comment) => setReplyTo(comment)}
+                            onDelete={remove}
+                            onLike={(comment) => void handleLike(comment)}
+                            replyComposer={replyComposer(reply)}
+                            compact
+                            isReply
+                          />
+                        ))}
+                      </div>
+                      {root.replyTotal > state.list.length && (
+                        <button type="button" onClick={() => void toggleRoot(root)} className="mt-3 inline-flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: "var(--muted-ink)" }}>
+                          <ChevronDownIcon size={14} />
+                          共{root.replyTotal}条回复，点击查看
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <>
                       <div className="divide-y" style={{ borderColor: "var(--warm-border)" }}>
@@ -497,6 +690,7 @@ export default function CommentSection({ targetType, targetKey, compact = false 
                             currentUserId={user?.id ?? 0}
                             onReply={(comment) => setReplyTo(comment)}
                             onDelete={remove}
+                            onLike={(comment) => void handleLike(comment)}
                             replyComposer={replyComposer(reply)}
                             compact
                             isReply

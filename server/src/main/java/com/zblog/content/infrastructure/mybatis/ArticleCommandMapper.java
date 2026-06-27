@@ -1,5 +1,6 @@
 package com.zblog.content.infrastructure.mybatis;
 
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -11,6 +12,8 @@ public interface ArticleCommandMapper {
   int updateArticle(ArticleCommandUpdateCommand command);
 
   int publishArticle(@Param("id") long id);
+
+  List<Long> dueScheduledArticleIds();
 
   int unpublishArticle(@Param("id") long id);
 
@@ -35,9 +38,10 @@ public interface ArticleCommandMapper {
 	    private final boolean essence;
 	    private final boolean outdated;
 	    private final String copyrightType;
-	    private final String sourceUrl;
-	    private final String sourceTitle;
-	    private final String copyrightLicense;
+    private final String sourceUrl;
+    private final String sourceTitle;
+    private final String copyrightLicense;
+    private final String publishTime;
 
     ArticleCommandInsertCommand(
         String title,
@@ -55,7 +59,8 @@ public interface ArticleCommandMapper {
 	        String copyrightType,
 	        String sourceUrl,
 	        String sourceTitle,
-	        String copyrightLicense) {
+	        String copyrightLicense,
+	        String publishTime) {
       this.title = title;
       this.slug = slug;
       this.markdown = markdown;
@@ -72,6 +77,7 @@ public interface ArticleCommandMapper {
 	      this.sourceUrl = sourceUrl;
 	      this.sourceTitle = sourceTitle;
 	      this.copyrightLicense = copyrightLicense;
+	      this.publishTime = publishTime;
     }
 
     public Long getId() {
@@ -145,6 +151,10 @@ public interface ArticleCommandMapper {
 	    public String getCopyrightLicense() {
 	      return copyrightLicense;
 	    }
+
+	    public String getPublishTime() {
+	      return publishTime;
+	    }
 	  }
 
   record ArticleCommandUpdateCommand(
@@ -164,5 +174,6 @@ public interface ArticleCommandMapper {
 	      String copyrightType,
 	      String sourceUrl,
 	      String sourceTitle,
-	      String copyrightLicense) {}
+	      String copyrightLicense,
+	      String publishTime) {}
 }

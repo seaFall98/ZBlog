@@ -19,10 +19,11 @@ public interface ArticleCommandRepository {
 	      boolean top,
 	      boolean essence,
 	      boolean outdated,
-	      String copyrightType,
-	      String sourceUrl,
-	      String sourceTitle,
-	      String copyrightLicense);
+      String copyrightType,
+      String sourceUrl,
+      String sourceTitle,
+      String copyrightLicense,
+      String publishTime);
 
   Map<String, Object> update(
       long id,
@@ -42,9 +43,12 @@ public interface ArticleCommandRepository {
 	      String copyrightType,
 	      String sourceUrl,
 	      String sourceTitle,
-	      String copyrightLicense);
+	      String copyrightLicense,
+	      String publishTime);
 
   Map<String, Object> publish(long id);
+
+  List<Long> dueScheduledArticleIds();
 
   Map<String, Object> unpublish(long id);
 

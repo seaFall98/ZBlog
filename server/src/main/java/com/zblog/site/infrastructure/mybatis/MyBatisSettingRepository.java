@@ -37,6 +37,13 @@ public class MyBatisSettingRepository implements SettingRepository {
     settingMapper.deleteKey(group, key);
   }
 
+  public int clearValuesEqualTo(String value) {
+    if (value == null || value.isBlank()) {
+      return 0;
+    }
+    return settingMapper.clearValuesEqualTo(value);
+  }
+
   public void deleteGroup(String group) {
     settingMapper.deleteGroup(group);
   }

@@ -25,12 +25,17 @@ public class VisitCollectionService {
   // 访问采集在一个入口内完成匿名访客识别、限流、落库、去重和热度更新。
   private final VisitRepository visitRepository;
   private final StatsCache statsCache;
+  private final ArticleViewCountBuffer articleViewCountBuffer;
   private final ObjectMapper objectMapper;
 
   public VisitCollectionService(
-      VisitRepository visitRepository, StatsCache statsCache, ObjectMapper objectMapper) {
+      VisitRepository visitRepository,
+      StatsCache statsCache,
+      ArticleViewCountBuffer articleViewCountBuffer,
+      ObjectMapper objectMapper) {
     this.visitRepository = visitRepository;
     this.statsCache = statsCache;
+    this.articleViewCountBuffer = articleViewCountBuffer;
     this.objectMapper = objectMapper;
   }
 
@@ -71,11 +76,10 @@ public class VisitCollectionService {
           statsCache.markArticleViewIfAbsent(
               articleId, visitorId, Duration.ofSeconds(statsCache.articleViewDedupSeconds()));
       if (articleViewCounted) {
-        // 浏览量只在去重窗口首次命中时递增，热度分也沿用同一口径。
-        visitRepository.incrementPublishedArticleViewCount(articleId);
-        statsCache.incrementHotArticle(articleId, 1);
+        // 浏览量只在去重窗口首次命中时计入，先写 Redis pending，再由定时任务批量落库。
+        articleViewCountBuffer.increment(articleId);
       }
-      articleViewCount = visitRepository.articleViewCount(articleId);
+      articleViewCount = articleViewCountBuffer.visibleCount(articleId);
     }
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("accepted", true);

@@ -276,6 +276,29 @@ class Batch21Phase4ArticleCommandMyBatisTest {
   }
 
   @Test
+  void updateTreatsEmptyPublishTimeAsNull() {
+    HttpHeaders headers = authenticatedHeaders();
+    long articleId =
+        createArticle(
+            headers,
+            "batch21-phase4-empty-publish-time",
+            "Batch21 Phase4 Empty Publish Time",
+            "batch21-phase4-empty-publish-time-token",
+            false);
+
+    ResponseEntity<Map> response =
+        restTemplate.exchange(
+            "/api/v1/admin/articles/" + articleId,
+            HttpMethod.PUT,
+            new HttpEntity<>(Map.of("publish_time", ""), headers),
+            Map.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(data(response).get("publish_time")).isNull();
+    assertThat(publishedAt(articleId)).isNull();
+  }
+
+  @Test
   void publishKeepsPublishedAtAndRepeatPublishDoesNotRepeatEvents() {
     HttpHeaders headers = authenticatedHeaders();
     long articleId =

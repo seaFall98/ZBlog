@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -108,7 +109,8 @@ class P3ProfileApiTest {
                 controller.uploadPublic(
                     new MockMultipartFile("file", "avatar.png", "image/png", pngBytes()),
                     "用户头像",
-                    null))
+                    null,
+                    new MockHttpServletRequest()))
         .isInstanceOf(BusinessException.class)
         .extracting(exception -> ((BusinessException) exception).status())
         .isEqualTo(HttpStatus.UNAUTHORIZED);

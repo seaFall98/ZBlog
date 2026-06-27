@@ -1,8 +1,10 @@
 package com.zblog.seo.application;
 
+import com.zblog.cache.BlogCache;
 import com.zblog.seo.application.port.SeoFeedRepository;
 import com.zblog.seo.application.port.SeoFeedRepository.FeedArticle;
 import com.zblog.site.application.SettingService;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,18 +15,54 @@ public class SeoFeedService {
 
   private final SeoFeedRepository seoFeedRepository;
   private final SettingService settingService;
+  private final BlogCache blogCache;
   private final String publicSiteUrl;
 
   public SeoFeedService(
       SeoFeedRepository seoFeedRepository,
       SettingService settingService,
+      BlogCache blogCache,
       @Value("${zblog.seo.public-site-url:}") String publicSiteUrl) {
     this.seoFeedRepository = seoFeedRepository;
     this.settingService = settingService;
+    this.blogCache = blogCache;
     this.publicSiteUrl = normalizeBaseUrl(publicSiteUrl);
   }
 
   public String rss() {
+    return cached("rss", this::buildRss);
+  }
+
+  public String atom() {
+    return cached("atom", this::buildAtom);
+  }
+
+  public String sitemap() {
+    return cached("sitemap", this::buildSitemap);
+  }
+
+  public Map<String, Object> refreshCache() {
+    blogCache.set(key("rss"), buildRss(), Duration.ofHours(24));
+    blogCache.set(key("atom"), buildAtom(), Duration.ofHours(24));
+    blogCache.set(key("sitemap"), buildSitemap(), Duration.ofHours(24));
+    return Map.of("rss", true, "atom", true, "sitemap", true);
+  }
+
+  public void invalidateCache() {
+    blogCache.delete(key("rss"));
+    blogCache.delete(key("atom"));
+    blogCache.delete(key("sitemap"));
+  }
+
+  private String cached(String name, java.util.function.Supplier<String> builder) {
+    return blogCache.get(key(name)).orElseGet(builder);
+  }
+
+  private String key(String name) {
+    return "zblog:seo-feed:" + name;
+  }
+
+  private String buildRss() {
     String title = siteTitle();
     String description = feedDescription();
     StringBuilder xml = new StringBuilder();
@@ -51,7 +89,7 @@ public class SeoFeedService {
     return xml.toString();
   }
 
-  public String atom() {
+  private String buildAtom() {
     String title = siteTitle();
     String description = feedDescription();
     StringBuilder xml = new StringBuilder();
@@ -80,7 +118,7 @@ public class SeoFeedService {
     return xml.toString();
   }
 
-  public String sitemap() {
+  private String buildSitemap() {
     StringBuilder xml = new StringBuilder();
     xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
     xml.append(

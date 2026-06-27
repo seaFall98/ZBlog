@@ -9,7 +9,7 @@ public interface VisitMapper {
 
   int insertVisit(VisitEventInput input);
 
-  int incrementPublishedArticleViewCount(@Param("articleId") long articleId);
+  int incrementPublishedArticleViewCount(@Param("articleId") long articleId, @Param("delta") long delta);
 
   Long articleViewCount(@Param("articleId") long articleId);
 }

@@ -91,11 +91,31 @@
 
       <el-table-column label="评论内容" min-width="300">
         <template #default="{ row }">
-          <div style="line-height: 1.6; display: flex; align-items: center; gap: 8px">
-            <span>{{ row.content }}</span>
-            <el-tag v-if="row.deleted_at" type="danger" size="small">已删除</el-tag>
-            <el-tag v-if="row.parent_id" type="info" size="small">子评论</el-tag>
+          <div style="line-height: 1.6">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+              <span>{{ stripMarkdownImages(row.content) }}</span>
+              <el-tag v-if="row.deleted_at" type="danger" size="small">已删除</el-tag>
+              <el-tag v-if="row.parent_id" type="info" size="small">子评论</el-tag>
+              <el-tag v-if="row.pinned" type="warning" size="small">置顶</el-tag>
+            </div>
+            <div v-if="commentImages(row.content).length" style="display: flex; gap: 8px; margin-top: 8px">
+              <el-image
+                v-for="image in commentImages(row.content)"
+                :key="image"
+                :src="image"
+                :preview-src-list="commentImages(row.content)"
+                fit="cover"
+                style="width: 56px; height: 56px; border-radius: 4px"
+                preview-teleported
+              />
+            </div>
           </div>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="互动" width="100" align="center">
+        <template #default="{ row }">
+          <div style="font-size: 12px; color: #606266">赞 {{ row.like_count || 0 }}</div>
         </template>
       </el-table-column>
 
@@ -146,6 +166,15 @@
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="openReplyDialog(row)">
             回复
+          </el-button>
+          <el-button
+            v-if="!row.parent_id"
+            type="warning"
+            link
+            size="small"
+            @click="handlePin(row)"
+          >
+            {{ row.pinned ? '取消置顶' : '置顶' }}
           </el-button>
           <el-button type="danger" link size="small" @click="handleDelete(row.id)">
             删除
@@ -204,7 +233,7 @@ import { User } from '@element-plus/icons-vue';
 import CommonList from '@/components/common/CommonList.vue';
 import CommentFilter from './components/CommentFilter.vue';
 import type { Comment, CommentListQuery } from '@/types/comment';
-import { getComments, deleteComment, toggleCommentStatus, createComment } from '@/api/comment';
+import { getComments, deleteComment, toggleCommentStatus, createComment, setCommentPinned } from '@/api/comment';
 import { formatDateTime } from '@/utils/date';
 
 const loading = ref(false);
@@ -314,6 +343,20 @@ const handleDelete = async (id: number) => {
   }
 };
 
+const handlePin = async (comment: Comment) => {
+  try {
+    await setCommentPinned(comment.id, !comment.pinned);
+    ElMessage.success(comment.pinned ? '已取消置顶' : '已置顶');
+    fetchComments();
+  } catch (error) {
+    if (error instanceof Error) {
+      ElMessage.error(error.message);
+    } else {
+      ElMessage.error('置顶操作失败');
+    }
+  }
+};
+
 const openReplyDialog = (comment: Comment) => {
   replyingComment.value = comment;
   replyForm.value.content = '';
@@ -358,6 +401,19 @@ const getTargetTypeText = (type: string) => {
     page: '页面',
   };
   return typeMap[type] || type;
+};
+
+const imagePattern = /!\[[^\]]*]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+
+const commentImages = (content: string): string[] => {
+  return Array.from(content.matchAll(imagePattern))
+    .map(match => match[1])
+    .filter((url): url is string => Boolean(url));
+};
+
+const stripMarkdownImages = (content: string) => {
+  const text = content.replace(imagePattern, '').trim();
+  return text || '[图片]';
 };
 
 onMounted(() => {

@@ -2,6 +2,7 @@ package com.zblog.media.infrastructure.mybatis;
 
 import com.zblog.common.api.PageResponse;
 import com.zblog.media.application.port.FileRepository;
+import com.zblog.media.application.port.FileStorageMetadata;
 import com.zblog.media.application.port.FileStorageReference;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -25,6 +26,28 @@ public class MyBatisFileRepository implements FileRepository {
       String fileType,
       long fileSize,
       String uploadType) {
+    return create(
+        filename,
+        originalName,
+        fileUrl,
+        fileType,
+        fileSize,
+        uploadType,
+        null,
+        "",
+        FileStorageMetadata.empty());
+  }
+
+  public long create(
+      String filename,
+      String originalName,
+      String fileUrl,
+      String fileType,
+      long fileSize,
+      String uploadType,
+      Long uploadedBy,
+      String checksumSha256,
+      FileStorageMetadata storageMetadata) {
     Map<String, Object> params = new LinkedHashMap<>();
     params.put("filename", filename);
     params.put("originalName", originalName);
@@ -32,6 +55,15 @@ public class MyBatisFileRepository implements FileRepository {
     params.put("fileType", fileType);
     params.put("fileSize", fileSize);
     params.put("uploadType", uploadType);
+    params.put("uploadedBy", uploadedBy);
+    params.put("checksumSha256", checksumSha256 == null ? "" : checksumSha256);
+    FileStorageMetadata metadata = storageMetadata == null ? FileStorageMetadata.empty() : storageMetadata;
+    params.put("storageProvider", metadata.provider());
+    params.put("storageBucket", metadata.bucket());
+    params.put("storageRegion", metadata.region());
+    params.put("storageObjectKey", metadata.objectKey());
+    params.put("storageDomain", metadata.domain());
+    params.put("storagePrefix", metadata.prefix());
     fileMapper.insertFile(params);
     return ((Number) params.get("id")).longValue();
   }
@@ -69,12 +101,37 @@ public class MyBatisFileRepository implements FileRepository {
   @Override
   public List<FileStorageReference> findActiveStorageReferences(long id) {
     return fileMapper.activeStorageReferences(id).stream()
-        .map(row -> new FileStorageReference(string(row.get("filename")), string(row.get("file_url"))))
+        .map(
+            row ->
+                new FileStorageReference(
+                    string(row.get("filename")),
+                    string(row.get("file_url")),
+                    string(row.get("storage_provider")),
+                    string(row.get("storage_bucket")),
+                    string(row.get("storage_region")),
+                    string(row.get("storage_object_key")),
+                    string(row.get("storage_domain")),
+                    string(row.get("storage_prefix"))))
         .toList();
   }
 
   public void markDeleted(long id) {
     fileMapper.markDeleted(id);
+  }
+
+  public List<Map<String, Object>> findRecentUserUploadsByUrls(
+      long userId, String uploadType, List<String> fileUrls) {
+    if (fileUrls.isEmpty()) {
+      return List.of();
+    }
+    return fileMapper.recentUserUploadsByUrls(userId, uploadType, fileUrls);
+  }
+
+  public void bindFilesToComment(long userId, long commentId, String uploadType, List<String> fileUrls) {
+    if (fileUrls.isEmpty()) {
+      return;
+    }
+    fileMapper.bindFilesToComment(userId, commentId, uploadType, fileUrls);
   }
 
   private String fileTypeLike(String fileType) {

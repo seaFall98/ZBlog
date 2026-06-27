@@ -36,13 +36,19 @@ public class AiAdminService {
 
   public Map<String, Object> summary(Map<String, Object> request) {
     String content = required(text(request.get("content")), "content");
-    String prompt = setting("summary_prompt", "请用创作者视角为下面文章生成 50 到 100 字摘要。");
+    String prompt =
+        setting(
+            "summary_prompt",
+            "你是中文博客编辑。请基于文章正文生成一段 50 到 100 字摘要，提炼核心问题、关键观点和读者收益，语气自然克制，不要营销腔，不要出现“本文/这篇文章/以下是”等元话语。");
     return generateSummary(content, prompt, 100);
   }
 
   public Map<String, Object> aiSummary(Map<String, Object> request) {
     String content = required(text(request.get("content")), "content");
-    String prompt = setting("ai_summary_prompt", "请用旁观者视角为下面文章生成 150 到 200 字 AI 总结。");
+    String prompt =
+        setting(
+            "ai_summary_prompt",
+            "你是中文博客的 AI 阅读助手。请用旁观者视角生成一段 150 到 200 字总结，概括文章背景、主要观点、关键细节和适合阅读的人群。只保留正文事实，不编造，不写列表，不输出标题。");
     return generateSummary(content, prompt, 200);
   }
 

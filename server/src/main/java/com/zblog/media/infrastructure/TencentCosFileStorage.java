@@ -14,6 +14,8 @@ import com.zblog.media.MediaStorageProperties;
 import com.zblog.media.application.MediaStorageSettings;
 import com.zblog.media.application.MediaStorageSettings.StorageSettings;
 import com.zblog.media.application.port.FileStorage;
+import com.zblog.media.application.port.FileStorageMetadata;
+import com.zblog.media.application.port.FileStorageReference;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.InputStream;
@@ -74,6 +76,46 @@ public class TencentCosFileStorage implements FileStorage {
           "Failed to delete file from Tencent COS: " + exception.getMessage(),
           HttpStatus.BAD_GATEWAY);
     }
+  }
+
+  @Override
+  public void delete(FileStorageReference reference) throws IOException {
+    if (reference.hasStorageMetadata() && reference.isStorageProvider("cos")) {
+      StorageSettings settings = settingsFromReference(reference);
+      if (!settings.cosConfigured()) {
+        throw new BusinessException(40001, "Tencent COS storage is not fully configured", HttpStatus.BAD_REQUEST);
+      }
+      COSClient client = clientFor(settings);
+      try {
+        client.deleteObject(settings.bucket(), reference.storageObjectKey());
+      } catch (CosClientException exception) {
+        throw new BusinessException(
+            50201,
+            "Failed to delete file from Tencent COS: " + exception.getMessage(),
+            HttpStatus.BAD_GATEWAY);
+      }
+      return;
+    }
+    delete(reference.filename(), reference.fileUrl());
+  }
+
+  @Override
+  public FileStorageMetadata metadata(String filename, String fileUrl) {
+    StorageSettings settings = storageSettings.current();
+    String key = objectKey(settings, filename, fileUrl);
+    return new FileStorageMetadata(
+        "cos", settings.bucket(), settings.region(), key, settings.domain(), settings.prefix());
+  }
+
+  private StorageSettings settingsFromReference(FileStorageReference reference) {
+    FileStorageMetadata metadata = reference.storageMetadata();
+    return new StorageSettings(
+        "cos",
+        metadata.region(),
+        metadata.bucket(),
+        metadata.domain(),
+        metadata.prefix(),
+        properties.hasCosCredentials());
   }
 
   String objectKey(StorageSettings settings, String filename, String fileUrl) {

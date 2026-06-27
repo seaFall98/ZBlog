@@ -13,11 +13,14 @@ public interface CommentMapper {
 
   long countAllPublicRows(@Param("targetType") String targetType, @Param("targetKey") String targetKey);
 
+  long countPublicRowsByUser(@Param("userId") long userId);
+
   List<Map<String, Object>> listRootRows(
       @Param("targetType") String targetType,
       @Param("targetKey") String targetKey,
       @Param("limit") int limit,
-      @Param("offset") int offset);
+      @Param("offset") int offset,
+      @Param("sort") String sort);
 
   List<Map<String, Object>> listInitialReplyRows(
       @Param("rootIds") List<Long> rootIds, @Param("limitPerRoot") int limitPerRoot);
@@ -61,6 +64,20 @@ public interface CommentMapper {
   void insertImportedComment(Map<String, Object> params);
 
   void toggleStatus(@Param("id") long id);
+
+  List<Map<String, Object>> likedByUser(@Param("userId") long userId, @Param("commentIds") List<Long> commentIds);
+
+  int insertLike(@Param("commentId") long commentId, @Param("userId") long userId);
+
+  int deleteLike(@Param("commentId") long commentId, @Param("userId") long userId);
+
+  void incrementLikeCount(@Param("commentId") long commentId);
+
+  void decrementLikeCount(@Param("commentId") long commentId);
+
+  void pin(@Param("id") long id, @Param("operatorUserId") long operatorUserId);
+
+  void unpin(@Param("id") long id);
 
   int delete(@Param("id") long id);
 

@@ -1,6 +1,13 @@
 import { apiClient } from "../../lib/apiClient";
 import { isRecord, stringValue, type RawRecord } from "../../lib/typeGuards";
-import type { CommentLocation, CommentPage, CommentSubmitPayload, CommentView } from "./types";
+import type {
+  CommentImageUploadResponse,
+  CommentLocation,
+  CommentPage,
+  CommentSort,
+  CommentSubmitPayload,
+  CommentView,
+} from "./types";
 
 type PageResponse = { list?: unknown; total?: unknown; page?: unknown; page_size?: unknown; pageSize?: unknown };
 
@@ -57,6 +64,8 @@ export function mapComment(value: unknown): CommentView | null {
     isDeleted,
     likeCount: numberValue(value.like_count ?? value.likeCount),
     likedByMe: boolValue(value.liked_by_me ?? value.likedByMe),
+    pinned: boolValue(value.pinned),
+    pinnedAt: stringValue(value.pinned_at ?? value.pinnedAt),
     replyTotal: numberValue(value.reply_total ?? value.replyTotal ?? replies.length),
     replyPage: Math.max(1, numberValue(value.reply_page ?? value.replyPage) || 1),
     replyPageSize: Math.max(1, numberValue(value.reply_page_size ?? value.replyPageSize) || 10),
@@ -65,13 +74,21 @@ export function mapComment(value: unknown): CommentView | null {
   };
 }
 
-export async function fetchCommentPage(targetType: string, targetKey: string, page = 1, pageSize = 10, replyPageSize = 10): Promise<CommentPage> {
+export async function fetchCommentPage(
+  targetType: string,
+  targetKey: string,
+  page = 1,
+  pageSize = 10,
+  replyPageSize = 10,
+  sort: CommentSort = "hot",
+): Promise<CommentPage> {
   const data = await apiClient.get<PageResponse>("/comments", {
     target_type: targetType,
     target_key: targetKey,
     page,
     page_size: pageSize,
     reply_page_size: replyPageSize,
+    sort,
   });
   const list = Array.isArray(data.list) ? data.list : [];
   return {
@@ -128,4 +145,18 @@ export async function submitComment(payload: CommentSubmitPayload): Promise<Comm
 
 export async function deleteComment(id: string | number): Promise<void> {
   await apiClient.delete<null>(`/comments/${id}`);
+}
+
+export async function toggleCommentLike(id: string | number): Promise<CommentView> {
+  const data = await apiClient.post<RawRecord>(`/comments/${id}/like`, {});
+  const comment = mapComment(data);
+  if (!comment) throw new Error("点赞后返回数据无效");
+  return comment;
+}
+
+export async function uploadCommentImage(file: File): Promise<CommentImageUploadResponse> {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("type", "评论贴图");
+  return apiClient.upload<CommentImageUploadResponse>("/upload", body);
 }

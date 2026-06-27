@@ -25,14 +25,14 @@ public class InMemoryBlogCache implements BlogCache {
   }
 
   @Override
-  public long incrementWithTtl(String key, Duration ttl) {
+  public long incrementByWithTtl(String key, long delta, Duration ttl) {
     purgeExpired(key);
     Entry entry =
         values.compute(
             key,
             (ignored, existing) -> {
-              long current = existing == null ? 0 : Long.parseLong(existing.value());
-              return new Entry(Long.toString(current + 1), Instant.now().plus(ttl));
+              long current = existing == null ? 0 : parseLong(existing.value());
+              return new Entry(Long.toString(current + delta), Instant.now().plus(ttl));
             });
     return Long.parseLong(entry.value());
   }
@@ -80,10 +80,31 @@ public class InMemoryBlogCache implements BlogCache {
     values.remove(key);
   }
 
+  @Override
+  public Map<String, String> scanByPrefix(String prefix) {
+    Instant now = Instant.now();
+    Map<String, String> result = new ConcurrentHashMap<>();
+    values.forEach(
+        (key, entry) -> {
+          if (key.startsWith(prefix) && entry.expiresAt().isAfter(now)) {
+            result.put(key, entry.value());
+          }
+        });
+    return result;
+  }
+
   private void purgeExpired(String key) {
     Entry entry = values.get(key);
     if (entry != null && entry.expiresAt().isBefore(Instant.now())) {
       values.remove(key);
+    }
+  }
+
+  private long parseLong(String value) {
+    try {
+      return Long.parseLong(value);
+    } catch (NumberFormatException exception) {
+      return 0;
     }
   }
 

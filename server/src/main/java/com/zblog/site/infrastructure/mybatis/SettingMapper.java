@@ -18,5 +18,7 @@ public interface SettingMapper {
 
   void deleteKey(@Param("group") String group, @Param("key") String key);
 
+  int clearValuesEqualTo(@Param("value") String value);
+
   void deleteGroup(@Param("group") String group);
 }

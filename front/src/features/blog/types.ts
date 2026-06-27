@@ -13,6 +13,7 @@ export type PostView = {
   slug: string;
   title: string;
   summary: string;
+  aiSummary?: string;
   contentHtml: string;
   contentMarkdown: string;
   toc: TocItem[];

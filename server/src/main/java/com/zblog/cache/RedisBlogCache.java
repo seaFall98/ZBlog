@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -33,15 +35,15 @@ public class RedisBlogCache implements BlogCache {
   }
 
   @Override
-  public long incrementWithTtl(String key, Duration ttl) {
+  public long incrementByWithTtl(String key, long delta, Duration ttl) {
     try {
-      Long value = redisTemplate.opsForValue().increment(key);
-      if (value != null && value == 1L) {
+      Long value = redisTemplate.opsForValue().increment(key, delta);
+      if (value != null && value == delta) {
         redisTemplate.expire(key, ttl);
       }
-      return value == null ? 1 : value;
+      return value == null ? delta : value;
     } catch (RuntimeException exception) {
-      return 1;
+      return delta;
     }
   }
 
@@ -108,5 +110,23 @@ public class RedisBlogCache implements BlogCache {
     } catch (RuntimeException ignored) {
       // Cache eviction is best-effort.
     }
+  }
+
+  @Override
+  public Map<String, String> scanByPrefix(String prefix) {
+    Map<String, String> result = new LinkedHashMap<>();
+    try (Cursor<String> cursor =
+        redisTemplate.scan(ScanOptions.scanOptions().match(prefix + "*").count(500).build())) {
+      while (cursor.hasNext()) {
+        String key = cursor.next();
+        String value = redisTemplate.opsForValue().get(key);
+        if (value != null) {
+          result.put(key, value);
+        }
+      }
+    } catch (RuntimeException exception) {
+      return Map.of();
+    }
+    return result;
   }
 }

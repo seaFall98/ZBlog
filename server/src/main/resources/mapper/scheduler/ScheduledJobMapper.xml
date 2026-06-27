@@ -68,4 +68,10 @@
     order by created_at desc, id desc
     limit #{limit} offset #{offset}
   </select>
+
+  <select id="logRowsById" resultType="map">
+    select *
+    from scheduled_job_logs
+    where id = #{id}
+  </select>
 </mapper>

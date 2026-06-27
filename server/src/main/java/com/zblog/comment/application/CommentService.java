@@ -9,6 +9,7 @@ import com.zblog.common.util.AdminDateRange;
 import com.zblog.event.application.EventOutboxService;
 import com.zblog.identity.application.port.UserRepository;
 import com.zblog.identity.domain.UserAccount;
+import com.zblog.media.application.port.FileRepository;
 import com.zblog.notification.NotificationService;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,11 +17,17 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,8 +35,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class CommentService {
 
   private static final ZoneId SHANGHAI_ZONE = ZoneId.of("Asia/Shanghai");
+  private static final String COMMENT_IMAGE_UPLOAD_TYPE = "评论贴图";
+  private static final Pattern MARKDOWN_IMAGE_PATTERN =
+      Pattern.compile("!\\[[^\\]]*]\\(([^\\s)]+)(?:\\s+\"[^\"]*\")?\\)");
 
   private final CommentRepository commentRepository;
+  private final FileRepository fileRepository;
   private final UserRepository userRepository;
   private final EventOutboxService eventOutboxService;
   private final NotificationService notificationService;
@@ -37,11 +48,13 @@ public class CommentService {
 
   public CommentService(
       CommentRepository commentRepository,
+      FileRepository fileRepository,
       UserRepository userRepository,
       EventOutboxService eventOutboxService,
       NotificationService notificationService,
       ObjectMapper objectMapper) {
     this.commentRepository = commentRepository;
+    this.fileRepository = fileRepository;
     this.userRepository = userRepository;
     this.eventOutboxService = eventOutboxService;
     this.notificationService = notificationService;
@@ -50,21 +63,38 @@ public class CommentService {
 
   public PageResponse<Map<String, Object>> listPublic(
       String targetType, String targetKey, int page, int pageSize) {
-    return listPublic(targetType, targetKey, page, pageSize, 10);
+    return listPublic(targetType, targetKey, page, pageSize, 10, "hot", null);
   }
 
   public PageResponse<Map<String, Object>> listPublic(
       String targetType, String targetKey, int page, int pageSize, int replyPageSize) {
+    return listPublic(targetType, targetKey, page, pageSize, replyPageSize, "hot", null);
+  }
+
+  public PageResponse<Map<String, Object>> listPublic(
+      String targetType,
+      String targetKey,
+      int page,
+      int pageSize,
+      int replyPageSize,
+      String sort,
+      String viewerEmail) {
     int safePage = Math.max(1, page);
     int safePageSize = Math.max(1, Math.min(pageSize, 100));
     int safeReplyPageSize = Math.max(1, Math.min(replyPageSize, 50));
     int offset = (safePage - 1) * safePageSize;
+    String safeSort = "latest".equalsIgnoreCase(sort) ? "latest" : "hot";
     List<Map<String, Object>> roots =
-        commentRepository.listRootRows(targetType, targetKey, safePageSize, offset).stream()
+        commentRepository.listRootRows(targetType, targetKey, safePageSize, offset, safeSort).stream()
             .map(this::publicView)
             .toList();
     List<Long> rootIds =
         roots.stream().map(comment -> ((Number) comment.get("id")).longValue()).toList();
+    long total = commentRepository.countRootRows(targetType, targetKey);
+    if (rootIds.isEmpty()) {
+      markLiked(roots, viewerId(viewerEmail));
+      return new PageResponse<>(roots, total, safePage, safePageSize);
+    }
     Map<Long, Long> replyCounts = commentRepository.countRepliesForRoots(rootIds);
     Map<Long, List<Map<String, Object>>> repliesByRoot = new LinkedHashMap<>();
     for (Map<String, Object> row : commentRepository.listInitialReplyRows(rootIds, safeReplyPageSize)) {
@@ -81,17 +111,23 @@ public class CommentService {
       root.put("reply_total_pages", totalPages(replyTotal, safeReplyPageSize));
     }
     roots.forEach(comment -> comment.putIfAbsent("replies", List.of()));
-    return new PageResponse<>(roots, commentRepository.countRootRows(targetType, targetKey), safePage, safePageSize);
+    markLiked(roots, viewerId(viewerEmail));
+    return new PageResponse<>(roots, total, safePage, safePageSize);
   }
 
-  public PageResponse<Map<String, Object>> listReplies(long rootId, int page, int pageSize) {
+  public PageResponse<Map<String, Object>> listReplies(long rootId, int page, int pageSize, String viewerEmail) {
     int safePage = Math.max(1, page);
     int safePageSize = Math.max(1, Math.min(pageSize, 50));
     int offset = (safePage - 1) * safePageSize;
     List<Map<String, Object>> replies =
         commentRepository.listReplyRows(rootId, safePageSize, offset).stream().map(this::publicView).toList();
+    markLiked(replies, viewerId(viewerEmail));
     long total = commentRepository.countReplies(rootId);
     return new PageResponse<>(replies, total, safePage, safePageSize);
+  }
+
+  public PageResponse<Map<String, Object>> listReplies(long rootId, int page, int pageSize) {
+    return listReplies(rootId, page, pageSize, null);
   }
 
   public Map<String, Object> locate(String targetType, String targetKey, long commentId, int pageSize, int replyPageSize) {
@@ -150,6 +186,7 @@ public class CommentService {
         rows.list().stream().map(this::adminView).toList(), rows.total(), rows.page(), rows.pageSize());
   }
 
+  @Transactional
   public Map<String, Object> create(Map<String, Object> request, String email) {
     UserAccount user = activeUser(email);
     String targetType = requiredText(request, "target_type");
@@ -158,6 +195,7 @@ public class CommentService {
     if (content.length() > 2000) {
       throw new BusinessException(400, "Comment content is too long", HttpStatus.BAD_REQUEST);
     }
+    List<String> imageUrls = validateCommentImages(content, user);
     Long parentId = nullableNumber(request, "parent_id");
     Long rootId = null;
     Long recipientUserId = null;
@@ -184,6 +222,7 @@ public class CommentService {
             user.avatar(),
             user.id(),
             rootId);
+    bindCommentImages(user.id(), id, imageUrls);
     notificationService.createCommentOperationalNotification(
         id, user.id(), user.nickname(), targetType, targetKey, parentId, content);
     if (recipientUserId != null) {
@@ -202,6 +241,7 @@ public class CommentService {
     return publicView(commentRepository.find(id));
   }
 
+  @Transactional
   public Map<String, Object> createAdmin(Map<String, Object> request, String email) {
     UserAccount user = activeUser(email);
     String targetType = requiredText(request, "target_type");
@@ -210,6 +250,7 @@ public class CommentService {
     if (content.length() > 2000) {
       throw new BusinessException(400, "Comment content is too long", HttpStatus.BAD_REQUEST);
     }
+    List<String> imageUrls = validateCommentImages(content, user);
     Long parentId = nullableNumber(request, "parent_id");
     Long rootId = null;
     Long recipientUserId = null;
@@ -236,6 +277,7 @@ public class CommentService {
             user.avatar(),
             user.id(),
             rootId);
+    bindCommentImages(user.id(), id, imageUrls);
     if (recipientUserId != null) {
       Map<String, Object> eventPayload = new LinkedHashMap<>();
       eventPayload.put("recipient_user_id", recipientUserId);
@@ -253,6 +295,45 @@ public class CommentService {
 
   public Map<String, Object> toggleStatus(long id) {
     commentRepository.toggleStatus(id);
+    return adminView(commentRepository.find(id));
+  }
+
+  @Transactional
+  public Map<String, Object> toggleLike(long id, String email) {
+    UserAccount user = activeUser(email);
+    Map<String, Object> row = commentRepository.find(id);
+    ensurePublicComment(row);
+    boolean liked;
+    if (commentRepository.removeLike(id, user.id())) {
+      commentRepository.decrementLikeCount(id);
+      liked = false;
+    } else {
+      try {
+        liked = commentRepository.addLike(id, user.id());
+        if (liked) {
+          commentRepository.incrementLikeCount(id);
+        }
+      } catch (DuplicateKeyException exception) {
+        liked = true;
+      }
+    }
+    Map<String, Object> view = publicView(commentRepository.find(id));
+    view.put("liked_by_me", liked);
+    return view;
+  }
+
+  public Map<String, Object> pin(long id, String email, boolean pinned) {
+    UserAccount user = activeUser(email);
+    requireAdmin(user);
+    Map<String, Object> row = commentRepository.find(id);
+    if (row.get("parent_id") != null) {
+      throw new BusinessException(400, "Only root comments can be pinned", HttpStatus.BAD_REQUEST);
+    }
+    if (pinned) {
+      commentRepository.pin(id, user.id());
+    } else {
+      commentRepository.unpin(id);
+    }
     return adminView(commentRepository.find(id));
   }
 
@@ -299,6 +380,10 @@ public class CommentService {
       try {
         if (content.isBlank()) {
           throw new IllegalArgumentException("Comment content is required");
+        }
+        if (!extractCommentImageUrls(content).isEmpty()) {
+          throw new IllegalArgumentException(
+              "Imported comments cannot contain Markdown images; upload comment images through the authenticated comment workflow");
         }
         String targetKey = firstText(comment, "target_key", "page_key", "path", "url");
         if (targetKey.isBlank()) {
@@ -360,8 +445,10 @@ public class CommentService {
     user.put("website", website);
     view.put("user", user);
     view.put("reply_user", replyUserView(row));
-    view.put("like_count", 0);
+    view.put("like_count", number(row.get("like_count")));
     view.put("liked_by_me", false);
+    view.put("pinned", Boolean.TRUE.equals(row.get("pinned")));
+    view.put("pinned_at", formatShanghai(row.get("pinned_at")));
     view.put("reply_total", 0);
     view.put("reply_page", 1);
     view.put("reply_page_size", 10);
@@ -376,6 +463,9 @@ public class CommentService {
     view.put("content", row.get("content"));
     view.put("status", row.get("status"));
     view.put("parent_id", row.get("parent_id"));
+    view.put("like_count", number(row.get("like_count")));
+    view.put("pinned", Boolean.TRUE.equals(row.get("pinned")));
+    view.put("pinned_at", formatShanghai(row.get("pinned_at")));
     view.put("created_at", formatShanghai(row.get("created_at")));
     view.put("deleted_at", row.get("deleted_at"));
     view.put(
@@ -490,6 +580,112 @@ public class CommentService {
       throw new BusinessException(401, "User is disabled", HttpStatus.UNAUTHORIZED);
     }
     return user;
+  }
+
+  private long viewerId(String email) {
+    if (!StringUtils.hasText(email)) {
+      return 0;
+    }
+    try {
+      UserAccount user = userRepository.findByEmail(email);
+      if (!user.enabled() || user.deletedAt() != null) {
+        return 0;
+      }
+      return user.id();
+    } catch (RuntimeException exception) {
+      return 0;
+    }
+  }
+
+  private void requireAdmin(UserAccount user) {
+    boolean admin = "admin".equalsIgnoreCase(user.role()) || "super_admin".equalsIgnoreCase(user.role());
+    if (!admin) {
+      throw new BusinessException(403, "Forbidden", HttpStatus.FORBIDDEN);
+    }
+  }
+
+  private void ensurePublicComment(Map<String, Object> row) {
+    boolean deleted = Boolean.TRUE.equals(row.get("is_deleted"));
+    Object status = row.get("status");
+    boolean publicStatus = status instanceof Number number ? number.intValue() == 1 : "1".equals(String.valueOf(status));
+    if (deleted || !publicStatus) {
+      throw new BusinessException(404, "Comment not found", HttpStatus.NOT_FOUND);
+    }
+  }
+
+  private List<String> validateCommentImages(String content, UserAccount user) {
+    List<String> imageUrls = extractCommentImageUrls(content);
+    if (imageUrls.isEmpty()) {
+      return imageUrls;
+    }
+    if (imageUrls.size() > 1) {
+      throw new BusinessException(400, "A comment can contain at most one image", HttpStatus.BAD_REQUEST);
+    }
+    List<Map<String, Object>> rows =
+        fileRepository.findRecentUserUploadsByUrls(user.id(), COMMENT_IMAGE_UPLOAD_TYPE, imageUrls);
+    Set<String> matched = new LinkedHashSet<>();
+    for (Map<String, Object> row : rows) {
+      matched.add(text(row, "file_url"));
+    }
+    if (!matched.containsAll(imageUrls)) {
+      throw new BusinessException(400, "Comment image must be uploaded by the current user first", HttpStatus.BAD_REQUEST);
+    }
+    return imageUrls;
+  }
+
+  private List<String> extractCommentImageUrls(String content) {
+    Matcher matcher = MARKDOWN_IMAGE_PATTERN.matcher(content);
+    LinkedHashSet<String> urls = new LinkedHashSet<>();
+    while (matcher.find()) {
+      String url = matcher.group(1).trim();
+      if (!url.isBlank()) {
+        urls.add(url);
+      }
+    }
+    return List.copyOf(urls);
+  }
+
+  private void bindCommentImages(long userId, long commentId, List<String> imageUrls) {
+    if (!imageUrls.isEmpty()) {
+      fileRepository.bindFilesToComment(userId, commentId, COMMENT_IMAGE_UPLOAD_TYPE, imageUrls);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void markLiked(List<Map<String, Object>> comments, long viewerId) {
+    if (viewerId <= 0 || comments.isEmpty()) {
+      return;
+    }
+    List<Long> ids = new ArrayList<>();
+    for (Map<String, Object> comment : comments) {
+      ids.add(number(comment.get("id")));
+      Object replies = comment.get("replies");
+      if (replies instanceof List<?> list) {
+        for (Object reply : list) {
+          if (reply instanceof Map<?, ?> map) {
+            ids.add(number(((Map<String, Object>) map).get("id")));
+          }
+        }
+      }
+    }
+    Map<Long, Boolean> liked = commentRepository.likedByUser(viewerId, ids);
+    applyLiked(comments, liked);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void applyLiked(List<Map<String, Object>> comments, Map<Long, Boolean> liked) {
+    for (Map<String, Object> comment : comments) {
+      comment.put("liked_by_me", Boolean.TRUE.equals(liked.get(number(comment.get("id")))));
+      Object replies = comment.get("replies");
+      if (replies instanceof List<?> list) {
+        for (Object reply : list) {
+          if (reply instanceof Map<?, ?> map) {
+            Map<String, Object> replyMap = (Map<String, Object>) map;
+            replyMap.put("liked_by_me", Boolean.TRUE.equals(liked.get(number(replyMap.get("id")))));
+          }
+        }
+      }
+    }
   }
 
   private String publicNickname(Map<String, Object> row) {

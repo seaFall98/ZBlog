@@ -35,8 +35,16 @@
   </sql>
 
   <insert id="insertFile" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-    insert into files (filename, original_name, file_url, file_type, file_size, upload_type)
-    values (#{filename}, #{originalName}, #{fileUrl}, #{fileType}, #{fileSize}, #{uploadType})
+    insert into files (
+      filename, original_name, file_url, file_type, file_size, upload_type,
+      uploaded_by, checksum_sha256, storage_provider, storage_bucket, storage_region,
+      storage_object_key, storage_domain, storage_prefix
+    )
+    values (
+      #{filename}, #{originalName}, #{fileUrl}, #{fileType}, #{fileSize}, #{uploadType},
+      #{uploadedBy}, #{checksumSha256}, #{storageProvider}, #{storageBucket}, #{storageRegion},
+      #{storageObjectKey}, #{storageDomain}, #{storagePrefix}
+    )
   </insert>
 
   <select id="countRows" resultType="long">
@@ -46,7 +54,8 @@
 
   <select id="listRows" resultType="map">
     select f.id, f.filename, f.original_name, f.file_url, f.file_type, f.file_size,
-      f.upload_type, f.upload_time,
+      f.upload_type, f.upload_time, f.storage_provider, f.storage_bucket, f.storage_region,
+      f.storage_object_key, f.storage_domain, f.storage_prefix, f.checksum_sha256,
       <include refid="usedStatusSql"/> as status
     from files f
     <include refid="fileWhere"/>
@@ -59,8 +68,38 @@
   </select>
 
   <select id="activeStorageReferences" resultType="map">
-    select filename, file_url from files where id = #{id} and deleted_at is null
+    select filename, file_url, storage_provider, storage_bucket, storage_region,
+      storage_object_key, storage_domain, storage_prefix
+    from files
+    where id = #{id} and deleted_at is null
   </select>
+
+  <select id="recentUserUploadsByUrls" resultType="map">
+    select id, file_url, bound_comment_id
+    from files
+    where deleted_at is null
+      and uploaded_by = #{userId}
+      and upload_type = #{uploadType}
+      and bound_comment_id is null
+      and upload_time &gt;= current_timestamp - interval '1' day
+      and file_url in
+      <foreach collection="fileUrls" item="fileUrl" open="(" separator="," close=")">
+        #{fileUrl}
+      </foreach>
+  </select>
+
+  <update id="bindFilesToComment">
+    update files
+    set bound_comment_id = #{commentId}, bound_at = current_timestamp
+    where deleted_at is null
+      and uploaded_by = #{userId}
+      and upload_type = #{uploadType}
+      and bound_comment_id is null
+      and file_url in
+      <foreach collection="fileUrls" item="fileUrl" open="(" separator="," close=")">
+        #{fileUrl}
+      </foreach>
+  </update>
 
   <update id="markDeleted">
     update files set deleted_at = current_timestamp where id = #{id}

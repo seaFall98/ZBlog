@@ -37,5 +37,16 @@ public interface FileMapper {
 
   List<Map<String, Object>> activeStorageReferences(@Param("id") long id);
 
+  List<Map<String, Object>> recentUserUploadsByUrls(
+      @Param("userId") long userId,
+      @Param("uploadType") String uploadType,
+      @Param("fileUrls") List<String> fileUrls);
+
+  void bindFilesToComment(
+      @Param("userId") long userId,
+      @Param("commentId") long commentId,
+      @Param("uploadType") String uploadType,
+      @Param("fileUrls") List<String> fileUrls);
+
   void markDeleted(@Param("id") long id);
 }

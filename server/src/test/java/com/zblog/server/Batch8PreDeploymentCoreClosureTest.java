@@ -33,7 +33,7 @@ class Batch8PreDeploymentCoreClosureTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
-  void articlePageviewIncrementsArticleViewCountAndSitePvOnlyOnce() {
+  void articlePageviewBuffersArticleViewCountUntilFlushAndKeepsPublicCountFresh() {
     HttpHeaders headers = authenticatedHeaders();
     long articleId = insertArticle("batch8-view-count", "Batch 8 View Count", true, true, false, false, null, List.of(), "Batch8Place");
 
@@ -60,7 +60,7 @@ class Batch8PreDeploymentCoreClosureTest {
     Map<?, ?> afterArticle = data(restTemplate.getForEntity("/api/v1/articles/batch8-view-count", Map.class));
     assertThat(number(afterArticle, "view_count")).isEqualTo(beforeViews + 1);
     assertThat(jdbcTemplate.queryForObject("select view_count from articles where id = ?", Long.class, articleId))
-        .isEqualTo(beforeViews + 1);
+        .isEqualTo(beforeViews);
 
     Map<?, ?> adminPage =
         data(
@@ -70,7 +70,19 @@ class Batch8PreDeploymentCoreClosureTest {
                 new HttpEntity<>(headers),
                 Map.class));
     assertThat((List<?>) adminPage.get("list"))
-        .anySatisfy(row -> assertThat(number((Map<?, ?>) row, "view_count")).isEqualTo(beforeViews + 1));
+        .anySatisfy(row -> assertThat(number((Map<?, ?>) row, "view_count")).isEqualTo(beforeViews));
+
+    long flushJobId = scheduledJobId("article-view-flush");
+    ResponseEntity<Map> flush =
+        restTemplate.exchange(
+            "/api/v1/admin/scheduled-jobs/" + flushJobId + "/run",
+            HttpMethod.POST,
+            new HttpEntity<>(headers),
+            Map.class);
+    assertThat(flush.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(data(flush).get("status")).isEqualTo("success");
+    assertThat(jdbcTemplate.queryForObject("select view_count from articles where id = ?", Long.class, articleId))
+        .isEqualTo(beforeViews + 1);
 
     long afterSitePv = number(data(restTemplate.getForEntity("/api/v1/stats/site", Map.class)), "total_page_views");
     assertThat(afterSitePv).isEqualTo(beforeSitePv + 1);
@@ -469,6 +481,11 @@ class Batch8PreDeploymentCoreClosureTest {
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(token);
     return headers;
+  }
+
+  private long scheduledJobId(String handlerName) {
+    return jdbcTemplate.queryForObject(
+        "select id from scheduled_jobs where handler_name = ?", Long.class, handlerName);
   }
 
   private Map<?, ?> data(ResponseEntity<Map> response) {

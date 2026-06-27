@@ -6,7 +6,11 @@ public interface VisitRepository {
 
   void save(VisitEventInput input);
 
-  void incrementPublishedArticleViewCount(long articleId);
+  default void incrementPublishedArticleViewCount(long articleId) {
+    incrementPublishedArticleViewCount(articleId, 1);
+  }
+
+  void incrementPublishedArticleViewCount(long articleId, long delta);
 
   Long articleViewCount(long articleId);
 }

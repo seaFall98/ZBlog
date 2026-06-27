@@ -4,6 +4,8 @@ import com.zblog.common.exception.BusinessException;
 import com.zblog.media.application.MediaStorageSettings;
 import com.zblog.media.application.MediaStorageSettings.StorageSettings;
 import com.zblog.media.application.port.FileStorage;
+import com.zblog.media.application.port.FileStorageMetadata;
+import com.zblog.media.application.port.FileStorageReference;
 import java.io.IOException;
 import java.io.InputStream;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -62,6 +64,30 @@ public class RoutingFileStorage implements FileStorage {
       return;
     }
     localFileStorage.delete(filename);
+  }
+
+  @Override
+  public void delete(FileStorageReference reference) throws IOException {
+    if (reference.hasStorageMetadata()) {
+      if (reference.isStorageProvider("cos")) {
+        tencentCosFileStorage.delete(reference);
+        return;
+      }
+      if (reference.isStorageProvider("local")) {
+        localFileStorage.delete(reference.storageObjectKey());
+        return;
+      }
+    }
+    delete(reference.filename(), reference.fileUrl());
+  }
+
+  @Override
+  public FileStorageMetadata metadata(String filename, String fileUrl) {
+    StorageSettings settings = storageSettings.current();
+    if (isRemoteUrl(fileUrl) || ("cos".equals(settings.storageType()) && settings.cosReady())) {
+      return tencentCosFileStorage.metadata(filename, fileUrl);
+    }
+    return localFileStorage.metadata(filename, fileUrl);
   }
 
   private boolean isRemoteUrl(String fileUrl) {

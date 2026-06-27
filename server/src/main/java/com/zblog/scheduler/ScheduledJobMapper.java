@@ -27,4 +27,6 @@ public interface ScheduledJobMapper {
   long countLogs(@Param("jobId") long jobId);
 
   List<Map<String, Object>> listLogs(@Param("jobId") long jobId, @Param("limit") int limit, @Param("offset") int offset);
+
+  List<Map<String, Object>> logRowsById(@Param("id") long id);
 }

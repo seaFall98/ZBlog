@@ -15,6 +15,19 @@ public interface FileRepository {
       long fileSize,
       String uploadType);
 
+  default long create(
+      String filename,
+      String originalName,
+      String fileUrl,
+      String fileType,
+      long fileSize,
+      String uploadType,
+      Long uploadedBy,
+      String checksumSha256,
+      FileStorageMetadata storageMetadata) {
+    return create(filename, originalName, fileUrl, fileType, fileSize, uploadType);
+  }
+
   PageResponse<Map<String, Object>> list(
       int page,
       int pageSize,
@@ -28,6 +41,13 @@ public interface FileRepository {
       LocalDateTime end);
 
   List<FileStorageReference> findActiveStorageReferences(long id);
+
+  default List<Map<String, Object>> findRecentUserUploadsByUrls(
+      long userId, String uploadType, List<String> fileUrls) {
+    return List.of();
+  }
+
+  default void bindFilesToComment(long userId, long commentId, String uploadType, List<String> fileUrls) {}
 
   default List<String> findActiveFilenames(long id) {
     return findActiveStorageReferences(id).stream().map(FileStorageReference::filename).toList();

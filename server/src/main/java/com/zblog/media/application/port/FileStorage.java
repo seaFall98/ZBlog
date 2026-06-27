@@ -12,4 +12,12 @@ public interface FileStorage {
   default void delete(String filename, String fileUrl) throws IOException {
     delete(filename);
   }
+
+  default void delete(FileStorageReference reference) throws IOException {
+    delete(reference.filename(), reference.fileUrl());
+  }
+
+  default FileStorageMetadata metadata(String filename, String fileUrl) {
+    return FileStorageMetadata.empty();
+  }
 }

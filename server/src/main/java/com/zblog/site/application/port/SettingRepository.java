@@ -10,5 +10,9 @@ public interface SettingRepository {
 
   void deleteKey(String group, String key);
 
+  default int clearValuesEqualTo(String value) {
+    return 0;
+  }
+
   void deleteGroup(String group);
 }
